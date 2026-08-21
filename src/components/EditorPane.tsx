@@ -5,6 +5,7 @@ import { EditorView } from "@codemirror/view";
 import type { Note } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { livePreview } from "../editor/livePreview";
+import { MarkdownPreview } from "./MarkdownPreview";
 
 interface Props {
   note: Note | null;
@@ -17,6 +18,7 @@ const SAVE_DEBOUNCE_MS = 500;
 
 export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Props) {
   const [content, setContent] = useState("");
+  const [previewMode, setPreviewMode] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
 
@@ -59,14 +61,23 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Pro
 
   return (
     <div className="editor-pane">
-      <div className="editor-title">{stripMdExtension(note.relativePath)}</div>
-      <CodeMirror
-        value={content}
-        height="100%"
-        extensions={extensions}
-        onChange={handleChange}
-        theme="dark"
-      />
+      <div className="editor-title-row">
+        <div className="editor-title">{stripMdExtension(note.relativePath)}</div>
+        <button className="preview-toggle-btn" onClick={() => setPreviewMode((v) => !v)}>
+          {previewMode ? "Edit" : "Preview"}
+        </button>
+      </div>
+      {previewMode ? (
+        <MarkdownPreview content={content} onSelectTitle={onSelectTitle} onOpenExternal={onOpenExternal} />
+      ) : (
+        <CodeMirror
+          value={content}
+          height="100%"
+          extensions={extensions}
+          onChange={handleChange}
+          theme="dark"
+        />
+      )}
     </div>
   );
 }

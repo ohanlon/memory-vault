@@ -13,7 +13,7 @@ export interface LivePreviewHandlers {
   onOpenExternal: (url: string) => void;
 }
 
-const EXTERNAL_SCHEME_RE = /^(https?:|mailto:)/i;
+export const EXTERNAL_SCHEME_RE = /^(https?:|mailto:)/i;
 const HEADING_RE = /^(#{1,6})(\s+)/;
 const INLINE_CODE_RE = /`([^`]+)`/g;
 const WIKILINK_RE = /\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
@@ -23,7 +23,7 @@ const BOLD_RE = /\*\*([^*]+)\*\*|__([^_]+)__/g;
 const ITALIC_RE = /(?<!\*)\*([^*]+)\*(?!\*)|(?<!_)_([^_]+)_(?!_)/g;
 const TAG_RE = /(?<![\w#/])#([a-zA-Z][\w-]*(?:\/[a-zA-Z][\w-]*)*)/g;
 
-function titleFromHref(href: string): string {
+export function titleFromHref(href: string): string {
   const withoutHeader = href.split("#")[0];
   const base = withoutHeader.split(/[\\/]/).pop() ?? withoutHeader;
   return base.replace(/\.md$/i, "");
