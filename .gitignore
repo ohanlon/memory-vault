@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-electron
+release
+*.log
+.DS_Store
+
+# stray compiled output if tsc is ever run without noEmit
+electron/*.js
+shared/*.js
+vite.config.js
+*.tsbuildinfo
