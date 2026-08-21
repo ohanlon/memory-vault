@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
+import { EditorView } from "@codemirror/view";
 import type { Note } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { livePreview } from "../editor/livePreview";
@@ -48,7 +49,7 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Pro
   }
 
   const extensions = useMemo(
-    () => [markdown(), livePreview({ onSelectTitle, onOpenExternal })],
+    () => [markdown(), EditorView.lineWrapping, livePreview({ onSelectTitle, onOpenExternal })],
     [onSelectTitle, onOpenExternal]
   );
 

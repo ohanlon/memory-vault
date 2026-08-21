@@ -244,6 +244,8 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+  min-height: 0;
   border-right: 1px solid #33343d;
 }
 
@@ -347,7 +349,8 @@ body {
 .editor-pane {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -358,8 +361,24 @@ body {
   border-bottom: 1px solid #33343d;
 }
 
+/* @uiw/react-codemirror wraps its output in a theme div (.cm-theme-dark
+   here, since we pass theme="dark") that sits between .editor-pane and
+   .cm-editor — it needs to be part of the flex chain too, or it just
+   grows to fit the document instead of being bounded/scrollable. */
+.editor-pane .cm-theme-dark {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .editor-pane .cm-editor {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-pane .cm-scroller {
+  overflow: auto;
 }
 
 /* Live preview: rendered markdown styling (CodeMirror decorations from src/editor/livePreview.ts) */
