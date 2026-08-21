@@ -1,3 +1,4 @@
+import { stripMdExtension } from "@shared/displayName";
 import type { Note } from "@shared/types";
 
 interface Props {
@@ -18,7 +19,7 @@ export function FileTree({ notes, activePath, onSelect, onDelete }: Props) {
           className={note.path === activePath ? "active" : ""}
         >
           <button className="file-tree-item" onClick={() => onSelect(note)}>
-            {note.relativePath}
+            {stripMdExtension(note.relativePath)}
           </button>
           <button
             className="file-tree-delete"

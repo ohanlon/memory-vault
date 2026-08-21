@@ -5,6 +5,7 @@ import { EditorPane } from "./components/EditorPane";
 import { GraphPanel } from "./components/GraphPanel";
 import { BacklinksPanel } from "./components/BacklinksPanel";
 import { PromptModal } from "./components/PromptModal";
+import { stripMdExtension } from "@shared/displayName";
 import type { Note } from "@shared/types";
 
 type DialogState =
@@ -79,7 +80,7 @@ export default function App() {
   }
 
   async function handleDelete(note: Note) {
-    if (!window.confirm(`Delete "${note.relativePath}"?`)) return;
+    if (!window.confirm(`Delete "${stripMdExtension(note.relativePath)}"?`)) return;
     await window.memoryVault.deleteNote(note.path);
     if (activePath === note.path) setActivePath(null);
     await refresh();

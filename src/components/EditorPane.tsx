@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import type { Note } from "@shared/types";
+import { stripMdExtension } from "@shared/displayName";
 import { livePreview } from "../editor/livePreview";
 
 interface Props {
@@ -57,7 +58,7 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Pro
 
   return (
     <div className="editor-pane">
-      <div className="editor-title">{note.relativePath}</div>
+      <div className="editor-title">{stripMdExtension(note.relativePath)}</div>
       <CodeMirror
         value={content}
         height="100%"
