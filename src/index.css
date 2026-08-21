@@ -217,9 +217,48 @@ body {
 
 .tab-bar {
   display: flex;
-  overflow-x: auto;
+  align-items: stretch;
   background: #202127;
   border-bottom: 1px solid #33343d;
+}
+
+.tab-scroller {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow-x: scroll;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+}
+
+.tab-scroller::-webkit-scrollbar {
+  display: none; /* Chromium/Electron */
+}
+
+.tab-scroll-btn {
+  flex: 0 0 auto;
+  width: 24px;
+  background: none;
+  border: none;
+  border-right: 1px solid #33343d;
+  color: #999;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tab-scroll-btn:last-child {
+  border-right: none;
+  border-left: 1px solid #33343d;
+}
+
+.tab-scroll-btn:not(:disabled):hover {
+  background: #2a2c38;
+  color: #e6e6e6;
+}
+
+.tab-scroll-btn:disabled {
+  color: #4a4c56;
+  cursor: default;
 }
 
 .tab {
