@@ -27,6 +27,14 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1280,
     height: 800,
+    // Hides the title bar (icon, title text, menu) but keeps the native
+    // minimize/maximize/close buttons via the overlay.
+    titleBarStyle: "hidden",
+    titleBarOverlay: {
+      color: "#1e1f24",
+      symbolColor: "#e6e6e6",
+      height: 32,
+    },
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,

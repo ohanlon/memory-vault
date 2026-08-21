@@ -14,6 +14,9 @@ and writing the files directly — the app just reflects whatever is on disk.
 - Named vaults: save a folder under a unique name (case-insensitive) and
   pick it from a list next time, instead of re-browsing for the folder
 - Open any folder as a vault; browse notes in a file tree
+- Tabbed editing: open several notes at once, switch between them, close
+  individual tabs — clicking a wikilink/backlink/graph node opens it as a
+  new tab (or focuses it if already open) rather than replacing the current one
 - Obsidian-style live preview editor: headings, bold/italic, inline code,
   wikilinks, markdown links, and tags render styled; raw markdown is
   revealed only where the cursor currently is, autosaved to disk

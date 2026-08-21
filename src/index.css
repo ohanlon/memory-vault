@@ -13,8 +13,22 @@ body {
   color: #e6e6e6;
 }
 
-.empty-state {
+.app-shell {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.titlebar-drag {
+  flex: 0 0 32px;
+  -webkit-app-region: drag;
+  background: #1e1f24;
+  border-bottom: 1px solid #33343d;
+}
+
+.empty-state {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -111,7 +125,8 @@ body {
 .app-layout {
   display: grid;
   grid-template-columns: 260px 1fr 340px;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .sidebar {
@@ -198,6 +213,51 @@ body {
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid #33343d;
+}
+
+.tab-bar {
+  display: flex;
+  overflow-x: auto;
+  background: #202127;
+  border-bottom: 1px solid #33343d;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border-right: 1px solid #33343d;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.tab:hover {
+  background: #2a2c38;
+}
+
+.tab.active {
+  background: #1e1f24;
+  color: #e6e6e6;
+  box-shadow: inset 0 -2px 0 #6c9bd1;
+}
+
+.tab-close {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tab-close:hover {
+  opacity: 1;
+  color: #e07a7a;
 }
 
 .editor-toolbar {
