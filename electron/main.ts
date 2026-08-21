@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +22,8 @@ function vaultsFilePath(): string {
 }
 
 function createWindow() {
+  Menu.setApplicationMenu(null);
+
   win = new BrowserWindow({
     width: 1280,
     height: 800,
