@@ -24,14 +24,14 @@ export function FileTreePanel({
 }: Props) {
   return (
     <>
+      {loading && <div className="loading">Loading...</div>}
+      <FileTree notes={notes} activePath={activePath} onSelect={onSelect} onDelete={onDelete} />
       <div className="sidebar-header">
         <span title={root}>{activeName ?? root.split(/[\\/]/).pop()}</span>
         <button onClick={onSwitchVault} title="Switch to a different vault">
           Switch
         </button>
       </div>
-      {loading && <div className="loading">Loading...</div>}
-      <FileTree notes={notes} activePath={activePath} onSelect={onSelect} onDelete={onDelete} />
     </>
   );
 }

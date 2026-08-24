@@ -109,3 +109,8 @@ export interface Layout {
   name: string;
   regions: LayoutRegion[];
 }
+
+export interface LayoutPrefs {
+  sidebarWidth: number;
+  rightPanelWidth: number;
+}

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVault } from "./vault/useVault";
 import { StatusBar } from "./components/StatusBar";
+import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
 import { TabBar, type TabItem } from "./components/TabBar";
@@ -10,11 +11,19 @@ import { TabKindSlot } from "./plugins/TabKindSlot";
 import { addTab as addTabPath, GRAPH_TAB_ID, reconcileTabs, removeTab, renameTab } from "./vault/tabs";
 import { stripMdExtension } from "@shared/displayName";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
+import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
 import type { LayoutRegionName, Note } from "@shared/types";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
 const ACTIVE_LAYOUT_NAME = "default";
+
+// Width of the left-ribbon column — the one grid track that isn't resizable.
+const ACTIVITY_BAR_WIDTH = 48;
+
+function clampWidth(width: number): number {
+  return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width));
+}
 
 type DialogState =
   | { kind: "new-note" }
@@ -46,6 +55,39 @@ export default function App() {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_LAYOUT_PREFS.sidebarWidth);
+  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_LAYOUT_PREFS.rightPanelWidth);
+  // Mirrors the two widths above so the drag-end handler can save the exact
+  // latest value without waiting for a re-render to read fresh state.
+  const widthsRef = useRef(DEFAULT_LAYOUT_PREFS);
+
+  useEffect(() => {
+    window.memoryVault.readLayoutPrefs().then((prefs) => {
+      setSidebarWidth(prefs.sidebarWidth);
+      setRightPanelWidth(prefs.rightPanelWidth);
+      widthsRef.current = prefs;
+    });
+  }, []);
+
+  function resizeSidebar(deltaX: number) {
+    setSidebarWidth((w) => {
+      const next = clampWidth(w + deltaX);
+      widthsRef.current = { ...widthsRef.current, sidebarWidth: next };
+      return next;
+    });
+  }
+
+  function resizeRightPanel(deltaX: number) {
+    setRightPanelWidth((w) => {
+      const next = clampWidth(w - deltaX);
+      widthsRef.current = { ...widthsRef.current, rightPanelWidth: next };
+      return next;
+    });
+  }
+
+  function saveWidths() {
+    window.memoryVault.saveLayoutPrefs(widthsRef.current);
+  }
 
   const layout = findLayout(defaultLayouts, ACTIVE_LAYOUT_NAME);
   if (!layout) throw new Error(`Unknown layout: "${ACTIVE_LAYOUT_NAME}"`);
@@ -236,9 +278,17 @@ export default function App() {
         />
       )}
       <div
-        className={`app-layout${sidebarCollapsed ? " sidebar-collapsed" : ""}${
-          rightPanelCollapsed ? " right-panel-collapsed" : ""
-        }`}
+        className="app-layout"
+        style={{
+          gridTemplateColumns: [
+            `${ACTIVITY_BAR_WIDTH}px`,
+            !sidebarCollapsed && isRegionPresent("left-sidebar") ? `${sidebarWidth}px` : null,
+            "1fr",
+            !rightPanelCollapsed && isRegionPresent("right-sidebar") ? `${rightPanelWidth}px` : null,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        }}
       >
         {isRegionPresent("left-ribbon") && LeftRibbon && (
           <LeftRibbon
@@ -268,6 +318,14 @@ export default function App() {
           />
         )}
 
+        {isRegionPresent("left-sidebar") && !sidebarCollapsed && (
+          <ResizeHandle
+            style={{ left: ACTIVITY_BAR_WIDTH + sidebarWidth }}
+            onResize={resizeSidebar}
+            onResizeEnd={saveWidths}
+          />
+        )}
+
         {isRegionPresent("editor") && (
           <main className="editor-area" data-region-id={regionId("editor")}>
             <TabBar tabs={openTabItems} activeId={activePath} onSelect={openTab} onClose={closeTab} />
@@ -290,6 +348,14 @@ export default function App() {
               }}
             />
           </main>
+        )}
+
+        {isRegionPresent("right-sidebar") && !rightPanelCollapsed && (
+          <ResizeHandle
+            style={{ right: rightPanelWidth }}
+            onResize={resizeRightPanel}
+            onResizeEnd={saveWidths}
+          />
         )}
 
         {isRegionPresent("right-sidebar") && !rightPanelCollapsed && (

@@ -8,7 +8,8 @@ import { addVault, readVaultsFile, removeVault, writeVaultsFile } from "./vaultR
 import { titleFromPath } from "../shared/parseNote";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
-import type { PropertyDef } from "../shared/types";
+import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
+import type { LayoutPrefs, PropertyDef } from "../shared/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +23,10 @@ let currentRoot: string | null = null;
 
 function vaultsFilePath(): string {
   return path.join(app.getPath("userData"), "vaults.json");
+}
+
+function layoutPrefsFilePath(): string {
+  return path.join(app.getPath("userData"), "layout-prefs.json");
 }
 
 function createWindow() {
@@ -145,6 +150,15 @@ ipcMain.handle("vault:savePropertySchema", async (_event, properties: PropertyDe
   if (!currentRoot) throw new Error("No vault loaded");
   writePropertySchema(currentRoot, properties);
   return properties;
+});
+
+ipcMain.handle("layout:read", async () => {
+  return readLayoutPrefsFile(layoutPrefsFilePath());
+});
+
+ipcMain.handle("layout:save", async (_event, prefs: LayoutPrefs) => {
+  writeLayoutPrefsFile(layoutPrefsFilePath(), prefs);
+  return true;
 });
 
 ipcMain.handle(
