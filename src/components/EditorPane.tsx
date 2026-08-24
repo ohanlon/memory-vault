@@ -29,9 +29,9 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Pro
       loadedPath.current = null;
       return;
     }
-    window.memoryVault.readRaw(note.path).then((raw) => {
+    window.memoryVault.readNoteBody(note.path).then((body) => {
       if (!cancelled) {
-        setContent(raw);
+        setContent(body);
         loadedPath.current = note.path;
       }
     });

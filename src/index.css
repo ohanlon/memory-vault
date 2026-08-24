@@ -585,6 +585,157 @@ body {
   margin: 0;
 }
 
+.properties-panel {
+  padding: 10px;
+  overflow-y: auto;
+  max-height: 280px;
+  border-bottom: 1px solid #33343d;
+}
+
+.properties-section h4 {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.properties-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.properties-section-header h4 {
+  margin: 8px 0 4px;
+}
+
+.manage-properties-btn,
+.add-property-btn {
+  background: #35374a;
+  color: #e6e6e6;
+  border: 1px solid #4a4c63;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.manage-properties-btn:hover,
+.add-property-btn:hover {
+  background: #454868;
+}
+
+.property-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.property-row label {
+  font-size: 12px;
+  color: #b6b6c0;
+}
+
+.property-row-custom-header {
+  display: flex;
+  gap: 4px;
+}
+
+.property-name-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.property-remove-btn {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+}
+
+.property-row input[type="text"],
+.property-row input[type="number"],
+.property-row input[type="date"],
+.property-row input[type="datetime-local"],
+.property-row select,
+.property-list-input input[type="text"] {
+  background: #1e1f24;
+  color: #e6e6e6;
+  border: 1px solid #4a4c63;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.property-list-input .tag-list {
+  margin-bottom: 4px;
+}
+
+.property-list-input .tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.property-list-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+}
+
+.property-error {
+  color: #d17b7b;
+  font-size: 11px;
+}
+
+.property-schema-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.property-schema-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #33343d;
+}
+
+.property-type-badge {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+}
+
+.property-schema-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid #33343d;
+  padding-top: 10px;
+}
+
+.property-schema-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #b6b6c0;
+}
+
+.modal-box-wide {
+  min-width: 480px;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

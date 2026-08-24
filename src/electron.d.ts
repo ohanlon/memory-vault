@@ -1,4 +1,4 @@
-import type { FileChangeEvent, Note, VaultEntry, VaultIndex } from "@shared/types";
+import type { FileChangeEvent, Note, PropertyDef, VaultEntry, VaultIndex } from "@shared/types";
 
 export interface MemoryVaultAPI {
   pickVault(): Promise<string | null>;
@@ -14,6 +14,11 @@ export interface MemoryVaultAPI {
   renameNote(absPath: string, newTitle: string): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   onFileChanged(cb: (event: FileChangeEvent) => void): () => void;
+  readNoteBody(absPath: string): Promise<string>;
+  readNoteProperties(absPath: string): Promise<Record<string, unknown>>;
+  saveNoteProperties(absPath: string, properties: Record<string, unknown>): Promise<boolean>;
+  readPropertySchema(): Promise<PropertyDef[]>;
+  savePropertySchema(properties: PropertyDef[]): Promise<PropertyDef[]>;
 }
 
 declare global {

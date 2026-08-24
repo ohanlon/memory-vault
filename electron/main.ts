@@ -6,6 +6,9 @@ import type { FSWatcher } from "chokidar";
 import { loadVault, readNote, watchVault } from "./vault";
 import { addVault, readVaultsFile, removeVault, writeVaultsFile } from "./vaultRegistry";
 import { titleFromPath } from "../shared/parseNote";
+import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
+import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
+import type { PropertyDef } from "../shared/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -112,9 +115,36 @@ ipcMain.handle("vault:readRaw", async (_event, absPath: string) => {
   return fs.readFileSync(absPath, "utf-8");
 });
 
-ipcMain.handle("vault:saveNote", async (_event, absPath: string, content: string) => {
-  fs.writeFileSync(absPath, content, "utf-8");
+ipcMain.handle("vault:saveNote", async (_event, absPath: string, body: string) => {
+  saveNoteBody(absPath, body);
   return true;
+});
+
+ipcMain.handle("vault:readNoteBody", async (_event, absPath: string) => {
+  return readNoteBody(absPath);
+});
+
+ipcMain.handle("vault:readNoteProperties", async (_event, absPath: string) => {
+  return readNoteProperties(absPath);
+});
+
+ipcMain.handle(
+  "vault:saveNoteProperties",
+  async (_event, absPath: string, properties: Record<string, unknown>) => {
+    saveNoteProperties(absPath, properties);
+    return true;
+  }
+);
+
+ipcMain.handle("vault:readPropertySchema", async () => {
+  if (!currentRoot) return [];
+  return readPropertySchema(currentRoot);
+});
+
+ipcMain.handle("vault:savePropertySchema", async (_event, properties: PropertyDef[]) => {
+  if (!currentRoot) throw new Error("No vault loaded");
+  writePropertySchema(currentRoot, properties);
+  return properties;
 });
 
 ipcMain.handle(

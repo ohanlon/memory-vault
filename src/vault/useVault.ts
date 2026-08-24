@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GraphModel, Note, VaultEntry } from "@shared/types";
+import type { GraphModel, Note, PropertyDef, VaultEntry } from "@shared/types";
 import { buildGraph } from "@shared/buildGraph";
 
 export interface VaultState {
@@ -8,6 +8,7 @@ export interface VaultState {
   root: string | null;
   notes: Note[];
   graph: GraphModel;
+  propertySchema: PropertyDef[];
   loading: boolean;
   error: string | null;
 }
@@ -19,6 +20,7 @@ export function useVault() {
     root: null,
     notes: [],
     graph: { nodes: [], edges: [] },
+    propertySchema: [],
     loading: false,
     error: null,
   });
@@ -33,13 +35,17 @@ export function useVault() {
   const openVault = useCallback(async (root: string, name: string | null = null) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const index = await window.memoryVault.loadVault(root);
+      const [index, propertySchema] = await Promise.all([
+        window.memoryVault.loadVault(root),
+        window.memoryVault.readPropertySchema(),
+      ]);
       setState((s) => ({
         ...s,
         root: index.root,
         activeName: name,
         notes: index.notes,
         graph: buildGraph(index.notes),
+        propertySchema,
         loading: false,
         error: null,
       }));
@@ -69,7 +75,7 @@ export function useVault() {
         ...s,
         vaults,
         ...(s.activeName?.toLowerCase() === name.toLowerCase()
-          ? { root: null, activeName: null, notes: [], graph: { nodes: [], edges: [] } }
+          ? { root: null, activeName: null, notes: [], graph: { nodes: [], edges: [] }, propertySchema: [] }
           : {}),
       }));
     },
@@ -77,7 +83,14 @@ export function useVault() {
   );
 
   const closeVault = useCallback(() => {
-    setState((s) => ({ ...s, root: null, activeName: null, notes: [], graph: { nodes: [], edges: [] } }));
+    setState((s) => ({
+      ...s,
+      root: null,
+      activeName: null,
+      notes: [],
+      graph: { nodes: [], edges: [] },
+      propertySchema: [],
+    }));
   }, []);
 
   // Re-reads the currently open vault from disk (e.g. after a note is
@@ -85,6 +98,22 @@ export function useVault() {
   const refresh = useCallback(() => {
     if (state.root) return openVault(state.root, state.activeName);
   }, [state.root, state.activeName, openVault]);
+
+  const saveSchema = useCallback(async (properties: PropertyDef[]) => {
+    const updated = await window.memoryVault.savePropertySchema(properties);
+    setState((s) => ({ ...s, propertySchema: updated }));
+  }, []);
+
+  // Property edits (e.g. a "tags" property) can affect Note.tags/the graph,
+  // so refresh the whole vault after saving — same pattern used elsewhere
+  // (create/delete/rename) to keep notes/graph in sync post-mutation.
+  const saveNoteProperties = useCallback(
+    async (absPath: string, properties: Record<string, unknown>) => {
+      await window.memoryVault.saveNoteProperties(absPath, properties);
+      await refresh();
+    },
+    [refresh]
+  );
 
   // Debounced full reload on any external file change (add/change/unlink).
   useEffect(() => {
@@ -104,5 +133,5 @@ export function useVault() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.root]);
 
-  return { ...state, openVaultByEntry, addVault, removeVault, closeVault, refresh };
+  return { ...state, openVaultByEntry, addVault, removeVault, closeVault, refresh, saveSchema, saveNoteProperties };
 }

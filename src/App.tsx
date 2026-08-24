@@ -4,6 +4,8 @@ import { FileTree } from "./components/FileTree";
 import { EditorPane } from "./components/EditorPane";
 import { GraphPanel } from "./components/GraphPanel";
 import { BacklinksPanel } from "./components/BacklinksPanel";
+import { PropertiesPanel } from "./components/PropertiesPanel";
+import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
 import { TabBar } from "./components/TabBar";
 import { addTab as addTabPath, reconcileTabs, removeTab, renameTab } from "./vault/tabs";
@@ -14,6 +16,7 @@ type DialogState =
   | { kind: "new-note" }
   | { kind: "rename"; note: Note }
   | { kind: "name-vault"; root: string }
+  | { kind: "manage-properties" }
   | null;
 
 export default function App() {
@@ -23,6 +26,7 @@ export default function App() {
     root,
     notes,
     graph,
+    propertySchema,
     loading,
     error,
     openVaultByEntry,
@@ -30,6 +34,8 @@ export default function App() {
     removeVault,
     closeVault,
     refresh,
+    saveSchema,
+    saveNoteProperties,
   } = useVault();
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -218,6 +224,12 @@ export default function App() {
         </main>
 
         <aside className="right-panel">
+          <PropertiesPanel
+            note={activeNote}
+            schema={propertySchema}
+            onSaveProperties={saveNoteProperties}
+            onOpenSchemaManager={() => setDialog({ kind: "manage-properties" })}
+          />
           <GraphPanel
             graph={graph}
             activeTitle={activeNote?.title ?? null}
@@ -247,6 +259,16 @@ export default function App() {
             confirmLabel="Rename"
             onSubmit={handleRenameSubmit}
             onCancel={() => setDialog(null)}
+          />
+        )}
+        {dialog?.kind === "manage-properties" && (
+          <PropertySchemaModal
+            schema={propertySchema}
+            onSave={async (updated) => {
+              await saveSchema(updated);
+              setDialog(null);
+            }}
+            onClose={() => setDialog(null)}
           />
         )}
       </div>

@@ -65,3 +65,25 @@ export interface FileChangeEvent {
   kind: FileChangeKind;
   path: string;
 }
+
+export type PropertyType = "text" | "list" | "number" | "checkbox" | "date" | "datetime";
+
+export interface PropertyRules {
+  /** text */
+  maxLength?: number;
+  /** text, regex source (no flags) */
+  pattern?: string;
+  /** number */
+  min?: number;
+  /** number */
+  max?: number;
+  /** number */
+  integerOnly?: boolean;
+}
+
+export interface PropertyDef {
+  /** Unique (case-insensitive) key, also the frontmatter field name. */
+  name: string;
+  type: PropertyType;
+  rules?: PropertyRules;
+}

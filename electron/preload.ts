@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { FileChangeEvent, Note, VaultEntry, VaultIndex } from "../shared/types";
+import type { FileChangeEvent, Note, PropertyDef, VaultEntry, VaultIndex } from "../shared/types";
 
 const api = {
   pickVault: (): Promise<string | null> => ipcRenderer.invoke("vault:pick"),
@@ -24,6 +24,16 @@ const api = {
     ipcRenderer.invoke("vault:renameNote", absPath, newTitle),
   openExternal: (url: string): Promise<boolean> =>
     ipcRenderer.invoke("shell:openExternal", url),
+  readNoteBody: (absPath: string): Promise<string> =>
+    ipcRenderer.invoke("vault:readNoteBody", absPath),
+  readNoteProperties: (absPath: string): Promise<Record<string, unknown>> =>
+    ipcRenderer.invoke("vault:readNoteProperties", absPath),
+  saveNoteProperties: (absPath: string, properties: Record<string, unknown>): Promise<boolean> =>
+    ipcRenderer.invoke("vault:saveNoteProperties", absPath, properties),
+  readPropertySchema: (): Promise<PropertyDef[]> =>
+    ipcRenderer.invoke("vault:readPropertySchema"),
+  savePropertySchema: (properties: PropertyDef[]): Promise<PropertyDef[]> =>
+    ipcRenderer.invoke("vault:savePropertySchema", properties),
   onFileChanged: (cb: (event: FileChangeEvent) => void): (() => void) => {
     const listener = (_e: unknown, change: FileChangeEvent) => cb(change);
     ipcRenderer.on("vault:file-changed", listener);
