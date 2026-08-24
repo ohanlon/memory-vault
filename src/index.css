@@ -70,6 +70,7 @@ body {
 
 .empty-state button,
 .new-note-btn,
+.graph-view-btn,
 .editor-toolbar button,
 .sidebar-header button {
   background: #35374a;
@@ -82,6 +83,7 @@ body {
 
 .empty-state button:hover,
 .new-note-btn:hover,
+.graph-view-btn:hover,
 .editor-toolbar button:hover,
 .sidebar-header button:hover {
   background: #454868;
@@ -178,8 +180,13 @@ body {
   border-bottom: 1px solid #33343d;
 }
 
+.new-note-btn,
+.graph-view-btn {
+  margin: 0 8px 8px;
+}
+
 .new-note-btn {
-  margin: 8px;
+  margin-top: 8px;
 }
 
 .loading {
@@ -522,16 +529,41 @@ body {
   overflow: hidden;
 }
 
-.graph-panel {
-  flex: 1;
-  min-height: 0;
+.right-panel-tabs {
+  display: flex;
   border-bottom: 1px solid #33343d;
 }
 
-.backlinks-panel {
-  padding: 10px;
+.right-panel-tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #999;
+  padding: 8px 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.right-panel-tab-btn:hover {
+  color: #e6e6e6;
+}
+
+.right-panel-tab-btn.active {
+  color: #e6e6e6;
+  border-bottom-color: #6c9bd1;
+}
+
+.right-panel-tab-content {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  max-height: 260px;
+  padding: 10px;
+}
+
+.graph-panel {
+  flex: 1;
+  min-height: 0;
 }
 
 .backlinks-section h4 {
@@ -585,13 +617,6 @@ body {
   margin: 0;
 }
 
-.properties-panel {
-  padding: 10px;
-  overflow-y: auto;
-  max-height: 280px;
-  border-bottom: 1px solid #33343d;
-}
-
 .properties-section h4 {
   margin: 8px 0 4px;
   font-size: 12px;
@@ -602,11 +627,8 @@ body {
 .properties-section-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.properties-section-header h4 {
-  margin: 8px 0 4px;
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 
 .manage-properties-btn,

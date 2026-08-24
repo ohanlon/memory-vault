@@ -3,12 +3,11 @@ import { useVault } from "./vault/useVault";
 import { FileTree } from "./components/FileTree";
 import { EditorPane } from "./components/EditorPane";
 import { GraphPanel } from "./components/GraphPanel";
-import { BacklinksPanel } from "./components/BacklinksPanel";
-import { PropertiesPanel } from "./components/PropertiesPanel";
+import { RightPanel } from "./components/RightPanel";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
-import { TabBar } from "./components/TabBar";
-import { addTab as addTabPath, reconcileTabs, removeTab, renameTab } from "./vault/tabs";
+import { TabBar, type TabItem } from "./components/TabBar";
+import { addTab as addTabPath, GRAPH_TAB_ID, reconcileTabs, removeTab, renameTab } from "./vault/tabs";
 import { stripMdExtension } from "@shared/displayName";
 import type { Note } from "@shared/types";
 
@@ -46,17 +45,25 @@ export default function App() {
     [notes, activePath]
   );
 
-  const openTabs = useMemo(
-    () => openPaths.map((p) => notes.find((n) => n.path === p)).filter((n): n is Note => !!n),
+  const openTabItems = useMemo<TabItem[]>(
+    () =>
+      openPaths
+        .map((p): TabItem | null => {
+          if (p === GRAPH_TAB_ID) return { id: p, label: "Graph" };
+          const note = notes.find((n) => n.path === p);
+          return note ? { id: p, label: stripMdExtension(note.relativePath) } : null;
+        })
+        .filter((t): t is TabItem => t !== null),
     [openPaths, notes]
   );
 
   // Drop tabs (and clear the active tab) for notes that no longer exist —
   // e.g. deleted or renamed externally, outside the app's own delete/rename flows.
+  // The graph tab is never dropped this way — it isn't a note.
   useEffect(() => {
     const existing = new Set(notes.map((n) => n.path));
     setOpenPaths((paths) => reconcileTabs(paths, existing));
-    setActivePath((path) => (path === null || existing.has(path) ? path : null));
+    setActivePath((path) => (path === null || path === GRAPH_TAB_ID || existing.has(path) ? path : null));
   }, [notes]);
 
   const openTab = useCallback((path: string) => {
@@ -197,6 +204,9 @@ export default function App() {
           <button className="new-note-btn" onClick={() => setDialog({ kind: "new-note" })}>
             + New note
           </button>
+          <button className="graph-view-btn" onClick={() => openTab(GRAPH_TAB_ID)}>
+            Graph view
+          </button>
           {loading && <div className="loading">Loading...</div>}
           <FileTree
             notes={notes}
@@ -207,7 +217,7 @@ export default function App() {
         </aside>
 
         <main className="editor-area">
-          <TabBar tabs={openTabs} activePath={activePath} onSelect={openTab} onClose={closeTab} />
+          <TabBar tabs={openTabItems} activeId={activePath} onSelect={openTab} onClose={closeTab} />
           {activeNote && (
             <div className="editor-toolbar">
               <button onClick={() => setDialog({ kind: "rename", note: activeNote })}>
@@ -215,34 +225,32 @@ export default function App() {
               </button>
             </div>
           )}
-          <EditorPane
-            note={activeNote}
-            onSaved={refresh}
-            onSelectTitle={selectByTitle}
-            onOpenExternal={openExternal}
-          />
+          {activePath === GRAPH_TAB_ID ? (
+            <GraphPanel
+              graph={graph}
+              activeTitle={activeNote?.title ?? null}
+              onSelectTitle={selectByTitle}
+              onOpenExternal={openExternal}
+            />
+          ) : (
+            <EditorPane
+              note={activeNote}
+              onSaved={refresh}
+              onSelectTitle={selectByTitle}
+              onOpenExternal={openExternal}
+            />
+          )}
         </main>
 
-        <aside className="right-panel">
-          <PropertiesPanel
-            note={activeNote}
-            schema={propertySchema}
-            onSaveProperties={saveNoteProperties}
-            onOpenSchemaManager={() => setDialog({ kind: "manage-properties" })}
-          />
-          <GraphPanel
-            graph={graph}
-            activeTitle={activeNote?.title ?? null}
-            onSelectTitle={selectByTitle}
-            onOpenExternal={openExternal}
-          />
-          <BacklinksPanel
-            graph={graph}
-            activeTitle={activeNote?.title ?? null}
-            onSelectTitle={selectByTitle}
-            onOpenExternal={openExternal}
-          />
-        </aside>
+        <RightPanel
+          note={activeNote}
+          graph={graph}
+          schema={propertySchema}
+          onSelectTitle={selectByTitle}
+          onOpenExternal={openExternal}
+          onSaveProperties={saveNoteProperties}
+          onOpenSchemaManager={() => setDialog({ kind: "manage-properties" })}
+        />
 
         {dialog?.kind === "new-note" && (
           <PromptModal

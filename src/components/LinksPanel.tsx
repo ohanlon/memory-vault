@@ -7,8 +7,8 @@ interface Props {
   onOpenExternal: (url: string) => void;
 }
 
-export function BacklinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal }: Props) {
-  if (!activeTitle) return null;
+export function LinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal }: Props) {
+  if (!activeTitle) return <p className="backlinks-empty">Select a note to see its links</p>;
 
   // External and tag nodes never appear as a backlink source: edges only
   // point from a note to them, never the other way around.
@@ -16,25 +16,13 @@ export function BacklinksPanel({ graph, activeTitle, onSelectTitle, onOpenExtern
     .filter((e) => e.target === activeTitle && e.source !== activeTitle)
     .map((e) => e.source);
   const outgoing = graph.edges.filter((e) => e.source === activeTitle && e.target !== activeTitle);
-  const tags = outgoing.filter((e) => e.kind === "tag").map((e) => e.target);
   const forwardLinks = outgoing.filter((e) => e.kind !== "tag").map((e) => e.target);
 
   const uniq = (arr: string[]) => Array.from(new Set(arr));
   const isExternal = (id: string) => graph.nodes.find((n) => n.id === id)?.external ?? false;
 
   return (
-    <div className="backlinks-panel">
-      <div className="backlinks-section">
-        <h4>Tags</h4>
-        {uniq(tags).length === 0 && <p className="backlinks-empty">No tags</p>}
-        <ul className="tag-list">
-          {uniq(tags).map((tag) => (
-            <li key={tag}>
-              <span className="tag-chip">{tag}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <>
       <div className="backlinks-section">
         <h4>Links to here</h4>
         {uniq(backlinks).length === 0 && <p className="backlinks-empty">No backlinks</p>}
@@ -63,6 +51,6 @@ export function BacklinksPanel({ graph, activeTitle, onSelectTitle, onOpenExtern
           ))}
         </ul>
       </div>
-    </div>
+    </>
   );
 }

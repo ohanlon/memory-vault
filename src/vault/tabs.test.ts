@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addTab, reconcileTabs, removeTab, renameTab } from "./tabs";
+import { GRAPH_TAB_ID, addTab, reconcileTabs, removeTab, renameTab } from "./tabs";
 
 describe("addTab", () => {
   it("appends a new path", () => {
@@ -73,5 +73,10 @@ describe("reconcileTabs", () => {
 
   it("drops everything when nothing still exists", () => {
     expect(reconcileTabs(["a", "b"], new Set())).toEqual([]);
+  });
+
+  it("never drops the graph tab, even though it isn't a note path", () => {
+    expect(reconcileTabs(["a", GRAPH_TAB_ID], new Set(["a"]))).toEqual(["a", GRAPH_TAB_ID]);
+    expect(reconcileTabs([GRAPH_TAB_ID], new Set())).toEqual([GRAPH_TAB_ID]);
   });
 });

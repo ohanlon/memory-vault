@@ -96,78 +96,82 @@ export function PropertiesPanel({ note, schema, onSaveProperties, onOpenSchemaMa
     });
   }
 
-  if (!note) return null;
-
   return (
-    <div className="properties-panel">
-      <div className="properties-section">
-        <div className="properties-section-header">
-          <h4>Properties</h4>
-          <button type="button" className="manage-properties-btn" onClick={onOpenSchemaManager}>
-            Manage
-          </button>
-        </div>
-        {schema.length === 0 && <p className="backlinks-empty">No bounded properties defined</p>}
-        {schema.map((def) => {
-          const value = boundedValues[def.name];
-          const error = validatePropertyValue(def, value);
-          return (
-            <div className="property-row" key={def.name}>
-              <label>{def.name}</label>
-              <PropertyValueInput
-                type={def.type}
-                value={value}
-                rules={def.rules}
-                onChange={(v) => updateBounded(def.name, v)}
-              />
-              {error && <span className="property-error">{error}</span>}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="properties-section">
-        <h4>Custom</h4>
-        {customRows.map((row) => (
-          <div className="property-row property-row-custom" key={row.key}>
-            <div className="property-row-custom-header">
-              <input
-                type="text"
-                className="property-name-input"
-                placeholder="Name"
-                value={row.name}
-                onChange={(e) => updateCustomRow(row.key, { name: e.target.value })}
-              />
-              <select
-                value={row.type}
-                onChange={(e) => {
-                  const type = e.target.value as PropertyType;
-                  updateCustomRow(row.key, { type, value: defaultValueFor(type) });
-                }}
-              >
-                {PROPERTY_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="property-remove-btn"
-                title="Remove property"
-                onClick={() => removeCustomRow(row.key)}
-              >
-                ×
-              </button>
-            </div>
-            <PropertyValueInput type={row.type} value={row.value} onChange={(v) => updateCustomRow(row.key, { value: v })} />
-          </div>
-        ))}
-        <button type="button" className="add-property-btn" onClick={addCustomRow}>
-          + Add property
+    <>
+      <div className="properties-section-header">
+        <button type="button" className="manage-properties-btn" onClick={onOpenSchemaManager}>
+          Manage properties
         </button>
       </div>
-    </div>
+
+      {!note ? (
+        <p className="backlinks-empty">Select a note to see its properties</p>
+      ) : (
+        <>
+          <div className="properties-section">
+            {schema.length === 0 && <p className="backlinks-empty">No bounded properties defined</p>}
+            {schema.map((def) => {
+              const value = boundedValues[def.name];
+              const error = validatePropertyValue(def, value);
+              return (
+                <div className="property-row" key={def.name}>
+                  <label>{def.name}</label>
+                  <PropertyValueInput
+                    type={def.type}
+                    value={value}
+                    rules={def.rules}
+                    onChange={(v) => updateBounded(def.name, v)}
+                  />
+                  {error && <span className="property-error">{error}</span>}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="properties-section">
+            <h4>Custom</h4>
+            {customRows.map((row) => (
+              <div className="property-row property-row-custom" key={row.key}>
+                <div className="property-row-custom-header">
+                  <input
+                    type="text"
+                    className="property-name-input"
+                    placeholder="Name"
+                    value={row.name}
+                    onChange={(e) => updateCustomRow(row.key, { name: e.target.value })}
+                  />
+                  <select
+                    value={row.type}
+                    onChange={(e) => {
+                      const type = e.target.value as PropertyType;
+                      updateCustomRow(row.key, { type, value: defaultValueFor(type) });
+                    }}
+                  >
+                    {PROPERTY_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="property-remove-btn"
+                    title="Remove property"
+                    onClick={() => removeCustomRow(row.key)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <PropertyValueInput type={row.type} value={row.value} onChange={(v) => updateCustomRow(row.key, { value: v })} />
+              </div>
+            ))}
+            <button type="button" className="add-property-btn" onClick={addCustomRow}>
+              + Add property
+            </button>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 

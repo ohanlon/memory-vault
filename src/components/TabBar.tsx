@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { stripMdExtension } from "@shared/displayName";
-import type { Note } from "@shared/types";
+
+export interface TabItem {
+  id: string;
+  label: string;
+}
 
 interface Props {
-  tabs: Note[];
-  activePath: string | null;
-  onSelect: (path: string) => void;
-  onClose: (path: string) => void;
+  tabs: TabItem[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  onClose: (id: string) => void;
 }
 
 const SCROLL_STEP = 150;
 
-export function TabBar({ tabs, activePath, onSelect, onClose }: Props) {
+export function TabBar({ tabs, activeId, onSelect, onClose }: Props) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -55,19 +58,19 @@ export function TabBar({ tabs, activePath, onSelect, onClose }: Props) {
         ‹
       </button>
       <div className="tab-scroller" ref={scrollerRef} onScroll={updateScrollState}>
-        {tabs.map((note) => (
+        {tabs.map((t) => (
           <div
-            key={note.path}
-            className={`tab${note.path === activePath ? " active" : ""}`}
-            onClick={() => onSelect(note.path)}
+            key={t.id}
+            className={`tab${t.id === activeId ? " active" : ""}`}
+            onClick={() => onSelect(t.id)}
           >
-            <span className="tab-label">{stripMdExtension(note.relativePath)}</span>
+            <span className="tab-label">{t.label}</span>
             <button
               className="tab-close"
               title="Close tab"
               onClick={(e) => {
                 e.stopPropagation();
-                onClose(note.path);
+                onClose(t.id);
               }}
             >
               ×
