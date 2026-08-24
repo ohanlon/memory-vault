@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useVault } from "./vault/useVault";
+import { ActivityBar } from "./components/ActivityBar";
 import { FileTree } from "./components/FileTree";
 import { EditorPane } from "./components/EditorPane";
 import { GraphPanel } from "./components/GraphPanel";
@@ -39,6 +40,7 @@ export default function App() {
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const activeNote = useMemo(
     () => notes.find((n) => n.path === activePath) ?? null,
@@ -193,28 +195,31 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="titlebar-drag" />
-      <div className="app-layout">
-        <aside className="sidebar">
-          <div className="sidebar-header">
-            <span title={root}>{activeName ?? root.split(/[\\/]/).pop()}</span>
-            <button onClick={handleSwitchVault} title="Switch to a different vault">
-              Switch
-            </button>
-          </div>
-          <button className="new-note-btn" onClick={() => setDialog({ kind: "new-note" })}>
-            + New note
-          </button>
-          <button className="graph-view-btn" onClick={() => openTab(GRAPH_TAB_ID)}>
-            Graph view
-          </button>
-          {loading && <div className="loading">Loading...</div>}
-          <FileTree
-            notes={notes}
-            activePath={activePath}
-            onSelect={(n) => openTab(n.path)}
-            onDelete={handleDelete}
-          />
-        </aside>
+      <div className={`app-layout${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
+        <ActivityBar
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+          onNewNote={() => setDialog({ kind: "new-note" })}
+          onGraphView={() => openTab(GRAPH_TAB_ID)}
+        />
+
+        {!sidebarCollapsed && (
+          <aside className="sidebar">
+            <div className="sidebar-header">
+              <span title={root}>{activeName ?? root.split(/[\\/]/).pop()}</span>
+              <button onClick={handleSwitchVault} title="Switch to a different vault">
+                Switch
+              </button>
+            </div>
+            {loading && <div className="loading">Loading...</div>}
+            <FileTree
+              notes={notes}
+              activePath={activePath}
+              onSelect={(n) => openTab(n.path)}
+              onDelete={handleDelete}
+            />
+          </aside>
+        )}
 
         <main className="editor-area">
           <TabBar tabs={openTabItems} activeId={activePath} onSelect={openTab} onClose={closeTab} />

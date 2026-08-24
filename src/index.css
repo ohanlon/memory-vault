@@ -69,8 +69,6 @@ body {
 }
 
 .empty-state button,
-.new-note-btn,
-.graph-view-btn,
 .editor-toolbar button,
 .sidebar-header button {
   background: #35374a;
@@ -82,8 +80,6 @@ body {
 }
 
 .empty-state button:hover,
-.new-note-btn:hover,
-.graph-view-btn:hover,
 .editor-toolbar button:hover,
 .sidebar-header button:hover {
   background: #454868;
@@ -158,9 +154,53 @@ body {
 
 .app-layout {
   display: grid;
-  grid-template-columns: 260px 1fr 340px;
+  grid-template-columns: 48px 260px 1fr 340px;
   flex: 1;
   min-height: 0;
+}
+
+.app-layout.sidebar-collapsed {
+  grid-template-columns: 48px 1fr 340px;
+}
+
+.activity-bar {
+  background: #1a1b20;
+  border-right: 1px solid #33343d;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+}
+
+.activity-bar-top {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid #33343d;
+}
+
+.activity-bar-btn {
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-bar-btn:hover {
+  background: #2a2c38;
+  border-color: #4a4c63;
+  color: #fff;
 }
 
 .sidebar {
@@ -178,15 +218,6 @@ body {
   padding: 10px;
   font-weight: 600;
   border-bottom: 1px solid #33343d;
-}
-
-.new-note-btn,
-.graph-view-btn {
-  margin: 0 8px 8px;
-}
-
-.new-note-btn {
-  margin-top: 8px;
 }
 
 .loading {
