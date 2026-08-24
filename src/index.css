@@ -176,21 +176,21 @@ body {
 
 .app-layout {
   display: grid;
-  grid-template-columns: 72px 260px 1fr 340px;
+  grid-template-columns: 48px 260px 1fr 340px;
   flex: 1;
   min-height: 0;
 }
 
 .app-layout.sidebar-collapsed {
-  grid-template-columns: 72px 1fr 340px;
+  grid-template-columns: 48px 1fr 340px;
 }
 
 .app-layout.right-panel-collapsed {
-  grid-template-columns: 72px 260px 1fr;
+  grid-template-columns: 48px 260px 1fr;
 }
 
 .app-layout.sidebar-collapsed.right-panel-collapsed {
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 48px 1fr;
 }
 
 .activity-bar {

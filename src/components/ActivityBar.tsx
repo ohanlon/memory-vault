@@ -1,8 +1,6 @@
 interface Props {
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
-  rightPanelCollapsed: boolean;
-  onToggleRightPanel: () => void;
   onNewNote: () => void;
   onGraphView: () => void;
 }
@@ -10,8 +8,6 @@ interface Props {
 export function ActivityBar({
   sidebarCollapsed,
   onToggleSidebar,
-  rightPanelCollapsed,
-  onToggleRightPanel,
   onNewNote,
   onGraphView,
 }: Props) {
@@ -24,13 +20,6 @@ export function ActivityBar({
           title={sidebarCollapsed ? "Show navigation" : "Hide navigation"}
         >
           {sidebarCollapsed ? "»" : "«"}
-        </button>
-        <button
-          className="activity-bar-btn activity-bar-btn-sm"
-          onClick={onToggleRightPanel}
-          title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
-        >
-          {rightPanelCollapsed ? "«" : "»"}
         </button>
       </div>
       <button className="activity-bar-btn" onClick={onNewNote} title="New note">
