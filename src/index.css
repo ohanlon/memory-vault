@@ -609,12 +609,14 @@ body {
   overflow: hidden;
 }
 
-.right-panel-tabs {
+/* Shared by any tabbed region (left-sidebar, right-sidebar) — the strip is
+   only rendered when a region has more than one registered view. */
+.region-tabs {
   display: flex;
   border-bottom: 1px solid #33343d;
 }
 
-.right-panel-tab-btn {
+.region-tab-btn {
   flex: 1;
   background: none;
   border: none;
@@ -625,16 +627,16 @@ body {
   cursor: pointer;
 }
 
-.right-panel-tab-btn:hover {
+.region-tab-btn:hover {
   color: #e6e6e6;
 }
 
-.right-panel-tab-btn.active {
+.region-tab-btn.active {
   color: #e6e6e6;
   border-bottom-color: #6c9bd1;
 }
 
-.right-panel-tab-content {
+.region-tab-content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;

@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useVault } from "./vault/useVault";
-import { ActivityBar } from "./components/ActivityBar";
-import { FileTree } from "./components/FileTree";
-import { EditorPane } from "./components/EditorPane";
-import { GraphPanel } from "./components/GraphPanel";
-import { RightPanel } from "./components/RightPanel";
 import { StatusBar } from "./components/StatusBar";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
 import { TabBar, type TabItem } from "./components/TabBar";
+import { pluginRegistry } from "./plugins/registry";
+import { TabbedRegion } from "./plugins/TabbedRegion";
+import { TabKindSlot } from "./plugins/TabKindSlot";
 import { addTab as addTabPath, GRAPH_TAB_ID, reconcileTabs, removeTab, renameTab } from "./vault/tabs";
 import { stripMdExtension } from "@shared/displayName";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
@@ -161,11 +159,32 @@ export default function App() {
     setActivePath(newPath);
   }
 
+  // Bind the commands core regions/views invoke by id. Re-registered every
+  // render (cheap — a few Map.set calls) so handlers always close over
+  // current state instead of going stale.
+  useEffect(() => {
+    pluginRegistry.registerCommand("vault.newNote", () => setDialog({ kind: "new-note" }));
+    pluginRegistry.registerCommand("vault.switchVault", () => handleSwitchVault());
+    pluginRegistry.registerCommand("vault.deleteNote", (note: Note) => handleDelete(note));
+    pluginRegistry.registerCommand("view.toggleSidebar", () => setSidebarCollapsed((v) => !v));
+    pluginRegistry.registerCommand("view.toggleRightPanel", () => setRightPanelCollapsed((v) => !v));
+    pluginRegistry.registerCommand("view.openGraph", () => openTab(GRAPH_TAB_ID));
+    pluginRegistry.registerCommand("properties.manageSchema", () => setDialog({ kind: "manage-properties" }));
+  });
+
+  const TitleBar = pluginRegistry.getRegion("title-bar");
+  const LeftRibbon = pluginRegistry.getRegion("left-ribbon");
+
   if (!root) {
     return (
       <div className="app-shell">
-        {isRegionPresent("title-bar") && (
-          <div className="titlebar-drag" data-region-id={regionId("title-bar")} />
+        {isRegionPresent("title-bar") && TitleBar && (
+          <TitleBar
+            rightPanelCollapsed={false}
+            onToggleRightPanel={() => {}}
+            showRightPanelToggle={false}
+            regionId={regionId("title-bar")}
+          />
         )}
         <div className="empty-state">
           <h1>Memory Vault</h1>
@@ -208,50 +227,45 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {isRegionPresent("title-bar") && (
-        <div className="titlebar-drag" data-region-id={regionId("title-bar")}>
-          {isRegionPresent("right-sidebar") && (
-            <button
-              className="titlebar-collapse-btn"
-              onClick={() => setRightPanelCollapsed((v) => !v)}
-              title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
-            >
-              {rightPanelCollapsed ? "»" : "«"}
-            </button>
-          )}
-        </div>
+      {isRegionPresent("title-bar") && TitleBar && (
+        <TitleBar
+          rightPanelCollapsed={rightPanelCollapsed}
+          onToggleRightPanel={() => pluginRegistry.runCommand("view.toggleRightPanel")}
+          showRightPanelToggle={isRegionPresent("right-sidebar")}
+          regionId={regionId("title-bar")}
+        />
       )}
       <div
         className={`app-layout${sidebarCollapsed ? " sidebar-collapsed" : ""}${
           rightPanelCollapsed ? " right-panel-collapsed" : ""
         }`}
       >
-        {isRegionPresent("left-ribbon") && (
-          <ActivityBar
+        {isRegionPresent("left-ribbon") && LeftRibbon && (
+          <LeftRibbon
             sidebarCollapsed={sidebarCollapsed}
-            onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
-            onNewNote={() => setDialog({ kind: "new-note" })}
-            onGraphView={() => openTab(GRAPH_TAB_ID)}
+            onToggleSidebar={() => pluginRegistry.runCommand("view.toggleSidebar")}
+            onNewNote={() => pluginRegistry.runCommand("vault.newNote")}
+            onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
             regionId={regionId("left-ribbon")}
           />
         )}
 
         {isRegionPresent("left-sidebar") && !sidebarCollapsed && (
-          <aside className="sidebar" data-region-id={regionId("left-sidebar")}>
-            <div className="sidebar-header">
-              <span title={root}>{activeName ?? root.split(/[\\/]/).pop()}</span>
-              <button onClick={handleSwitchVault} title="Switch to a different vault">
-                Switch
-              </button>
-            </div>
-            {loading && <div className="loading">Loading...</div>}
-            <FileTree
-              notes={notes}
-              activePath={activePath}
-              onSelect={(n) => openTab(n.path)}
-              onDelete={handleDelete}
-            />
-          </aside>
+          <TabbedRegion
+            className="sidebar"
+            regionId={regionId("left-sidebar")}
+            views={pluginRegistry.getViews("left-sidebar")}
+            viewProps={{
+              root,
+              activeName,
+              loading,
+              notes,
+              activePath,
+              onSelect: (n: Note) => openTab(n.path),
+              onDelete: (n: Note) => pluginRegistry.runCommand("vault.deleteNote", n),
+              onSwitchVault: () => pluginRegistry.runCommand("vault.switchVault"),
+            }}
+          />
         )}
 
         {isRegionPresent("editor") && (
@@ -264,34 +278,35 @@ export default function App() {
                 </button>
               </div>
             )}
-            {activePath === GRAPH_TAB_ID ? (
-              <GraphPanel
-                graph={graph}
-                activeTitle={activeNote?.title ?? null}
-                onSelectTitle={selectByTitle}
-                onOpenExternal={openExternal}
-              />
-            ) : (
-              <EditorPane
-                note={activeNote}
-                onSaved={refresh}
-                onSelectTitle={selectByTitle}
-                onOpenExternal={openExternal}
-              />
-            )}
+            <TabKindSlot
+              tabId={activePath}
+              slotProps={{
+                note: activeNote,
+                graph,
+                activeTitle: activeNote?.title ?? null,
+                onSaved: refresh,
+                onSelectTitle: selectByTitle,
+                onOpenExternal: openExternal,
+              }}
+            />
           </main>
         )}
 
         {isRegionPresent("right-sidebar") && !rightPanelCollapsed && (
-          <RightPanel
-            note={activeNote}
-            graph={graph}
-            schema={propertySchema}
-            onSelectTitle={selectByTitle}
-            onOpenExternal={openExternal}
-            onSaveProperties={saveNoteProperties}
-            onOpenSchemaManager={() => setDialog({ kind: "manage-properties" })}
+          <TabbedRegion
+            className="right-panel"
             regionId={regionId("right-sidebar")}
+            views={pluginRegistry.getViews("right-sidebar")}
+            viewProps={{
+              note: activeNote,
+              graph,
+              schema: propertySchema,
+              activeTitle: activeNote?.title ?? null,
+              onSelectTitle: selectByTitle,
+              onOpenExternal: openExternal,
+              onSaveProperties: saveNoteProperties,
+              onOpenSchemaManager: () => pluginRegistry.runCommand("properties.manageSchema"),
+            }}
           />
         )}
 
