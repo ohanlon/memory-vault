@@ -1,4 +1,5 @@
 import type { GraphModel } from "@shared/types";
+import { backlinkTitles } from "@shared/buildGraph";
 
 interface Props {
   graph: GraphModel;
@@ -10,11 +11,7 @@ interface Props {
 export function LinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal }: Props) {
   if (!activeTitle) return <p className="backlinks-empty">Select a note to see its links</p>;
 
-  // External and tag nodes never appear as a backlink source: edges only
-  // point from a note to them, never the other way around.
-  const backlinks = graph.edges
-    .filter((e) => e.target === activeTitle && e.source !== activeTitle)
-    .map((e) => e.source);
+  const backlinks = backlinkTitles(graph, activeTitle);
   const outgoing = graph.edges.filter((e) => e.source === activeTitle && e.target !== activeTitle);
   const forwardLinks = outgoing.filter((e) => e.kind !== "tag").map((e) => e.target);
 
@@ -25,9 +22,9 @@ export function LinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal }
     <>
       <div className="backlinks-section">
         <h4>Links to here</h4>
-        {uniq(backlinks).length === 0 && <p className="backlinks-empty">No backlinks</p>}
+        {backlinks.length === 0 && <p className="backlinks-empty">No backlinks</p>}
         <ul>
-          {uniq(backlinks).map((title) => (
+          {backlinks.map((title) => (
             <li key={title}>
               <button onClick={() => onSelectTitle(title)}>{title}</button>
             </li>

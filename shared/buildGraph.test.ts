@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGraph } from "./buildGraph";
+import { backlinkTitles, buildGraph } from "./buildGraph";
 import { parseNote } from "./parseNote";
 
 function note(relativePath: string, raw: string) {
@@ -90,5 +90,33 @@ describe("buildGraph", () => {
       target: "https://example.com",
       kind: "external-link",
     });
+  });
+});
+
+describe("backlinkTitles", () => {
+  it("returns titles of notes that link to the given title", () => {
+    const a = note("A.md", "links to [[B]]");
+    const b = note("B.md", "no links");
+    const graph = buildGraph([a, b]);
+    expect(backlinkTitles(graph, "B")).toEqual(["A"]);
+  });
+
+  it("returns an empty array when nothing links to the title", () => {
+    const a = note("A.md", "no links");
+    const graph = buildGraph([a]);
+    expect(backlinkTitles(graph, "A")).toEqual([]);
+  });
+
+  it("deduplicates multiple links from the same note", () => {
+    const a = note("A.md", "[[B]] and [[B|again]]");
+    const b = note("B.md", "no links");
+    const graph = buildGraph([a, b]);
+    expect(backlinkTitles(graph, "B")).toEqual(["A"]);
+  });
+
+  it("excludes self-links", () => {
+    const a = note("A.md", "links to [[A]]");
+    const graph = buildGraph([a]);
+    expect(backlinkTitles(graph, "A")).toEqual([]);
   });
 });

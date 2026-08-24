@@ -67,3 +67,11 @@ export function buildGraph(notes: Note[]): GraphModel {
 
   return { nodes, edges };
 }
+
+/** Titles of notes that link to `title`, deduplicated. Excludes self-links. */
+export function backlinkTitles(graph: GraphModel, title: string): string[] {
+  const unique = new Set(
+    graph.edges.filter((e) => e.target === title && e.source !== title).map((e) => e.source)
+  );
+  return Array.from(unique);
+}

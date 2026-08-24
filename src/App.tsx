@@ -5,6 +5,7 @@ import { FileTree } from "./components/FileTree";
 import { EditorPane } from "./components/EditorPane";
 import { GraphPanel } from "./components/GraphPanel";
 import { RightPanel } from "./components/RightPanel";
+import { StatusBar } from "./components/StatusBar";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
 import { TabBar, type TabItem } from "./components/TabBar";
@@ -212,8 +213,6 @@ export default function App() {
         <ActivityBar
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
-          rightPanelCollapsed={rightPanelCollapsed}
-          onToggleRightPanel={() => setRightPanelCollapsed((v) => !v)}
           onNewNote={() => setDialog({ kind: "new-note" })}
           onGraphView={() => openTab(GRAPH_TAB_ID)}
         />
@@ -302,6 +301,8 @@ export default function App() {
           />
         )}
       </div>
+
+      <StatusBar note={activeNote} graph={graph} />
     </div>
   );
 }
