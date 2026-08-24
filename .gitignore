@@ -10,3 +10,7 @@ electron/*.js
 shared/*.js
 vite.config.js
 *.tsbuildinfo
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json
