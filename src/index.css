@@ -56,6 +56,28 @@ body {
   -webkit-app-region: drag;
   background: #1e1f24;
   border-bottom: 1px solid #33343d;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  /* Reserves space for the native minimize/maximize/close buttons the OS
+     draws via titleBarOverlay (electron/main.ts) — their width isn't
+     queryable from CSS, so this is a fixed approximation of the default
+     Windows 3-button control cluster; keep in step with that config. */
+  padding-right: 138px;
+}
+
+.titlebar-collapse-btn {
+  -webkit-app-region: no-drag;
+  width: 45px;
+  background: none;
+  border: none;
+  color: #e6e6e6;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.titlebar-collapse-btn:hover {
+  background: #3a3d55;
 }
 
 .empty-state {
@@ -154,13 +176,21 @@ body {
 
 .app-layout {
   display: grid;
-  grid-template-columns: 48px 260px 1fr 340px;
+  grid-template-columns: 72px 260px 1fr 340px;
   flex: 1;
   min-height: 0;
 }
 
 .app-layout.sidebar-collapsed {
-  grid-template-columns: 48px 1fr 340px;
+  grid-template-columns: 72px 1fr 340px;
+}
+
+.app-layout.right-panel-collapsed {
+  grid-template-columns: 72px 260px 1fr;
+}
+
+.app-layout.sidebar-collapsed.right-panel-collapsed {
+  grid-template-columns: 72px 1fr;
 }
 
 .activity-bar {
@@ -177,6 +207,7 @@ body {
   width: 100%;
   display: flex;
   justify-content: center;
+  gap: 4px;
   padding-bottom: 8px;
   margin-bottom: 2px;
   border-bottom: 1px solid #33343d;
@@ -201,6 +232,12 @@ body {
   background: #2a2c38;
   border-color: #4a4c63;
   color: #fff;
+}
+
+.activity-bar-btn-sm {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
 }
 
 .sidebar {

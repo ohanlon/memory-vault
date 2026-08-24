@@ -41,6 +41,7 @@ export default function App() {
   const [activePath, setActivePath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
 
   const activeNote = useMemo(
     () => notes.find((n) => n.path === activePath) ?? null,
@@ -194,11 +195,25 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <div className="titlebar-drag" />
-      <div className={`app-layout${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
+      <div className="titlebar-drag">
+        <button
+          className="titlebar-collapse-btn"
+          onClick={() => setRightPanelCollapsed((v) => !v)}
+          title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
+        >
+          {rightPanelCollapsed ? "»" : "«"}
+        </button>
+      </div>
+      <div
+        className={`app-layout${sidebarCollapsed ? " sidebar-collapsed" : ""}${
+          rightPanelCollapsed ? " right-panel-collapsed" : ""
+        }`}
+      >
         <ActivityBar
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+          rightPanelCollapsed={rightPanelCollapsed}
+          onToggleRightPanel={() => setRightPanelCollapsed((v) => !v)}
           onNewNote={() => setDialog({ kind: "new-note" })}
           onGraphView={() => openTab(GRAPH_TAB_ID)}
         />
@@ -247,15 +262,17 @@ export default function App() {
           )}
         </main>
 
-        <RightPanel
-          note={activeNote}
-          graph={graph}
-          schema={propertySchema}
-          onSelectTitle={selectByTitle}
-          onOpenExternal={openExternal}
-          onSaveProperties={saveNoteProperties}
-          onOpenSchemaManager={() => setDialog({ kind: "manage-properties" })}
-        />
+        {!rightPanelCollapsed && (
+          <RightPanel
+            note={activeNote}
+            graph={graph}
+            schema={propertySchema}
+            onSelectTitle={selectByTitle}
+            onOpenExternal={openExternal}
+            onSaveProperties={saveNoteProperties}
+            onOpenSchemaManager={() => setDialog({ kind: "manage-properties" })}
+          />
+        )}
 
         {dialog?.kind === "new-note" && (
           <PromptModal
