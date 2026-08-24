@@ -12,6 +12,7 @@ interface Props {
   onOpenExternal: (url: string) => void;
   onSaveProperties: (absPath: string, properties: Record<string, unknown>) => void;
   onOpenSchemaManager: () => void;
+  regionId?: string;
 }
 
 type RightTab = "links" | "tags" | "properties";
@@ -30,12 +31,13 @@ export function RightPanel({
   onOpenExternal,
   onSaveProperties,
   onOpenSchemaManager,
+  regionId,
 }: Props) {
   const [tab, setTab] = useState<RightTab>("links");
   const activeTitle = note?.title ?? null;
 
   return (
-    <aside className="right-panel">
+    <aside className="right-panel" data-region-id={regionId}>
       <div className="right-panel-tabs">
         {TABS.map((t) => (
           <button

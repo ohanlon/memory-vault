@@ -3,6 +3,7 @@ interface Props {
   onToggleSidebar: () => void;
   onNewNote: () => void;
   onGraphView: () => void;
+  regionId?: string;
 }
 
 export function ActivityBar({
@@ -10,9 +11,10 @@ export function ActivityBar({
   onToggleSidebar,
   onNewNote,
   onGraphView,
+  regionId,
 }: Props) {
   return (
-    <nav className="activity-bar">
+    <nav className="activity-bar" data-region-id={regionId}>
       <div className="activity-bar-top">
         <button
           className="activity-bar-btn activity-bar-btn-sm"

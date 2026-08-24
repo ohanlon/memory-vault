@@ -87,3 +87,25 @@ export interface PropertyDef {
   type: PropertyType;
   rules?: PropertyRules;
 }
+
+// The named screen regions a layout can describe. Groundwork for a future
+// plugin API: plugins will target a region by name to mount into it.
+export type LayoutRegionName =
+  | "title-bar"
+  | "left-ribbon"
+  | "left-sidebar"
+  | "editor"
+  | "right-sidebar"
+  | "status-bar";
+
+export interface LayoutRegion {
+  /** Stable identity for this region instance, independent of its name. */
+  id: string;
+  name: LayoutRegionName;
+}
+
+export interface Layout {
+  id: string;
+  name: string;
+  regions: LayoutRegion[];
+}

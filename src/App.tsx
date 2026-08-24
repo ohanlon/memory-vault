@@ -11,7 +11,12 @@ import { PromptModal } from "./components/PromptModal";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { addTab as addTabPath, GRAPH_TAB_ID, reconcileTabs, removeTab, renameTab } from "./vault/tabs";
 import { stripMdExtension } from "@shared/displayName";
-import type { Note } from "@shared/types";
+import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
+import type { LayoutRegionName, Note } from "@shared/types";
+
+// Which named layout drives the screen. No UI to switch layouts yet — the
+// data model (shared/layouts.json) already supports more than one.
+const ACTIVE_LAYOUT_NAME = "default";
 
 type DialogState =
   | { kind: "new-note" }
@@ -43,6 +48,11 @@ export default function App() {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+
+  const layout = findLayout(defaultLayouts, ACTIVE_LAYOUT_NAME);
+  if (!layout) throw new Error(`Unknown layout: "${ACTIVE_LAYOUT_NAME}"`);
+  const isRegionPresent = (name: LayoutRegionName) => hasRegion(layout, name);
+  const regionId = (name: LayoutRegionName) => getRegion(layout, name)?.id;
 
   const activeNote = useMemo(
     () => notes.find((n) => n.path === activePath) ?? null,
@@ -154,7 +164,9 @@ export default function App() {
   if (!root) {
     return (
       <div className="app-shell">
-        <div className="titlebar-drag" />
+        {isRegionPresent("title-bar") && (
+          <div className="titlebar-drag" data-region-id={regionId("title-bar")} />
+        )}
         <div className="empty-state">
           <h1>Memory Vault</h1>
           {vaults.length === 0 ? (
@@ -196,29 +208,36 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <div className="titlebar-drag">
-        <button
-          className="titlebar-collapse-btn"
-          onClick={() => setRightPanelCollapsed((v) => !v)}
-          title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
-        >
-          {rightPanelCollapsed ? "»" : "«"}
-        </button>
-      </div>
+      {isRegionPresent("title-bar") && (
+        <div className="titlebar-drag" data-region-id={regionId("title-bar")}>
+          {isRegionPresent("right-sidebar") && (
+            <button
+              className="titlebar-collapse-btn"
+              onClick={() => setRightPanelCollapsed((v) => !v)}
+              title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
+            >
+              {rightPanelCollapsed ? "»" : "«"}
+            </button>
+          )}
+        </div>
+      )}
       <div
         className={`app-layout${sidebarCollapsed ? " sidebar-collapsed" : ""}${
           rightPanelCollapsed ? " right-panel-collapsed" : ""
         }`}
       >
-        <ActivityBar
-          sidebarCollapsed={sidebarCollapsed}
-          onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
-          onNewNote={() => setDialog({ kind: "new-note" })}
-          onGraphView={() => openTab(GRAPH_TAB_ID)}
-        />
+        {isRegionPresent("left-ribbon") && (
+          <ActivityBar
+            sidebarCollapsed={sidebarCollapsed}
+            onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+            onNewNote={() => setDialog({ kind: "new-note" })}
+            onGraphView={() => openTab(GRAPH_TAB_ID)}
+            regionId={regionId("left-ribbon")}
+          />
+        )}
 
-        {!sidebarCollapsed && (
-          <aside className="sidebar">
+        {isRegionPresent("left-sidebar") && !sidebarCollapsed && (
+          <aside className="sidebar" data-region-id={regionId("left-sidebar")}>
             <div className="sidebar-header">
               <span title={root}>{activeName ?? root.split(/[\\/]/).pop()}</span>
               <button onClick={handleSwitchVault} title="Switch to a different vault">
@@ -235,33 +254,35 @@ export default function App() {
           </aside>
         )}
 
-        <main className="editor-area">
-          <TabBar tabs={openTabItems} activeId={activePath} onSelect={openTab} onClose={closeTab} />
-          {activeNote && (
-            <div className="editor-toolbar">
-              <button onClick={() => setDialog({ kind: "rename", note: activeNote })}>
-                Rename
-              </button>
-            </div>
-          )}
-          {activePath === GRAPH_TAB_ID ? (
-            <GraphPanel
-              graph={graph}
-              activeTitle={activeNote?.title ?? null}
-              onSelectTitle={selectByTitle}
-              onOpenExternal={openExternal}
-            />
-          ) : (
-            <EditorPane
-              note={activeNote}
-              onSaved={refresh}
-              onSelectTitle={selectByTitle}
-              onOpenExternal={openExternal}
-            />
-          )}
-        </main>
+        {isRegionPresent("editor") && (
+          <main className="editor-area" data-region-id={regionId("editor")}>
+            <TabBar tabs={openTabItems} activeId={activePath} onSelect={openTab} onClose={closeTab} />
+            {activeNote && (
+              <div className="editor-toolbar">
+                <button onClick={() => setDialog({ kind: "rename", note: activeNote })}>
+                  Rename
+                </button>
+              </div>
+            )}
+            {activePath === GRAPH_TAB_ID ? (
+              <GraphPanel
+                graph={graph}
+                activeTitle={activeNote?.title ?? null}
+                onSelectTitle={selectByTitle}
+                onOpenExternal={openExternal}
+              />
+            ) : (
+              <EditorPane
+                note={activeNote}
+                onSaved={refresh}
+                onSelectTitle={selectByTitle}
+                onOpenExternal={openExternal}
+              />
+            )}
+          </main>
+        )}
 
-        {!rightPanelCollapsed && (
+        {isRegionPresent("right-sidebar") && !rightPanelCollapsed && (
           <RightPanel
             note={activeNote}
             graph={graph}
@@ -270,6 +291,7 @@ export default function App() {
             onOpenExternal={openExternal}
             onSaveProperties={saveNoteProperties}
             onOpenSchemaManager={() => setDialog({ kind: "manage-properties" })}
+            regionId={regionId("right-sidebar")}
           />
         )}
 
@@ -302,7 +324,9 @@ export default function App() {
         )}
       </div>
 
-      <StatusBar note={activeNote} graph={graph} />
+      {isRegionPresent("status-bar") && (
+        <StatusBar note={activeNote} graph={graph} regionId={regionId("status-bar")} />
+      )}
     </div>
   );
 }

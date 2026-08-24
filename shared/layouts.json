@@ -1,0 +1,16 @@
+{
+  "layouts": [
+    {
+      "id": "22593d65-e2c7-4af3-aa3f-ec2f38397ec6",
+      "name": "default",
+      "regions": [
+        { "id": "babecf9b-fbdf-427c-9a8b-34a7234a83b8", "name": "title-bar" },
+        { "id": "e25a8663-d9e8-4faf-8fff-26b0b1cd717b", "name": "left-ribbon" },
+        { "id": "735e1804-4fa4-4b3a-b776-fd1a95a57d12", "name": "left-sidebar" },
+        { "id": "15adcba5-598e-409b-bd27-f307ddd71dd9", "name": "editor" },
+        { "id": "992e82c8-89a3-4a32-a982-e14706e6c6f7", "name": "right-sidebar" },
+        { "id": "a4c7daed-4aad-4606-9369-3c1994f2e54e", "name": "status-bar" }
+      ]
+    }
+  ]
+}
