@@ -47,9 +47,17 @@ export interface GraphModel {
   edges: GraphEdge[];
 }
 
+export interface FolderEntry {
+  /** Absolute path on disk */
+  path: string;
+  /** Path relative to the vault root */
+  relativePath: string;
+}
+
 export interface VaultIndex {
   root: string;
   notes: Note[];
+  folders: FolderEntry[];
 }
 
 export interface VaultEntry {

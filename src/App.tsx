@@ -12,7 +12,7 @@ import { addTab as addTabPath, GRAPH_TAB_ID, reconcileTabs, removeTab, renameTab
 import { stripMdExtension } from "@shared/displayName";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
-import type { LayoutRegionName, Note } from "@shared/types";
+import type { FolderEntry, LayoutRegionName, Note } from "@shared/types";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -26,7 +26,8 @@ function clampWidth(width: number): number {
 }
 
 type DialogState =
-  | { kind: "new-note" }
+  | { kind: "new-note"; dir: string }
+  | { kind: "new-folder"; dir: string }
   | { kind: "rename"; note: Note }
   | { kind: "name-vault"; root: string }
   | { kind: "manage-properties" }
@@ -38,6 +39,7 @@ export default function App() {
     activeName,
     root,
     notes,
+    folders,
     graph,
     propertySchema,
     loading,
@@ -176,10 +178,17 @@ export default function App() {
   }
 
   async function handleCreateNote(title: string) {
-    if (!root) return;
-    const newPath = await window.memoryVault.createNote(root, title);
+    if (dialog?.kind !== "new-note") return;
+    const newPath = await window.memoryVault.createNote(dialog.dir, title);
     await refresh();
     openTab(newPath);
+    setDialog(null);
+  }
+
+  async function handleCreateFolder(name: string) {
+    if (dialog?.kind !== "new-folder") return;
+    await window.memoryVault.createFolder(dialog.dir, name);
+    await refresh();
     setDialog(null);
   }
 
@@ -188,6 +197,32 @@ export default function App() {
     await window.memoryVault.deleteNote(note.path);
     closeTab(note.path);
     await refresh();
+  }
+
+  async function handleDeleteFolder(folder: FolderEntry) {
+    if (!window.confirm(`Delete folder "${folder.relativePath}" and everything inside it?`)) return;
+    await window.memoryVault.deleteFolder(folder.path);
+    await refresh();
+  }
+
+  async function handleMoveNote(notePath: string, destDir: string) {
+    try {
+      const newPath = await window.memoryVault.moveNote(notePath, destDir);
+      setOpenPaths((paths) => renameTab(paths, notePath, newPath));
+      if (activePath === notePath) setActivePath(newPath);
+      await refresh();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleMoveFolder(folderPath: string, destDir: string) {
+    try {
+      await window.memoryVault.moveFolder(folderPath, destDir);
+      await refresh();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
   }
 
   async function handleRenameSubmit(newTitle: string) {
@@ -205,9 +240,27 @@ export default function App() {
   // render (cheap — a few Map.set calls) so handlers always close over
   // current state instead of going stale.
   useEffect(() => {
-    pluginRegistry.registerCommand("vault.newNote", () => setDialog({ kind: "new-note" }));
+    pluginRegistry.registerCommand("vault.newNote", () => {
+      if (root) setDialog({ kind: "new-note", dir: root });
+    });
+    pluginRegistry.registerCommand("vault.newFolder", () => {
+      if (root) setDialog({ kind: "new-folder", dir: root });
+    });
     pluginRegistry.registerCommand("vault.switchVault", () => handleSwitchVault());
     pluginRegistry.registerCommand("vault.deleteNote", (note: Note) => handleDelete(note));
+    pluginRegistry.registerCommand("vault.newNoteInFolder", (dir: string) =>
+      setDialog({ kind: "new-note", dir })
+    );
+    pluginRegistry.registerCommand("vault.newFolderInFolder", (dir: string) =>
+      setDialog({ kind: "new-folder", dir })
+    );
+    pluginRegistry.registerCommand("vault.deleteFolder", (folder: FolderEntry) => handleDeleteFolder(folder));
+    pluginRegistry.registerCommand("vault.moveNote", (notePath: string, destDir: string) =>
+      handleMoveNote(notePath, destDir)
+    );
+    pluginRegistry.registerCommand("vault.moveFolder", (folderPath: string, destDir: string) =>
+      handleMoveFolder(folderPath, destDir)
+    );
     pluginRegistry.registerCommand("view.toggleSidebar", () => setSidebarCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.toggleRightPanel", () => setRightPanelCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.openGraph", () => openTab(GRAPH_TAB_ID));
@@ -295,6 +348,7 @@ export default function App() {
             sidebarCollapsed={sidebarCollapsed}
             onToggleSidebar={() => pluginRegistry.runCommand("view.toggleSidebar")}
             onNewNote={() => pluginRegistry.runCommand("vault.newNote")}
+            onNewFolder={() => pluginRegistry.runCommand("vault.newFolder")}
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
             regionId={regionId("left-ribbon")}
           />
@@ -310,9 +364,17 @@ export default function App() {
               activeName,
               loading,
               notes,
+              folders,
               activePath,
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("vault.deleteNote", n),
+              onNewNoteInFolder: (dir: string) => pluginRegistry.runCommand("vault.newNoteInFolder", dir),
+              onNewFolderInFolder: (dir: string) => pluginRegistry.runCommand("vault.newFolderInFolder", dir),
+              onDeleteFolder: (f: FolderEntry) => pluginRegistry.runCommand("vault.deleteFolder", f),
+              onMoveNote: (notePath: string, destDir: string) =>
+                pluginRegistry.runCommand("vault.moveNote", notePath, destDir),
+              onMoveFolder: (folderPath: string, destDir: string) =>
+                pluginRegistry.runCommand("vault.moveFolder", folderPath, destDir),
               onSwitchVault: () => pluginRegistry.runCommand("vault.switchVault"),
             }}
           />
@@ -381,6 +443,14 @@ export default function App() {
             title="New note title"
             confirmLabel="Create"
             onSubmit={handleCreateNote}
+            onCancel={() => setDialog(null)}
+          />
+        )}
+        {dialog?.kind === "new-folder" && (
+          <PromptModal
+            title="New folder name"
+            confirmLabel="Create"
+            onSubmit={handleCreateFolder}
             onCancel={() => setDialog(null)}
           />
         )}

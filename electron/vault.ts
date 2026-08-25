@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { parseNote } from "../shared/parseNote";
-import type { FileChangeEvent, Note } from "../shared/types";
+import type { FileChangeEvent, FolderEntry, Note } from "../shared/types";
 
 function walkDir(root: string, dir: string, out: string[]): void {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -15,6 +15,24 @@ function walkDir(root: string, dir: string, out: string[]): void {
       out.push(full);
     }
   }
+}
+
+function walkDirs(root: string, dir: string, out: FolderEntry[]): void {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) continue;
+    if (entry.isDirectory()) {
+      const full = path.join(dir, entry.name);
+      out.push({ path: full, relativePath: path.relative(root, full) });
+      walkDirs(root, full, out);
+    }
+  }
+}
+
+export function listFolders(root: string): FolderEntry[] {
+  const out: FolderEntry[] = [];
+  walkDirs(root, root, out);
+  return out;
 }
 
 export function readNote(root: string, absPath: string): Note {
@@ -61,7 +79,9 @@ export function watchVault(
     })
     .on("unlink", (p) => {
       if (p.toLowerCase().endsWith(".md")) onChange({ kind: "unlink", path: p });
-    });
+    })
+    .on("addDir", (p) => onChange({ kind: "add", path: p }))
+    .on("unlinkDir", (p) => onChange({ kind: "unlink", path: p }));
 
   return watcher;
 }

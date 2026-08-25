@@ -2,6 +2,7 @@ interface Props {
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
   onNewNote: () => void;
+  onNewFolder: () => void;
   onGraphView: () => void;
   regionId?: string;
 }
@@ -10,6 +11,7 @@ export function ActivityBar({
   sidebarCollapsed,
   onToggleSidebar,
   onNewNote,
+  onNewFolder,
   onGraphView,
   regionId,
 }: Props) {
@@ -26,6 +28,9 @@ export function ActivityBar({
       </div>
       <button className="activity-bar-btn" onClick={onNewNote} title="New note">
         +
+      </button>
+      <button className="activity-bar-btn" onClick={onNewFolder} title="New folder">
+        ⊞
       </button>
       <button className="activity-bar-btn" onClick={onGraphView} title="Graph view">
         ◇

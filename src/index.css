@@ -301,6 +301,76 @@ body {
   background: #3a3d55;
 }
 
+.file-tree li.file-tree-folder {
+  display: block;
+}
+
+.file-tree-folder-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px 6px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.file-tree-folder-row:hover {
+  color: #fff;
+}
+
+.file-tree-folder-row.drag-over,
+.file-tree.drag-over-root {
+  background: #3a3d55;
+  outline: 1px dashed #7a7dc9;
+  outline-offset: -1px;
+}
+
+.file-tree-disclosure {
+  width: 16px;
+  flex-shrink: 0;
+  text-align: center;
+  color: #888;
+  font-size: 10px;
+}
+
+.file-tree-folder-name {
+  flex: 1;
+  color: #ccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree-folder-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+}
+
+.file-tree-folder-row:hover .file-tree-folder-actions {
+  opacity: 1;
+}
+
+.file-tree-folder-actions button {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 2px 5px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.file-tree-folder-actions button:hover {
+  color: #fff;
+}
+
+.file-tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .file-tree-item {
   flex: 1;
   text-align: left;

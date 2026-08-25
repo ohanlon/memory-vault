@@ -22,6 +22,14 @@ const api = {
     ipcRenderer.invoke("vault:deleteNote", absPath),
   renameNote: (absPath: string, newTitle: string): Promise<string> =>
     ipcRenderer.invoke("vault:renameNote", absPath, newTitle),
+  createFolder: (dir: string, name: string): Promise<string> =>
+    ipcRenderer.invoke("vault:createFolder", dir, name),
+  deleteFolder: (absPath: string): Promise<boolean> =>
+    ipcRenderer.invoke("vault:deleteFolder", absPath),
+  moveNote: (absPath: string, destDir: string): Promise<string> =>
+    ipcRenderer.invoke("vault:moveNote", absPath, destDir),
+  moveFolder: (absPath: string, destParentDir: string): Promise<string> =>
+    ipcRenderer.invoke("vault:moveFolder", absPath, destParentDir),
   openExternal: (url: string): Promise<boolean> =>
     ipcRenderer.invoke("shell:openExternal", url),
   readNoteBody: (absPath: string): Promise<string> =>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GraphModel, Note, PropertyDef, VaultEntry } from "@shared/types";
+import type { FolderEntry, GraphModel, Note, PropertyDef, VaultEntry } from "@shared/types";
 import { buildGraph } from "@shared/buildGraph";
 
 export interface VaultState {
@@ -7,6 +7,7 @@ export interface VaultState {
   activeName: string | null;
   root: string | null;
   notes: Note[];
+  folders: FolderEntry[];
   graph: GraphModel;
   propertySchema: PropertyDef[];
   loading: boolean;
@@ -19,6 +20,7 @@ export function useVault() {
     activeName: null,
     root: null,
     notes: [],
+    folders: [],
     graph: { nodes: [], edges: [] },
     propertySchema: [],
     loading: false,
@@ -44,6 +46,7 @@ export function useVault() {
         root: index.root,
         activeName: name,
         notes: index.notes,
+        folders: index.folders,
         graph: buildGraph(index.notes),
         propertySchema,
         loading: false,
@@ -75,7 +78,14 @@ export function useVault() {
         ...s,
         vaults,
         ...(s.activeName?.toLowerCase() === name.toLowerCase()
-          ? { root: null, activeName: null, notes: [], graph: { nodes: [], edges: [] }, propertySchema: [] }
+          ? {
+              root: null,
+              activeName: null,
+              notes: [],
+              folders: [],
+              graph: { nodes: [], edges: [] },
+              propertySchema: [],
+            }
           : {}),
       }));
     },
@@ -88,6 +98,7 @@ export function useVault() {
       root: null,
       activeName: null,
       notes: [],
+      folders: [],
       graph: { nodes: [], edges: [] },
       propertySchema: [],
     }));

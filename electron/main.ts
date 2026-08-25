@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
-import { loadVault, readNote, watchVault } from "./vault";
+import { listFolders, loadVault, readNote, watchVault } from "./vault";
 import { addVault, readVaultsFile, removeVault, writeVaultsFile } from "./vaultRegistry";
 import { titleFromPath } from "../shared/parseNote";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
@@ -103,12 +103,13 @@ ipcMain.handle("vault:load", async (_event, root: string) => {
   stopWatching();
   currentRoot = root;
   const notes = loadVault(root);
+  const folders = listFolders(root);
 
   currentWatcher = watchVault(root, (change) => {
     win?.webContents.send("vault:file-changed", change);
   });
 
-  return { root, notes };
+  return { root, notes, folders };
 });
 
 ipcMain.handle("vault:readNote", async (_event, absPath: string) => {
@@ -184,6 +185,61 @@ ipcMain.handle("vault:deleteNote", async (_event, absPath: string) => {
   fs.rmSync(absPath, { force: true });
   return true;
 });
+
+ipcMain.handle(
+  "vault:createFolder",
+  async (_event, dir: string, name: string) => {
+    const safeName = name.trim() || "New Folder";
+    let folderName = safeName;
+    let fullPath = path.join(dir, folderName);
+    let n = 1;
+    while (fs.existsSync(fullPath)) {
+      n += 1;
+      folderName = `${safeName} ${n}`;
+      fullPath = path.join(dir, folderName);
+    }
+    fs.mkdirSync(fullPath, { recursive: true });
+    return fullPath;
+  }
+);
+
+ipcMain.handle("vault:deleteFolder", async (_event, absPath: string) => {
+  fs.rmSync(absPath, { force: true, recursive: true });
+  return true;
+});
+
+ipcMain.handle(
+  "vault:moveNote",
+  async (_event, absPath: string, destDir: string) => {
+    if (path.dirname(absPath) === destDir) return absPath;
+    const fileName = path.basename(absPath);
+    const target = path.join(destDir, fileName);
+    if (fs.existsSync(target)) {
+      throw new Error(`"${fileName}" already exists in that folder`);
+    }
+    fs.renameSync(absPath, target);
+    return target;
+  }
+);
+
+ipcMain.handle(
+  "vault:moveFolder",
+  async (_event, absPath: string, destParentDir: string) => {
+    if (path.dirname(absPath) === destParentDir) return absPath;
+    const rel = path.relative(absPath, destParentDir);
+    const isSelfOrDescendant = rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+    if (isSelfOrDescendant) {
+      throw new Error("Can't move a folder into itself or one of its own subfolders");
+    }
+    const folderName = path.basename(absPath);
+    const target = path.join(destParentDir, folderName);
+    if (fs.existsSync(target)) {
+      throw new Error(`"${folderName}" already exists in that folder`);
+    }
+    fs.renameSync(absPath, target);
+    return target;
+  }
+);
 
 ipcMain.handle(
   "vault:renameNote",
