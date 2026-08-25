@@ -16,7 +16,7 @@ export function TagsPanel({ graph, activeTitle }: Props) {
   if (uniqTags.length === 0) return <p className="backlinks-empty">No tags</p>;
 
   return (
-    <ul className="tag-list">
+    <ul className="tag-list tag-list-vertical">
       {uniqTags.map((tag) => (
         <li key={tag}>
           <span className="tag-chip">{tag}</span>
