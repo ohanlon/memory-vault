@@ -63,8 +63,12 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Pro
     <div className="editor-pane">
       <div className="editor-title-row">
         <div className="editor-title">{stripMdExtension(note.relativePath)}</div>
-        <button className="preview-toggle-btn" onClick={() => setPreviewMode((v) => !v)}>
-          {previewMode ? "Edit" : "Preview"}
+        <button
+          className="preview-toggle-btn"
+          onClick={() => setPreviewMode((v) => !v)}
+          title={previewMode ? "Edit" : "Preview"}
+        >
+          {previewMode ? "✎" : "👁"}
         </button>
       </div>
       {previewMode ? (
