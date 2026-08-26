@@ -23,6 +23,12 @@ interface Props {
 const NOTE_DRAG_TYPE = "application/x-memory-vault-note";
 const FOLDER_DRAG_TYPE = "application/x-memory-vault-folder";
 
+type ContextMenuState = {
+  target: { type: "note"; note: Note } | { type: "folder"; folder: FolderEntry };
+  x: number;
+  y: number;
+};
+
 function acceptsDrag(e: DragEvent) {
   return e.dataTransfer.types.includes(NOTE_DRAG_TYPE) || e.dataTransfer.types.includes(FOLDER_DRAG_TYPE);
 }
@@ -43,7 +49,7 @@ export function FileTree({
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [dragOver, setDragOver] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ note: Note; x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const tree = buildFileTree(notes, folders, root);
 
   function toggle(relativePath: string) {
@@ -86,20 +92,15 @@ export function FileTree({
             onClick={() => onSelect(note)}
             onContextMenu={(e) => {
               e.preventDefault();
-              setContextMenu({ note, x: e.clientX, y: e.clientY });
+              setContextMenu({ target: { type: "note", note }, x: e.clientX, y: e.clientY });
             }}
-          >
-            {note.title}
-          </button>
-          <button
-            className="file-tree-delete"
-            title="Delete note"
-            onClick={(e) => {
-              e.stopPropagation();
+            onKeyDown={(e) => {
+              if (e.key !== "Delete") return;
+              e.preventDefault();
               onDelete(note);
             }}
           >
-            ×
+            {note.title}
           </button>
         </li>
       );
@@ -112,6 +113,7 @@ export function FileTree({
         <div
           className={`file-tree-folder-row${isDragOver ? " drag-over" : ""}`}
           style={{ paddingLeft: 4 + depth * 16 }}
+          tabIndex={0}
           draggable
           onDragStart={(e) => {
             e.dataTransfer.setData(FOLDER_DRAG_TYPE, node.path);
@@ -130,6 +132,16 @@ export function FileTree({
           onDragLeave={() => setDragOver((cur) => (cur === node.relativePath ? null : cur))}
           onDrop={(e) => handleDrop(e, node.path)}
           onClick={() => toggle(node.relativePath)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            const folder = { path: node.path, relativePath: node.relativePath };
+            setContextMenu({ target: { type: "folder", folder }, x: e.clientX, y: e.clientY });
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Delete") return;
+            e.preventDefault();
+            onDeleteFolder({ path: node.path, relativePath: node.relativePath });
+          }}
         >
           <span className="file-tree-disclosure">{isCollapsed ? "▸" : "▾"}</span>
           <span className="file-tree-folder-name">{node.name}</span>
@@ -151,15 +163,6 @@ export function FileTree({
               }}
             >
               ⊞
-            </button>
-            <button
-              title="Delete folder"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteFolder({ path: node.path, relativePath: node.relativePath });
-              }}
-            >
-              ×
             </button>
           </span>
         </div>
@@ -196,7 +199,20 @@ export function FileTree({
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={[{ label: "Rename", shortcut: "F2", onClick: () => onRename(contextMenu.note) }]}
+          items={
+            contextMenu.target.type === "note"
+              ? (() => {
+                  const note = contextMenu.target.note;
+                  return [
+                    { label: "Rename", shortcut: "F2", onClick: () => onRename(note) },
+                    { label: "Delete", shortcut: "Del", onClick: () => onDelete(note) },
+                  ];
+                })()
+              : (() => {
+                  const folder = contextMenu.target.folder;
+                  return [{ label: "Delete", shortcut: "Del", onClick: () => onDeleteFolder(folder) }];
+                })()
+          }
           onClose={() => setContextMenu(null)}
         />
       )}

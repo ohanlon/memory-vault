@@ -4,12 +4,14 @@ import { StatusBar } from "./components/StatusBar";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
+import { ConfirmModal } from "./components/ConfirmModal";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
 import { TabKindSlot } from "./plugins/TabKindSlot";
 import { addTab as addTabPath, GRAPH_TAB_ID, reconcileTabs, removeTab, renameTab } from "./vault/tabs";
 import { stripMdExtension } from "@shared/displayName";
+import { isSameOrDescendant } from "@shared/fileTree";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
 import type { FolderEntry, LayoutRegionName, Note } from "@shared/types";
@@ -25,12 +27,31 @@ function clampWidth(width: number): number {
   return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width));
 }
 
+type DeleteTarget = { type: "note"; note: Note } | { type: "folder"; folder: FolderEntry };
+
+function deleteConfirmMessage(target: DeleteTarget, notes: Note[], folders: FolderEntry[]): string {
+  if (target.type === "note") {
+    return `Delete "${stripMdExtension(target.note.relativePath)}"? This can't be undone.`;
+  }
+  const folder = target.folder;
+  const noteCount = notes.filter((n) => isSameOrDescendant(folder.path, n.path)).length;
+  const subfolderCount = folders.filter(
+    (f) => f.path !== folder.path && isSameOrDescendant(folder.path, f.path)
+  ).length;
+  const parts: string[] = [];
+  if (noteCount > 0) parts.push(`${noteCount} note${noteCount === 1 ? "" : "s"}`);
+  if (subfolderCount > 0) parts.push(`${subfolderCount} subfolder${subfolderCount === 1 ? "" : "s"}`);
+  const warning = parts.length > 0 ? ` It contains ${parts.join(" and ")} that will also be deleted.` : "";
+  return `Delete folder "${folder.relativePath}"?${warning} This can't be undone.`;
+}
+
 type DialogState =
   | { kind: "new-note"; dir: string }
   | { kind: "new-folder"; dir: string }
   | { kind: "rename"; note: Note }
   | { kind: "name-vault"; root: string }
   | { kind: "manage-properties" }
+  | { kind: "confirm-delete"; target: DeleteTarget }
   | null;
 
 export default function App() {
@@ -55,6 +76,7 @@ export default function App() {
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_LAYOUT_PREFS.sidebarWidth);
@@ -192,17 +214,24 @@ export default function App() {
     setDialog(null);
   }
 
-  async function handleDelete(note: Note) {
-    if (!window.confirm(`Delete "${stripMdExtension(note.relativePath)}"?`)) return;
+  async function performDeleteNote(note: Note) {
     await window.memoryVault.deleteNote(note.path);
     closeTab(note.path);
     await refresh();
   }
 
-  async function handleDeleteFolder(folder: FolderEntry) {
-    if (!window.confirm(`Delete folder "${folder.relativePath}" and everything inside it?`)) return;
+  async function performDeleteFolder(folder: FolderEntry) {
     await window.memoryVault.deleteFolder(folder.path);
     await refresh();
+  }
+
+  function requestDelete(target: DeleteTarget) {
+    if (skipDeleteConfirm) {
+      if (target.type === "note") performDeleteNote(target.note);
+      else performDeleteFolder(target.folder);
+      return;
+    }
+    setDialog({ kind: "confirm-delete", target });
   }
 
   async function handleMoveNote(notePath: string, destDir: string) {
@@ -247,7 +276,7 @@ export default function App() {
       if (root) setDialog({ kind: "new-folder", dir: root });
     });
     pluginRegistry.registerCommand("vault.switchVault", () => handleSwitchVault());
-    pluginRegistry.registerCommand("vault.deleteNote", (note: Note) => handleDelete(note));
+    pluginRegistry.registerCommand("vault.deleteNote", (note: Note) => requestDelete({ type: "note", note }));
     pluginRegistry.registerCommand("vault.rename", (note: Note) => setDialog({ kind: "rename", note }));
     pluginRegistry.registerCommand("vault.newNoteInFolder", (dir: string) =>
       setDialog({ kind: "new-note", dir })
@@ -255,7 +284,9 @@ export default function App() {
     pluginRegistry.registerCommand("vault.newFolderInFolder", (dir: string) =>
       setDialog({ kind: "new-folder", dir })
     );
-    pluginRegistry.registerCommand("vault.deleteFolder", (folder: FolderEntry) => handleDeleteFolder(folder));
+    pluginRegistry.registerCommand("vault.deleteFolder", (folder: FolderEntry) =>
+      requestDelete({ type: "folder", folder })
+    );
     pluginRegistry.registerCommand("vault.moveNote", (notePath: string, destDir: string) =>
       handleMoveNote(notePath, destDir)
     );
@@ -411,10 +442,14 @@ export default function App() {
               activeId={activePath}
               onSelect={openTab}
               onClose={closeTab}
-              isRenamable={(id) => id !== GRAPH_TAB_ID}
+              isFileTab={(id) => id !== GRAPH_TAB_ID}
               onRename={(id) => {
                 const note = notes.find((n) => n.path === id);
                 if (note) pluginRegistry.runCommand("vault.rename", note);
+              }}
+              onDelete={(id) => {
+                const note = notes.find((n) => n.path === id);
+                if (note) pluginRegistry.runCommand("vault.deleteNote", note);
               }}
             />
             <TabKindSlot
@@ -479,6 +514,20 @@ export default function App() {
             initialValue={dialog.note.title}
             confirmLabel="Rename"
             onSubmit={handleRenameSubmit}
+            onCancel={() => setDialog(null)}
+          />
+        )}
+        {dialog?.kind === "confirm-delete" && (
+          <ConfirmModal
+            title={dialog.target.type === "note" ? "Delete note" : "Delete folder"}
+            message={deleteConfirmMessage(dialog.target, notes, folders)}
+            confirmLabel="Delete"
+            onConfirm={(dontAskAgain) => {
+              if (dontAskAgain) setSkipDeleteConfirm(true);
+              if (dialog.target.type === "note") performDeleteNote(dialog.target.note);
+              else performDeleteFolder(dialog.target.folder);
+              setDialog(null);
+            }}
             onCancel={() => setDialog(null)}
           />
         )}

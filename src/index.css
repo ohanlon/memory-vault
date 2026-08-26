@@ -386,18 +386,6 @@ body {
   color: #fff;
 }
 
-.file-tree-delete {
-  background: none;
-  border: none;
-  color: #888;
-  cursor: pointer;
-  padding: 0 10px;
-}
-
-.file-tree-delete:hover {
-  color: #e07a7a;
-}
-
 .file-tree-empty {
   padding: 10px;
   color: #777;
@@ -954,6 +942,21 @@ body {
   border-radius: 4px;
   padding: 8px;
   font-size: 14px;
+}
+
+.modal-message {
+  margin: 0;
+  font-size: 13px;
+  color: #ccc;
+}
+
+.modal-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #ccc;
+  cursor: pointer;
 }
 
 .modal-actions {

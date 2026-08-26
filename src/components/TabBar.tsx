@@ -12,12 +12,14 @@ interface Props {
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onRename: (id: string) => void;
-  isRenamable: (id: string) => boolean;
+  onDelete: (id: string) => void;
+  /** True for tabs backed by an actual note file (excludes e.g. the graph tab). */
+  isFileTab: (id: string) => boolean;
 }
 
 const SCROLL_STEP = 150;
 
-export function TabBar({ tabs, activeId, onSelect, onClose, onRename, isRenamable }: Props) {
+export function TabBar({ tabs, activeId, onSelect, onClose, onRename, onDelete, isFileTab }: Props) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -65,12 +67,18 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onRename, isRenamabl
         {tabs.map((t) => (
           <div
             key={t.id}
+            tabIndex={0}
             className={`tab${t.id === activeId ? " active" : ""}`}
             onClick={() => onSelect(t.id)}
             onContextMenu={(e) => {
-              if (!isRenamable(t.id)) return;
+              if (!isFileTab(t.id)) return;
               e.preventDefault();
               setContextMenu({ id: t.id, x: e.clientX, y: e.clientY });
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Delete" || !isFileTab(t.id)) return;
+              e.preventDefault();
+              onDelete(t.id);
             }}
           >
             <span className="tab-label">{t.label}</span>
@@ -99,7 +107,10 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onRename, isRenamabl
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={[{ label: "Rename", shortcut: "F2", onClick: () => onRename(contextMenu.id) }]}
+          items={[
+            { label: "Rename", shortcut: "F2", onClick: () => onRename(contextMenu.id) },
+            { label: "Delete", shortcut: "Del", onClick: () => onDelete(contextMenu.id) },
+          ]}
           onClose={() => setContextMenu(null)}
         />
       )}
