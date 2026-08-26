@@ -103,7 +103,6 @@ body {
 }
 
 .empty-state button,
-.editor-toolbar button,
 .sidebar-header button {
   background: #35374a;
   color: #e6e6e6;
@@ -114,7 +113,6 @@ body {
 }
 
 .empty-state button:hover,
-.editor-toolbar button:hover,
 .sidebar-header button:hover {
   background: #454868;
 }
@@ -497,11 +495,6 @@ body {
 .tab-close:hover {
   opacity: 1;
   color: #e07a7a;
-}
-
-.editor-toolbar {
-  padding: 6px 10px;
-  border-bottom: 1px solid #33343d;
 }
 
 .editor-empty {
@@ -980,4 +973,40 @@ body {
 
 .modal-actions button:hover {
   background: #454868;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 200;
+  background: #2a2c38;
+  border: 1px solid #4a4c63;
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.context-menu-item {
+  background: none;
+  border: none;
+  color: #e6e6e6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.context-menu-item:hover {
+  background: #454868;
+}
+
+.context-menu-item-shortcut {
+  color: #888;
+  font-size: 11px;
 }

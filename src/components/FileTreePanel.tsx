@@ -10,6 +10,7 @@ interface Props {
   activePath: string | null;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
+  onRename: (note: Note) => void;
   onNewNoteInFolder: (dir: string) => void;
   onNewFolderInFolder: (dir: string) => void;
   onDeleteFolder: (folder: FolderEntry) => void;
@@ -27,6 +28,7 @@ export function FileTreePanel({
   activePath,
   onSelect,
   onDelete,
+  onRename,
   onNewNoteInFolder,
   onNewFolderInFolder,
   onDeleteFolder,
@@ -44,6 +46,7 @@ export function FileTreePanel({
         activePath={activePath}
         onSelect={onSelect}
         onDelete={onDelete}
+        onRename={onRename}
         onNewNoteInFolder={onNewNoteInFolder}
         onNewFolderInFolder={onNewFolderInFolder}
         onDeleteFolder={onDeleteFolder}

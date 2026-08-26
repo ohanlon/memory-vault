@@ -3,6 +3,7 @@ import type { DragEvent, ReactNode } from "react";
 import { buildFileTree, isSameOrDescendant } from "@shared/fileTree";
 import type { TreeNode } from "@shared/fileTree";
 import type { FolderEntry, Note } from "@shared/types";
+import { ContextMenu } from "./ContextMenu";
 
 interface Props {
   root: string;
@@ -11,6 +12,7 @@ interface Props {
   activePath: string | null;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
+  onRename: (note: Note) => void;
   onNewNoteInFolder: (dir: string) => void;
   onNewFolderInFolder: (dir: string) => void;
   onDeleteFolder: (folder: FolderEntry) => void;
@@ -32,6 +34,7 @@ export function FileTree({
   activePath,
   onSelect,
   onDelete,
+  onRename,
   onNewNoteInFolder,
   onNewFolderInFolder,
   onDeleteFolder,
@@ -40,6 +43,7 @@ export function FileTree({
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ note: Note; x: number; y: number } | null>(null);
   const tree = buildFileTree(notes, folders, root);
 
   function toggle(relativePath: string) {
@@ -80,6 +84,10 @@ export function FileTree({
               e.dataTransfer.effectAllowed = "move";
             }}
             onClick={() => onSelect(note)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setContextMenu({ note, x: e.clientX, y: e.clientY });
+            }}
           >
             {note.title}
           </button>
@@ -163,25 +171,35 @@ export function FileTree({
   }
 
   return (
-    <ul
-      className={`file-tree${dragOver === "" ? " drag-over-root" : ""}`}
-      onDragOver={(e) => {
-        if (!acceptsDrag(e)) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-      }}
-      onDragEnter={(e) => {
-        if (!acceptsDrag(e)) return;
-        e.preventDefault();
-        setDragOver("");
-      }}
-      onDragLeave={(e) => {
-        if (e.currentTarget === e.target) setDragOver((cur) => (cur === "" ? null : cur));
-      }}
-      onDrop={(e) => handleDrop(e, root)}
-    >
-      {tree.children.map((c) => renderNode(c, 0))}
-      {tree.children.length === 0 && <li className="file-tree-empty">No notes yet</li>}
-    </ul>
+    <>
+      <ul
+        className={`file-tree${dragOver === "" ? " drag-over-root" : ""}`}
+        onDragOver={(e) => {
+          if (!acceptsDrag(e)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }}
+        onDragEnter={(e) => {
+          if (!acceptsDrag(e)) return;
+          e.preventDefault();
+          setDragOver("");
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget === e.target) setDragOver((cur) => (cur === "" ? null : cur));
+        }}
+        onDrop={(e) => handleDrop(e, root)}
+      >
+        {tree.children.map((c) => renderNode(c, 0))}
+        {tree.children.length === 0 && <li className="file-tree-empty">No notes yet</li>}
+      </ul>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={[{ label: "Rename", shortcut: "F2", onClick: () => onRename(contextMenu.note) }]}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </>
   );
 }

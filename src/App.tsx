@@ -248,6 +248,7 @@ export default function App() {
     });
     pluginRegistry.registerCommand("vault.switchVault", () => handleSwitchVault());
     pluginRegistry.registerCommand("vault.deleteNote", (note: Note) => handleDelete(note));
+    pluginRegistry.registerCommand("vault.rename", (note: Note) => setDialog({ kind: "rename", note }));
     pluginRegistry.registerCommand("vault.newNoteInFolder", (dir: string) =>
       setDialog({ kind: "new-note", dir })
     );
@@ -266,6 +267,20 @@ export default function App() {
     pluginRegistry.registerCommand("view.openGraph", () => openTab(GRAPH_TAB_ID));
     pluginRegistry.registerCommand("properties.manageSchema", () => setDialog({ kind: "manage-properties" }));
   });
+
+  // F2 renames the active note, regardless of whether focus is on its tab,
+  // its sidebar row, or the editor itself.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "F2" || !activeNote) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      e.preventDefault();
+      setDialog({ kind: "rename", note: activeNote });
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeNote]);
 
   const TitleBar = pluginRegistry.getRegion("title-bar");
   const LeftRibbon = pluginRegistry.getRegion("left-ribbon");
@@ -368,6 +383,7 @@ export default function App() {
               activePath,
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("vault.deleteNote", n),
+              onRename: (n: Note) => pluginRegistry.runCommand("vault.rename", n),
               onNewNoteInFolder: (dir: string) => pluginRegistry.runCommand("vault.newNoteInFolder", dir),
               onNewFolderInFolder: (dir: string) => pluginRegistry.runCommand("vault.newFolderInFolder", dir),
               onDeleteFolder: (f: FolderEntry) => pluginRegistry.runCommand("vault.deleteFolder", f),
@@ -390,14 +406,17 @@ export default function App() {
 
         {isRegionPresent("editor") && (
           <main className="editor-area" data-region-id={regionId("editor")}>
-            <TabBar tabs={openTabItems} activeId={activePath} onSelect={openTab} onClose={closeTab} />
-            {activeNote && (
-              <div className="editor-toolbar">
-                <button onClick={() => setDialog({ kind: "rename", note: activeNote })}>
-                  Rename
-                </button>
-              </div>
-            )}
+            <TabBar
+              tabs={openTabItems}
+              activeId={activePath}
+              onSelect={openTab}
+              onClose={closeTab}
+              isRenamable={(id) => id !== GRAPH_TAB_ID}
+              onRename={(id) => {
+                const note = notes.find((n) => n.path === id);
+                if (note) pluginRegistry.runCommand("vault.rename", note);
+              }}
+            />
             <TabKindSlot
               tabId={activePath}
               slotProps={{

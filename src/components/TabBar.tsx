@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ContextMenu } from "./ContextMenu";
 
 export interface TabItem {
   id: string;
@@ -10,14 +11,17 @@ interface Props {
   activeId: string | null;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onRename: (id: string) => void;
+  isRenamable: (id: string) => boolean;
 }
 
 const SCROLL_STEP = 150;
 
-export function TabBar({ tabs, activeId, onSelect, onClose }: Props) {
+export function TabBar({ tabs, activeId, onSelect, onClose, onRename, isRenamable }: Props) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
   const updateScrollState = useCallback(() => {
     const el = scrollerRef.current;
@@ -63,6 +67,11 @@ export function TabBar({ tabs, activeId, onSelect, onClose }: Props) {
             key={t.id}
             className={`tab${t.id === activeId ? " active" : ""}`}
             onClick={() => onSelect(t.id)}
+            onContextMenu={(e) => {
+              if (!isRenamable(t.id)) return;
+              e.preventDefault();
+              setContextMenu({ id: t.id, x: e.clientX, y: e.clientY });
+            }}
           >
             <span className="tab-label">{t.label}</span>
             <button
@@ -86,6 +95,14 @@ export function TabBar({ tabs, activeId, onSelect, onClose }: Props) {
       >
         ›
       </button>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={[{ label: "Rename", shortcut: "F2", onClick: () => onRename(contextMenu.id) }]}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
