@@ -21,7 +21,7 @@ interface Props {
   onDeleteFolder: (folder: FolderEntry) => void;
   onMoveNote: (notePath: string, destDir: string) => void;
   onMoveFolder: (folderPath: string, destDir: string) => void;
-  onSwitchVault: () => void;
+  onSwitchStack: () => void;
 }
 
 export function FileTreePanel({
@@ -44,7 +44,7 @@ export function FileTreePanel({
   onDeleteFolder,
   onMoveNote,
   onMoveFolder,
-  onSwitchVault,
+  onSwitchStack,
 }: Props) {
   return (
     <>
@@ -70,7 +70,7 @@ export function FileTreePanel({
       />
       <div className="sidebar-header">
         <span title={root}>{activeName ?? root.split(/[\\/]/).pop()}</span>
-        <button onClick={onSwitchVault} title="Switch to a different vault">
+        <button onClick={onSwitchStack} title="Switch to a different stack">
           Switch
         </button>
       </div>

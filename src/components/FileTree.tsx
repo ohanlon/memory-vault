@@ -25,8 +25,8 @@ interface Props {
   onMoveFolder: (folderPath: string, destDir: string) => void;
 }
 
-const NOTE_DRAG_TYPE = "application/x-memory-vault-note";
-const FOLDER_DRAG_TYPE = "application/x-memory-vault-folder";
+const NOTE_DRAG_TYPE = "application/x-cairn-note";
+const FOLDER_DRAG_TYPE = "application/x-cairn-folder";
 
 type ContextMenuState = {
   target: { type: "note"; note: Note } | { type: "folder"; folder: FolderEntry };

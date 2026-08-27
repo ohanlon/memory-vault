@@ -33,7 +33,7 @@ export function PropertiesPanel({ note, schema, onSaveProperties, onOpenSchemaMa
       setCustomRows([]);
       return;
     }
-    window.memoryVault.readNoteProperties(note.path).then((properties) => {
+    window.memoryStack.readNoteProperties(note.path).then((properties) => {
       if (cancelled) return;
       const schemaByLower = new Map(schema.map((d) => [d.name.toLowerCase(), d.name]));
       const bounded: Record<string, unknown> = {};

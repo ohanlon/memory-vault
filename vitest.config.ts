@@ -4,7 +4,7 @@ import path from "node:path";
 // Deliberately separate from vite.config.ts: that config's
 // vite-plugin-electron-renderer shims node:fs/etc. for the renderer bundle,
 // which breaks electron/*.test.ts files that import node:fs directly to
-// test main-process logic (e.g. vaultRegistry.test.ts).
+// test main-process logic (e.g. stackRegistry.test.ts).
 export default defineConfig({
   resolve: {
     alias: {

@@ -4,7 +4,7 @@ import type { FolderEntry, Note } from "./types";
 
 function note(relativePath: string): Note {
   return {
-    path: `/vault/${relativePath}`,
+    path: `/stack/${relativePath}`,
     title: relativePath.split(/[\\/]/).pop()!.replace(/\.md$/, ""),
     relativePath,
     frontmatter: {},
@@ -16,7 +16,7 @@ function note(relativePath: string): Note {
 }
 
 function folder(relativePath: string): FolderEntry {
-  return { path: `/vault/${relativePath}`, relativePath };
+  return { path: `/stack/${relativePath}`, relativePath };
 }
 
 describe("buildFileTree", () => {
@@ -24,7 +24,7 @@ describe("buildFileTree", () => {
     const tree = buildFileTree(
       [note("Root.md"), note("Work/Project.md"), note("Work/Sub/Deep.md")],
       [folder("Work"), folder("Work/Sub")],
-      "/vault"
+      "/stack"
     );
 
     expect(tree.children.map((c) => (c.type === "folder" ? c.name : c.note.title))).toEqual([
@@ -44,7 +44,7 @@ describe("buildFileTree", () => {
   });
 
   it("includes empty folders with no notes", () => {
-    const tree = buildFileTree([], [folder("Empty")], "/vault");
+    const tree = buildFileTree([], [folder("Empty")], "/stack");
     expect(tree.children).toHaveLength(1);
     expect(tree.children[0]).toMatchObject({ type: "folder", name: "Empty", children: [] });
   });
@@ -53,7 +53,7 @@ describe("buildFileTree", () => {
     const tree = buildFileTree(
       [note("Zeta.md"), note("Alpha.md")],
       [folder("Beta"), folder("Alpha-folder")],
-      "/vault"
+      "/stack"
     );
     expect(tree.children.map((c) => (c.type === "folder" ? c.name : c.note.title))).toEqual([
       "Alpha-folder",
@@ -66,15 +66,15 @@ describe("buildFileTree", () => {
 
 describe("isSameOrDescendant", () => {
   it("is true for the same path", () => {
-    expect(isSameOrDescendant("/vault/Work", "/vault/Work")).toBe(true);
+    expect(isSameOrDescendant("/stack/Work", "/stack/Work")).toBe(true);
   });
 
   it("is true for a nested descendant", () => {
-    expect(isSameOrDescendant("/vault/Work", "/vault/Work/Sub")).toBe(true);
+    expect(isSameOrDescendant("/stack/Work", "/stack/Work/Sub")).toBe(true);
   });
 
   it("is false for an unrelated path, including a sibling with a shared prefix", () => {
-    expect(isSameOrDescendant("/vault/Work", "/vault/WorkOther")).toBe(false);
-    expect(isSameOrDescendant("/vault/Work", "/vault/Other")).toBe(false);
+    expect(isSameOrDescendant("/stack/Work", "/stack/WorkOther")).toBe(false);
+    expect(isSameOrDescendant("/stack/Work", "/stack/Other")).toBe(false);
   });
 });

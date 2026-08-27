@@ -3,12 +3,12 @@ import path from "node:path";
 import * as yaml from "js-yaml";
 import type { PropertyDef } from "../shared/types";
 
-export function propertiesFilePath(vaultRoot: string): string {
-  return path.join(vaultRoot, ".vault", "properties.yaml");
+export function propertiesFilePath(stackRoot: string): string {
+  return path.join(stackRoot, ".stack", "properties.yaml");
 }
 
-export function readPropertySchema(vaultRoot: string): PropertyDef[] {
-  const filePath = propertiesFilePath(vaultRoot);
+export function readPropertySchema(stackRoot: string): PropertyDef[] {
+  const filePath = propertiesFilePath(stackRoot);
   if (!fs.existsSync(filePath)) return [];
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
@@ -20,8 +20,8 @@ export function readPropertySchema(vaultRoot: string): PropertyDef[] {
   }
 }
 
-export function writePropertySchema(vaultRoot: string, properties: PropertyDef[]): void {
-  const filePath = propertiesFilePath(vaultRoot);
+export function writePropertySchema(stackRoot: string, properties: PropertyDef[]): void {
+  const filePath = propertiesFilePath(stackRoot);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, yaml.dump({ properties }, { sortKeys: false }), "utf-8");
 }

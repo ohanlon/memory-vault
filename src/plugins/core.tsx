@@ -9,7 +9,7 @@ import { TagsPanel } from "../components/TagsPanel";
 import { PropertiesPanel } from "../components/PropertiesPanel";
 import { SettingsView } from "../components/SettingsView";
 import { BacklinksStat, CharactersStat, PropertiesStat, WordsStat } from "../components/StatusItems";
-import { GRAPH_TAB_ID, SETTINGS_TAB_ID } from "../vault/tabs";
+import { GRAPH_TAB_ID, SETTINGS_TAB_ID } from "../stack/tabs";
 
 // The app's built-in functionality, expressed as a plugin against the same
 // API a future third-party plugin would use.

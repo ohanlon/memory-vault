@@ -3,7 +3,7 @@ import { backlinkTitles, buildGraph } from "./buildGraph";
 import { parseNote } from "./parseNote";
 
 function note(relativePath: string, raw: string) {
-  return parseNote({ path: `/vault/${relativePath}`, relativePath, raw, mtimeMs: 0 });
+  return parseNote({ path: `/stack/${relativePath}`, relativePath, raw, mtimeMs: 0 });
 }
 
 describe("buildGraph", () => {
@@ -16,7 +16,7 @@ describe("buildGraph", () => {
     expect(graph.edges).toContainEqual({ source: "A", target: "B", kind: "wikilink" });
   });
 
-  it("ignores links to notes that do not exist in the vault", () => {
+  it("ignores links to notes that do not exist in the stack", () => {
     const a = note("A.md", "links to [[Missing]]");
     const graph = buildGraph([a]);
     expect(graph.edges).toEqual([]);

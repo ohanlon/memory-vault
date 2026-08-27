@@ -1,8 +1,8 @@
 {
-  "name": "memory-vault",
+  "name": "cairn",
   "private": true,
   "version": "0.1.0",
-  "description": "Open-source, local-first markdown vault + graph viewer for managing Claude memory files.",
+  "description": "Open-source, local-first markdown stack + graph viewer for managing Claude memory files.",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -46,8 +46,8 @@
     "vitest": "^2.1.5"
   },
   "build": {
-    "appId": "com.internal.memory-vault",
-    "productName": "Memory Vault",
+    "appId": "com.internal.cairn",
+    "productName": "Cairn",
     "files": [
       "dist",
       "dist-electron"

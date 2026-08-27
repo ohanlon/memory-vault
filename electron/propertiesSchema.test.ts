@@ -79,7 +79,7 @@ describe("readPropertySchema / writePropertySchema", () => {
     expect(readPropertySchema(tmpRoot)).toEqual([]);
   });
 
-  it("creates the .vault directory on first write", () => {
+  it("creates the .stack directory on first write", () => {
     expect(fs.existsSync(path.dirname(propertiesFilePath(tmpRoot)))).toBe(false);
     writePropertySchema(tmpRoot, [{ name: "status", type: "text" }]);
     expect(fs.existsSync(path.dirname(propertiesFilePath(tmpRoot)))).toBe(true);

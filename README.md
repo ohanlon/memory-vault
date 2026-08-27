@@ -1,9 +1,9 @@
-# Memory Vault
+# Cairn
 
 An open-source, local-first desktop app for browsing and editing a folder of
 markdown notes as a linked graph — an internal alternative to Obsidian aimed
 at managing Claude memory files, but usable for any `[[wikilink]]`-based
-markdown vault.
+markdown stack.
 
 Notes live as plain `.md` files on disk. Nothing is stored in a database, so
 other tools (including Claude Code editing the same folder) can keep reading
@@ -11,21 +11,21 @@ and writing the files directly — the app just reflects whatever is on disk.
 
 ## Features (v1)
 
-- Named vaults: save a folder under a unique name (case-insensitive) and
+- Named stacks: save a folder under a unique name (case-insensitive) and
   pick it from a list next time, instead of re-browsing for the folder
-- Open any folder as a vault; browse notes in a file tree
+- Open any folder as a stack; browse notes in a file tree
 - Tabbed editing: open several notes at once, switch between them, close
   individual tabs — clicking a wikilink/backlink/graph node opens it as a
   new tab (or focuses it if already open) rather than replacing the current one
 - Obsidian-style live preview editor: headings, bold/italic, inline code,
   wikilinks, markdown links, and tags render styled; raw markdown is
   revealed only where the cursor currently is, autosaved to disk
-- Graph view of the vault: edges from `[[wikilinks]]`, standard markdown
+- Graph view of the stack: edges from `[[wikilinks]]`, standard markdown
   links (`[text](Note.md)`), external links (`https://`, `mailto:`), and
   tags (frontmatter `tags:` or inline `#tag`)
 - Backlinks / outgoing-links panel for the active note
-- New / rename / delete notes (rename rewrites `[[links]]` across the vault)
-- Live sync: external edits to the vault folder (e.g. by Claude Code) update
+- New / rename / delete notes (rename rewrites `[[links]]` across the stack)
+- Live sync: external edits to the stack folder (e.g. by Claude Code) update
   the file tree, editor, and graph automatically
 
 ## Getting started
@@ -79,9 +79,9 @@ blocks (` ```...``` `) and inline spans (`` `...` ``) — so writing
 External links:
 
 - `[Alias](https://example.com)` and `mailto:` links get their own node in
-  the graph, distinct from vault notes (shown in green). They appear under
+  the graph, distinct from stack notes (shown in green). They appear under
   "Links from here" for the note that references them but never gain
-  backlinks of their own, since nothing outside the vault can link back.
+  backlinks of their own, since nothing outside the stack can link back.
 - Clicking an external node or link opens it in your default browser/mail
   client.
 - Any other URL scheme (`javascript:`, `data:`, `ftp:`, etc.) is ignored
@@ -121,14 +121,14 @@ document on every edit/selection change:
 This only affects editor rendering — the file on disk always stores plain
 markdown, so external edits (including by Claude Code) are unaffected.
 
-## Named vaults
+## Named stacks
 
-Vault name → folder mappings are stored in `vaults.json` in Electron's
+Stack name → folder mappings are stored in `stacks.json` in Electron's
 [userData directory](https://www.electronjs.org/docs/latest/api/app#appgetpathname)
-(`electron/vaultRegistry.ts`). Adding a vault whose name matches an existing
+(`electron/stackRegistry.ts`). Adding a stack whose name matches an existing
 one case-insensitively (e.g. `"Work"` vs `"work"`) is rejected. Removing a
-vault only deletes the mapping — the folder and its notes on disk are
-untouched. Only one vault is open at a time; switching writes nothing to
+stack only deletes the mapping — the folder and its notes on disk are
+untouched. Only one stack is open at a time; switching writes nothing to
 the folder you're leaving.
 
 ## Out of scope for v1

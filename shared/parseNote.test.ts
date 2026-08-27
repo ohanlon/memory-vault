@@ -88,7 +88,7 @@ describe("extractMarkdownLinks", () => {
     ]);
   });
 
-  it("treats http(s) links as external links, not vault links", () => {
+  it("treats http(s) links as external links, not stack links", () => {
     expect(extractMarkdownLinks("[site](https://example.com)")).toEqual([
       { target: "https://example.com", alias: "site", header: undefined, external: true },
     ]);
@@ -213,7 +213,7 @@ describe("parseNote", () => {
   it("extracts frontmatter, tags, and links from a full note", () => {
     const raw = `---\ntags: [project, active]\nowner: pete\n---\n\nSee [[Related Note]] and [[Another|alias]].\n`;
     const note = parseNote({
-      path: "/vault/Note.md",
+      path: "/stack/Note.md",
       relativePath: "Note.md",
       raw,
       mtimeMs: 123,
@@ -229,7 +229,7 @@ describe("parseNote", () => {
   it("combines wikilinks and markdown links into a single links array", () => {
     const raw = `See [[WikiTarget]] and [Bobby](Linked.md).`;
     const note = parseNote({
-      path: "/vault/Note.md",
+      path: "/stack/Note.md",
       relativePath: "Note.md",
       raw,
       mtimeMs: 1,
@@ -244,7 +244,7 @@ describe("parseNote", () => {
   it("merges frontmatter tags and inline #tags, deduping overlaps", () => {
     const raw = `---\ntags: [project]\n---\n\nAlso tagged #urgent and #project again.\n`;
     const note = parseNote({
-      path: "/vault/Note.md",
+      path: "/stack/Note.md",
       relativePath: "Note.md",
       raw,
       mtimeMs: 1,
@@ -256,7 +256,7 @@ describe("parseNote", () => {
   it("handles a note with no frontmatter", () => {
     const raw = `# Just a heading\n\nNo frontmatter, no links.\n`;
     const note = parseNote({
-      path: "/vault/Plain.md",
+      path: "/stack/Plain.md",
       relativePath: "Plain.md",
       raw,
       mtimeMs: 1,

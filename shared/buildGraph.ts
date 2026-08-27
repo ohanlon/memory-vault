@@ -6,7 +6,7 @@ import type { GraphEdge, GraphModel, GraphNode, Note } from "./types";
  *    body, resolved by matching Target against other notes' titles
  *    (case-insensitive).
  *  - external links: [text](https://...) or mailto: links get their own
- *    external node so they still show up in the graph, distinct from vault
+ *    external node so they still show up in the graph, distinct from stack
  *    notes (they never resolve to a note and never gain their own backlinks).
  *  - tags: every tag (from frontmatter `tags:` or an inline #tag in the
  *    body) gets its own hub node ("#tagname"), with an edge from every note

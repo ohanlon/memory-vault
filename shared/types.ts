@@ -15,7 +15,7 @@ export interface Note {
   path: string;
   /** File name without extension, used as the link target for wikilinks */
   title: string;
-  /** Path relative to the vault root */
+  /** Path relative to the stack root */
   relativePath: string;
   frontmatter: Record<string, unknown>;
   tags: string[];
@@ -28,7 +28,7 @@ export interface GraphNode {
   id: string; // note title, a "#tag" id for a tag hub, or a URL for an external node
   path: string;
   tags: string[];
-  /** True if this node represents an external URL rather than a vault note. */
+  /** True if this node represents an external URL rather than a stack note. */
   external?: boolean;
   /** True if this node represents a tag hub (id is "#tagname") rather than a note. */
   isTag?: boolean;
@@ -50,20 +50,20 @@ export interface GraphModel {
 export interface FolderEntry {
   /** Absolute path on disk */
   path: string;
-  /** Path relative to the vault root */
+  /** Path relative to the stack root */
   relativePath: string;
 }
 
-export interface VaultIndex {
+export interface StackIndex {
   root: string;
   notes: Note[];
   folders: FolderEntry[];
 }
 
-export interface VaultEntry {
+export interface StackEntry {
   /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
   name: string;
-  /** Absolute path to the vault's root folder. */
+  /** Absolute path to the stack's root folder. */
   root: string;
 }
 
@@ -128,7 +128,7 @@ export type TabFolderDisplay = "never" | "hover" | "always";
 
 export interface AppSettings {
   tabFolderDisplay: TabFolderDisplay;
-  /** Vault-relative folder new daily notes are created in. */
+  /** Stack-relative folder new daily notes are created in. */
   dailyNotesFolder: string;
 }
 

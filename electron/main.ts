@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
-import { listFolders, loadVault, readNote, watchVault } from "./vault";
-import { addVault, readVaultsFile, removeVault, writeVaultsFile } from "./vaultRegistry";
+import { listFolders, loadStack, readNote, watchStack } from "./stack";
+import { addStack, readStacksFile, removeStack, writeStacksFile } from "./stackRegistry";
 import { titleFromPath } from "../shared/parseNote";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
@@ -23,8 +23,8 @@ let win: BrowserWindow | null = null;
 let currentWatcher: FSWatcher | null = null;
 let currentRoot: string | null = null;
 
-function vaultsFilePath(): string {
-  return path.join(app.getPath("userData"), "vaults.json");
+function stacksFilePath(): string {
+  return path.join(app.getPath("userData"), "stacks.json");
 }
 
 function layoutPrefsFilePath(): string {
@@ -78,7 +78,7 @@ ipcMain.handle("shell:openExternal", async (_event, url: string) => {
   return true;
 });
 
-ipcMain.handle("vault:pick", async () => {
+ipcMain.handle("stack:pick", async () => {
   if (!win) return null;
   const result = await dialog.showOpenDialog(win, {
     properties: ["openDirectory"],
@@ -87,74 +87,74 @@ ipcMain.handle("vault:pick", async () => {
   return result.filePaths[0];
 });
 
-ipcMain.handle("vaults:list", async () => {
-  return readVaultsFile(vaultsFilePath());
+ipcMain.handle("stacks:list", async () => {
+  return readStacksFile(stacksFilePath());
 });
 
-ipcMain.handle("vaults:add", async (_event, name: string, root: string) => {
-  const vaults = readVaultsFile(vaultsFilePath());
-  const updated = addVault(vaults, name, root); // throws on empty/duplicate name
-  writeVaultsFile(vaultsFilePath(), updated);
+ipcMain.handle("stacks:add", async (_event, name: string, root: string) => {
+  const stacks = readStacksFile(stacksFilePath());
+  const updated = addStack(stacks, name, root); // throws on empty/duplicate name
+  writeStacksFile(stacksFilePath(), updated);
   return updated;
 });
 
-ipcMain.handle("vaults:remove", async (_event, name: string) => {
-  const vaults = readVaultsFile(vaultsFilePath());
-  const updated = removeVault(vaults, name);
-  writeVaultsFile(vaultsFilePath(), updated);
+ipcMain.handle("stacks:remove", async (_event, name: string) => {
+  const stacks = readStacksFile(stacksFilePath());
+  const updated = removeStack(stacks, name);
+  writeStacksFile(stacksFilePath(), updated);
   return updated;
 });
 
-ipcMain.handle("vault:load", async (_event, root: string) => {
+ipcMain.handle("stack:load", async (_event, root: string) => {
   stopWatching();
   currentRoot = root;
-  const notes = loadVault(root);
+  const notes = loadStack(root);
   const folders = listFolders(root);
 
-  currentWatcher = watchVault(root, (change) => {
-    win?.webContents.send("vault:file-changed", change);
+  currentWatcher = watchStack(root, (change) => {
+    win?.webContents.send("stack:file-changed", change);
   });
 
   return { root, notes, folders };
 });
 
-ipcMain.handle("vault:readNote", async (_event, absPath: string) => {
-  if (!currentRoot) throw new Error("No vault loaded");
+ipcMain.handle("stack:readNote", async (_event, absPath: string) => {
+  if (!currentRoot) throw new Error("No stack loaded");
   return readNote(currentRoot, absPath);
 });
 
-ipcMain.handle("vault:readRaw", async (_event, absPath: string) => {
+ipcMain.handle("stack:readRaw", async (_event, absPath: string) => {
   return fs.readFileSync(absPath, "utf-8");
 });
 
-ipcMain.handle("vault:saveNote", async (_event, absPath: string, body: string) => {
+ipcMain.handle("stack:saveNote", async (_event, absPath: string, body: string) => {
   saveNoteBody(absPath, body);
   return true;
 });
 
-ipcMain.handle("vault:readNoteBody", async (_event, absPath: string) => {
+ipcMain.handle("stack:readNoteBody", async (_event, absPath: string) => {
   return readNoteBody(absPath);
 });
 
-ipcMain.handle("vault:readNoteProperties", async (_event, absPath: string) => {
+ipcMain.handle("stack:readNoteProperties", async (_event, absPath: string) => {
   return readNoteProperties(absPath);
 });
 
 ipcMain.handle(
-  "vault:saveNoteProperties",
+  "stack:saveNoteProperties",
   async (_event, absPath: string, properties: Record<string, unknown>) => {
     saveNoteProperties(absPath, properties);
     return true;
   }
 );
 
-ipcMain.handle("vault:readPropertySchema", async () => {
+ipcMain.handle("stack:readPropertySchema", async () => {
   if (!currentRoot) return [];
   return readPropertySchema(currentRoot);
 });
 
-ipcMain.handle("vault:savePropertySchema", async (_event, properties: PropertyDef[]) => {
-  if (!currentRoot) throw new Error("No vault loaded");
+ipcMain.handle("stack:savePropertySchema", async (_event, properties: PropertyDef[]) => {
+  if (!currentRoot) throw new Error("No stack loaded");
   writePropertySchema(currentRoot, properties);
   return properties;
 });
@@ -177,15 +177,15 @@ ipcMain.handle("settings:save", async (_event, settings: AppSettings) => {
   return true;
 });
 
-ipcMain.handle("vault:openOrCreateDailyNote", async (_event, folder: string) => {
-  if (!currentRoot) throw new Error("No vault loaded");
+ipcMain.handle("stack:openOrCreateDailyNote", async (_event, folder: string) => {
+  if (!currentRoot) throw new Error("No stack loaded");
   return openOrCreateDailyNote(currentRoot, folder, app.getLocale(), new Date());
 });
 
 ipcMain.handle(
-  "vault:createNote",
+  "stack:createNote",
   async (_event, dir: string, title: string) => {
-    if (!currentRoot) throw new Error("No vault loaded");
+    if (!currentRoot) throw new Error("No stack loaded");
     const safeTitle = title.trim() || "New File";
     let fileName = `${safeTitle}.md`;
     let fullPath = path.join(dir, fileName);
@@ -201,13 +201,13 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("vault:deleteNote", async (_event, absPath: string) => {
+ipcMain.handle("stack:deleteNote", async (_event, absPath: string) => {
   fs.rmSync(absPath, { force: true });
   return true;
 });
 
 ipcMain.handle(
-  "vault:createFolder",
+  "stack:createFolder",
   async (_event, dir: string, name: string) => {
     const safeName = name.trim() || "New Folder";
     let folderName = safeName;
@@ -223,13 +223,13 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("vault:deleteFolder", async (_event, absPath: string) => {
+ipcMain.handle("stack:deleteFolder", async (_event, absPath: string) => {
   fs.rmSync(absPath, { force: true, recursive: true });
   return true;
 });
 
 ipcMain.handle(
-  "vault:moveNote",
+  "stack:moveNote",
   async (_event, absPath: string, destDir: string) => {
     if (path.dirname(absPath) === destDir) return absPath;
     const fileName = path.basename(absPath);
@@ -243,7 +243,7 @@ ipcMain.handle(
 );
 
 ipcMain.handle(
-  "vault:moveFolder",
+  "stack:moveFolder",
   async (_event, absPath: string, destParentDir: string) => {
     if (path.dirname(absPath) === destParentDir) return absPath;
     const rel = path.relative(absPath, destParentDir);
@@ -262,7 +262,7 @@ ipcMain.handle(
 );
 
 ipcMain.handle(
-  "vault:renameFolder",
+  "stack:renameFolder",
   async (_event, absPath: string, newName: string) => {
     const dir = path.dirname(absPath);
     const target = path.join(dir, newName);
@@ -276,16 +276,16 @@ ipcMain.handle(
 );
 
 ipcMain.handle(
-  "vault:renameNote",
+  "stack:renameNote",
   async (_event, absPath: string, newTitle: string) => {
-    if (!currentRoot) throw new Error("No vault loaded");
+    if (!currentRoot) throw new Error("No stack loaded");
     const dir = path.dirname(absPath);
     const oldTitle = titleFromPath(path.relative(currentRoot, absPath));
     const newPath = path.join(dir, `${newTitle}.md`);
     fs.renameSync(absPath, newPath);
 
-    // Rewrite [[oldTitle]] references (and aliased/headered variants) across the vault.
-    const notes = loadVault(currentRoot);
+    // Rewrite [[oldTitle]] references (and aliased/headered variants) across the stack.
+    const notes = loadStack(currentRoot);
     const linkRe = new RegExp(
       `\\[\\[${escapeRegExp(oldTitle)}((?:#[^\\]|]+)?(?:\\|[^\\]]+)?)\\]\\]`,
       "g"

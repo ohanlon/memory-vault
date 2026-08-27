@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useVault } from "./vault/useVault";
+import { useStack } from "./stack/useStack";
 import { StatusBar } from "./components/StatusBar";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
@@ -16,7 +16,7 @@ import {
   reconcileTabs,
   removeTab,
   renameTab,
-} from "./vault/tabs";
+} from "./stack/tabs";
 import { stripMdExtension } from "@shared/displayName";
 import { isSameOrDescendant } from "@shared/fileTree";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
@@ -54,14 +54,14 @@ function deleteConfirmMessage(target: DeleteTarget, notes: Note[], folders: Fold
 }
 
 type DialogState =
-  | { kind: "name-vault"; root: string }
+  | { kind: "name-stack"; root: string }
   | { kind: "manage-properties" }
   | { kind: "confirm-delete"; target: DeleteTarget }
   | null;
 
 export default function App() {
   const {
-    vaults,
+    stacks,
     activeName,
     root,
     notes,
@@ -70,14 +70,14 @@ export default function App() {
     propertySchema,
     loading,
     error,
-    openVaultByEntry,
-    addVault,
-    removeVault,
-    closeVault,
+    openStackByEntry,
+    addStack,
+    removeStack,
+    closeStack,
     refresh,
     saveSchema,
     saveNoteProperties,
-  } = useVault();
+  } = useStack();
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -93,17 +93,17 @@ export default function App() {
   const widthsRef = useRef(DEFAULT_LAYOUT_PREFS);
 
   useEffect(() => {
-    window.memoryVault.readLayoutPrefs().then((prefs) => {
+    window.memoryStack.readLayoutPrefs().then((prefs) => {
       setSidebarWidth(prefs.sidebarWidth);
       setRightPanelWidth(prefs.rightPanelWidth);
       widthsRef.current = prefs;
     });
-    window.memoryVault.readAppSettings().then(setSettings);
+    window.memoryStack.readAppSettings().then(setSettings);
   }, []);
 
   function updateSettings(next: AppSettings) {
     setSettings(next);
-    window.memoryVault.saveAppSettings(next);
+    window.memoryStack.saveAppSettings(next);
   }
 
   function resizeSidebar(deltaX: number) {
@@ -123,7 +123,7 @@ export default function App() {
   }
 
   function saveWidths() {
-    window.memoryVault.saveLayoutPrefs(widthsRef.current);
+    window.memoryStack.saveLayoutPrefs(widthsRef.current);
   }
 
   const layout = findLayout(defaultLayouts, ACTIVE_LAYOUT_NAME);
@@ -190,18 +190,18 @@ export default function App() {
   );
 
   const openExternal = useCallback((url: string) => {
-    window.memoryVault.openExternal(url);
+    window.memoryStack.openExternal(url);
   }, []);
 
   async function handlePickFolder() {
-    const root = await window.memoryVault.pickVault();
-    if (root) setDialog({ kind: "name-vault", root });
+    const root = await window.memoryStack.pickStack();
+    if (root) setDialog({ kind: "name-stack", root });
   }
 
-  async function handleNameVaultSubmit(name: string) {
-    if (dialog?.kind !== "name-vault") return;
+  async function handleNameStackSubmit(name: string) {
+    if (dialog?.kind !== "name-stack") return;
     try {
-      await addVault(name, dialog.root);
+      await addStack(name, dialog.root);
       setDialog(null);
       setOpenPaths([]);
       setActivePath(null);
@@ -211,20 +211,20 @@ export default function App() {
     }
   }
 
-  function handleSwitchVault() {
+  function handleSwitchStack() {
     setOpenPaths([]);
     setActivePath(null);
-    closeVault();
+    closeStack();
   }
 
-  async function handleRemoveVault(name: string) {
-    if (!window.confirm(`Remove vault "${name}" from the list? The folder itself is untouched.`)) return;
-    await removeVault(name);
+  async function handleRemoveStack(name: string) {
+    if (!window.confirm(`Remove stack "${name}" from the list? The folder itself is untouched.`)) return;
+    await removeStack(name);
   }
 
   async function handleCreateNote(dir: string) {
     setSidebarCollapsed(false);
-    const newPath = await window.memoryVault.createNote(dir, "");
+    const newPath = await window.memoryStack.createNote(dir, "");
     await refresh();
     openTab(newPath);
     setRenamingPath(newPath);
@@ -232,26 +232,26 @@ export default function App() {
 
   async function handleCreateFolder(dir: string) {
     setSidebarCollapsed(false);
-    const newPath = await window.memoryVault.createFolder(dir, "");
+    const newPath = await window.memoryStack.createFolder(dir, "");
     await refresh();
     setRenamingPath(newPath);
   }
 
   async function handleOpenDailyNote() {
     if (!root) return;
-    const result = await window.memoryVault.openOrCreateDailyNote(settings.dailyNotesFolder);
+    const result = await window.memoryStack.openOrCreateDailyNote(settings.dailyNotesFolder);
     if (result.created) await refresh();
     openTab(result.path);
   }
 
   async function performDeleteNote(note: Note) {
-    await window.memoryVault.deleteNote(note.path);
+    await window.memoryStack.deleteNote(note.path);
     closeTab(note.path);
     await refresh();
   }
 
   async function performDeleteFolder(folder: FolderEntry) {
-    await window.memoryVault.deleteFolder(folder.path);
+    await window.memoryStack.deleteFolder(folder.path);
     await refresh();
   }
 
@@ -266,7 +266,7 @@ export default function App() {
 
   async function handleMoveNote(notePath: string, destDir: string) {
     try {
-      const newPath = await window.memoryVault.moveNote(notePath, destDir);
+      const newPath = await window.memoryStack.moveNote(notePath, destDir);
       setOpenPaths((paths) => renameTab(paths, notePath, newPath));
       if (activePath === notePath) setActivePath(newPath);
       await refresh();
@@ -277,7 +277,7 @@ export default function App() {
 
   async function handleMoveFolder(folderPath: string, destDir: string) {
     try {
-      await window.memoryVault.moveFolder(folderPath, destDir);
+      await window.memoryStack.moveFolder(folderPath, destDir);
       await refresh();
     } catch (err) {
       window.alert(err instanceof Error ? err.message : String(err));
@@ -287,7 +287,7 @@ export default function App() {
   async function handleCommitNoteRename(note: Note, newTitle: string) {
     setRenamingPath(null);
     if (!newTitle || newTitle === note.title) return;
-    const newPath = await window.memoryVault.renameNote(note.path, newTitle);
+    const newPath = await window.memoryStack.renameNote(note.path, newTitle);
     setOpenPaths((paths) => renameTab(paths, note.path, newPath));
     await refresh();
     if (activePath === note.path) setActivePath(newPath);
@@ -297,7 +297,7 @@ export default function App() {
     setRenamingPath(null);
     const currentName = folder.relativePath.split(/[\\/]/).pop() ?? "";
     if (!newName || newName === currentName) return;
-    await window.memoryVault.renameFolder(folder.path, newName);
+    await window.memoryStack.renameFolder(folder.path, newName);
     await refresh();
   }
 
@@ -305,32 +305,32 @@ export default function App() {
   // render (cheap — a few Map.set calls) so handlers always close over
   // current state instead of going stale.
   useEffect(() => {
-    pluginRegistry.registerCommand("vault.newNote", () => {
+    pluginRegistry.registerCommand("stack.newNote", () => {
       if (root) handleCreateNote(root);
     });
-    pluginRegistry.registerCommand("vault.newFolder", () => {
+    pluginRegistry.registerCommand("stack.newFolder", () => {
       if (root) handleCreateFolder(root);
     });
-    pluginRegistry.registerCommand("vault.openDailyNote", () => handleOpenDailyNote());
-    pluginRegistry.registerCommand("vault.switchVault", () => handleSwitchVault());
-    pluginRegistry.registerCommand("vault.deleteNote", (note: Note) => requestDelete({ type: "note", note }));
-    pluginRegistry.registerCommand("vault.rename", (note: Note) => {
+    pluginRegistry.registerCommand("stack.openDailyNote", () => handleOpenDailyNote());
+    pluginRegistry.registerCommand("stack.switchStack", () => handleSwitchStack());
+    pluginRegistry.registerCommand("stack.deleteNote", (note: Note) => requestDelete({ type: "note", note }));
+    pluginRegistry.registerCommand("stack.rename", (note: Note) => {
       setSidebarCollapsed(false);
       setRenamingPath(note.path);
     });
-    pluginRegistry.registerCommand("vault.renameFolder", (folder: FolderEntry) => {
+    pluginRegistry.registerCommand("stack.renameFolder", (folder: FolderEntry) => {
       setSidebarCollapsed(false);
       setRenamingPath(folder.path);
     });
-    pluginRegistry.registerCommand("vault.newNoteInFolder", (dir: string) => handleCreateNote(dir));
-    pluginRegistry.registerCommand("vault.newFolderInFolder", (dir: string) => handleCreateFolder(dir));
-    pluginRegistry.registerCommand("vault.deleteFolder", (folder: FolderEntry) =>
+    pluginRegistry.registerCommand("stack.newNoteInFolder", (dir: string) => handleCreateNote(dir));
+    pluginRegistry.registerCommand("stack.newFolderInFolder", (dir: string) => handleCreateFolder(dir));
+    pluginRegistry.registerCommand("stack.deleteFolder", (folder: FolderEntry) =>
       requestDelete({ type: "folder", folder })
     );
-    pluginRegistry.registerCommand("vault.moveNote", (notePath: string, destDir: string) =>
+    pluginRegistry.registerCommand("stack.moveNote", (notePath: string, destDir: string) =>
       handleMoveNote(notePath, destDir)
     );
-    pluginRegistry.registerCommand("vault.moveFolder", (folderPath: string, destDir: string) =>
+    pluginRegistry.registerCommand("stack.moveFolder", (folderPath: string, destDir: string) =>
       handleMoveFolder(folderPath, destDir)
     );
     pluginRegistry.registerCommand("view.toggleSidebar", () => setSidebarCollapsed((v) => !v));
@@ -369,21 +369,21 @@ export default function App() {
           />
         )}
         <div className="empty-state">
-          <h1>Memory Vault</h1>
-          {vaults.length === 0 ? (
+          <h1>Cairn</h1>
+          {stacks.length === 0 ? (
             <p>Add a folder of markdown notes to get started.</p>
           ) : (
-            <ul className="vault-list">
-              {vaults.map((v) => (
+            <ul className="stack-list">
+              {stacks.map((v) => (
                 <li key={v.name.toLowerCase()}>
-                  <button className="vault-list-item" onClick={() => openVaultByEntry(v)}>
-                    <span className="vault-list-name">{v.name}</span>
-                    <span className="vault-list-path">{v.root}</span>
+                  <button className="stack-list-item" onClick={() => openStackByEntry(v)}>
+                    <span className="stack-list-name">{v.name}</span>
+                    <span className="stack-list-path">{v.root}</span>
                   </button>
                   <button
-                    className="vault-list-remove"
+                    className="stack-list-remove"
                     title="Remove from list"
-                    onClick={() => handleRemoveVault(v.name)}
+                    onClick={() => handleRemoveStack(v.name)}
                   >
                     ×
                   </button>
@@ -391,14 +391,14 @@ export default function App() {
               ))}
             </ul>
           )}
-          <button onClick={handlePickFolder}>+ Add Vault</button>
+          <button onClick={handlePickFolder}>+ Add Stack</button>
           {error && <p className="error">{error}</p>}
 
-          {dialog?.kind === "name-vault" && (
+          {dialog?.kind === "name-stack" && (
             <PromptModal
-              title="Name this vault"
+              title="Name this stack"
               confirmLabel="Add"
-              onSubmit={handleNameVaultSubmit}
+              onSubmit={handleNameStackSubmit}
               onCancel={() => setDialog(null)}
             />
           )}
@@ -434,9 +434,9 @@ export default function App() {
           <LeftRibbon
             sidebarCollapsed={sidebarCollapsed}
             onToggleSidebar={() => pluginRegistry.runCommand("view.toggleSidebar")}
-            onNewNote={() => pluginRegistry.runCommand("vault.newNote")}
-            onNewFolder={() => pluginRegistry.runCommand("vault.newFolder")}
-            onOpenDailyNote={() => pluginRegistry.runCommand("vault.openDailyNote")}
+            onNewNote={() => pluginRegistry.runCommand("stack.newNote")}
+            onNewFolder={() => pluginRegistry.runCommand("stack.newFolder")}
+            onOpenDailyNote={() => pluginRegistry.runCommand("stack.openDailyNote")}
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
             onOpenSettings={() => pluginRegistry.runCommand("view.openSettings")}
             regionId={regionId("left-ribbon")}
@@ -457,20 +457,20 @@ export default function App() {
               activePath,
               renamingPath,
               onSelect: (n: Note) => openTab(n.path),
-              onDelete: (n: Note) => pluginRegistry.runCommand("vault.deleteNote", n),
-              onRename: (n: Note) => pluginRegistry.runCommand("vault.rename", n),
-              onRenameFolder: (f: FolderEntry) => pluginRegistry.runCommand("vault.renameFolder", f),
+              onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
+              onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),
+              onRenameFolder: (f: FolderEntry) => pluginRegistry.runCommand("stack.renameFolder", f),
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
               onCommitFolderRename: (f: FolderEntry, newName: string) => handleCommitFolderRename(f, newName),
               onCancelRename: () => setRenamingPath(null),
-              onNewNoteInFolder: (dir: string) => pluginRegistry.runCommand("vault.newNoteInFolder", dir),
-              onNewFolderInFolder: (dir: string) => pluginRegistry.runCommand("vault.newFolderInFolder", dir),
-              onDeleteFolder: (f: FolderEntry) => pluginRegistry.runCommand("vault.deleteFolder", f),
+              onNewNoteInFolder: (dir: string) => pluginRegistry.runCommand("stack.newNoteInFolder", dir),
+              onNewFolderInFolder: (dir: string) => pluginRegistry.runCommand("stack.newFolderInFolder", dir),
+              onDeleteFolder: (f: FolderEntry) => pluginRegistry.runCommand("stack.deleteFolder", f),
               onMoveNote: (notePath: string, destDir: string) =>
-                pluginRegistry.runCommand("vault.moveNote", notePath, destDir),
+                pluginRegistry.runCommand("stack.moveNote", notePath, destDir),
               onMoveFolder: (folderPath: string, destDir: string) =>
-                pluginRegistry.runCommand("vault.moveFolder", folderPath, destDir),
-              onSwitchVault: () => pluginRegistry.runCommand("vault.switchVault"),
+                pluginRegistry.runCommand("stack.moveFolder", folderPath, destDir),
+              onSwitchStack: () => pluginRegistry.runCommand("stack.switchStack"),
             }}
           />
         )}
@@ -493,11 +493,11 @@ export default function App() {
               isFileTab={(id) => id !== GRAPH_TAB_ID && id !== SETTINGS_TAB_ID}
               onRename={(id) => {
                 const note = notes.find((n) => n.path === id);
-                if (note) pluginRegistry.runCommand("vault.rename", note);
+                if (note) pluginRegistry.runCommand("stack.rename", note);
               }}
               onDelete={(id) => {
                 const note = notes.find((n) => n.path === id);
-                if (note) pluginRegistry.runCommand("vault.deleteNote", note);
+                if (note) pluginRegistry.runCommand("stack.deleteNote", note);
               }}
             />
             <TabKindSlot

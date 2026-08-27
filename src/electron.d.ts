@@ -5,16 +5,16 @@ import type {
   LayoutPrefs,
   Note,
   PropertyDef,
-  VaultEntry,
-  VaultIndex,
+  StackEntry,
+  StackIndex,
 } from "@shared/types";
 
-export interface MemoryVaultAPI {
-  pickVault(): Promise<string | null>;
-  loadVault(root: string): Promise<VaultIndex>;
-  listVaults(): Promise<VaultEntry[]>;
-  addVault(name: string, root: string): Promise<VaultEntry[]>;
-  removeVault(name: string): Promise<VaultEntry[]>;
+export interface MemoryStackAPI {
+  pickStack(): Promise<string | null>;
+  loadStack(root: string): Promise<StackIndex>;
+  listStacks(): Promise<StackEntry[]>;
+  addStack(name: string, root: string): Promise<StackEntry[]>;
+  removeStack(name: string): Promise<StackEntry[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;
@@ -42,6 +42,6 @@ export interface MemoryVaultAPI {
 
 declare global {
   interface Window {
-    memoryVault: MemoryVaultAPI;
+    memoryStack: MemoryStackAPI;
   }
 }

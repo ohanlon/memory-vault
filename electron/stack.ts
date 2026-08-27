@@ -46,7 +46,7 @@ export function readNote(root: string, absPath: string): Note {
   });
 }
 
-export function loadVault(root: string): Note[] {
+export function loadStack(root: string): Note[] {
   const files: string[] = [];
   walkDir(root, root, files);
   const notes: Note[] = [];
@@ -54,13 +54,13 @@ export function loadVault(root: string): Note[] {
     try {
       notes.push(readNote(root, file));
     } catch {
-      // skip unreadable/unparseable file rather than failing the whole vault load
+      // skip unreadable/unparseable file rather than failing the whole stack load
     }
   }
   return notes;
 }
 
-export function watchVault(
+export function watchStack(
   root: string,
   onChange: (event: FileChangeEvent) => void
 ): FSWatcher {

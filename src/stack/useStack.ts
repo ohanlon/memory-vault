@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FolderEntry, GraphModel, Note, PropertyDef, VaultEntry } from "@shared/types";
+import type { FolderEntry, GraphModel, Note, PropertyDef, StackEntry } from "@shared/types";
 import { buildGraph } from "@shared/buildGraph";
 
-export interface VaultState {
-  vaults: VaultEntry[];
+export interface StackState {
+  stacks: StackEntry[];
   activeName: string | null;
   root: string | null;
   notes: Note[];
@@ -14,9 +14,9 @@ export interface VaultState {
   error: string | null;
 }
 
-export function useVault() {
-  const [state, setState] = useState<VaultState>({
-    vaults: [],
+export function useStack() {
+  const [state, setState] = useState<StackState>({
+    stacks: [],
     activeName: null,
     root: null,
     notes: [],
@@ -29,17 +29,17 @@ export function useVault() {
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    window.memoryVault.listVaults().then((vaults) => {
-      setState((s) => ({ ...s, vaults }));
+    window.memoryStack.listStacks().then((stacks) => {
+      setState((s) => ({ ...s, stacks }));
     });
   }, []);
 
-  const openVault = useCallback(async (root: string, name: string | null = null) => {
+  const openStack = useCallback(async (root: string, name: string | null = null) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const [index, propertySchema] = await Promise.all([
-        window.memoryVault.loadVault(root),
-        window.memoryVault.readPropertySchema(),
+        window.memoryStack.loadStack(root),
+        window.memoryStack.readPropertySchema(),
       ]);
       setState((s) => ({
         ...s,
@@ -57,26 +57,26 @@ export function useVault() {
     }
   }, []);
 
-  const openVaultByEntry = useCallback(
-    (entry: VaultEntry) => openVault(entry.root, entry.name),
-    [openVault]
+  const openStackByEntry = useCallback(
+    (entry: StackEntry) => openStack(entry.root, entry.name),
+    [openStack]
   );
 
-  const addVault = useCallback(
+  const addStack = useCallback(
     async (name: string, root: string) => {
-      const vaults = await window.memoryVault.addVault(name, root); // throws on empty/duplicate name
-      setState((s) => ({ ...s, vaults }));
-      await openVault(root, name.trim());
+      const stacks = await window.memoryStack.addStack(name, root); // throws on empty/duplicate name
+      setState((s) => ({ ...s, stacks }));
+      await openStack(root, name.trim());
     },
-    [openVault]
+    [openStack]
   );
 
-  const removeVault = useCallback(
+  const removeStack = useCallback(
     async (name: string) => {
-      const vaults = await window.memoryVault.removeVault(name);
+      const stacks = await window.memoryStack.removeStack(name);
       setState((s) => ({
         ...s,
-        vaults,
+        stacks,
         ...(s.activeName?.toLowerCase() === name.toLowerCase()
           ? {
               root: null,
@@ -92,7 +92,7 @@ export function useVault() {
     []
   );
 
-  const closeVault = useCallback(() => {
+  const closeStack = useCallback(() => {
     setState((s) => ({
       ...s,
       root: null,
@@ -104,23 +104,23 @@ export function useVault() {
     }));
   }, []);
 
-  // Re-reads the currently open vault from disk (e.g. after a note is
+  // Re-reads the currently open stack from disk (e.g. after a note is
   // created/renamed/deleted/saved).
   const refresh = useCallback(() => {
-    if (state.root) return openVault(state.root, state.activeName);
-  }, [state.root, state.activeName, openVault]);
+    if (state.root) return openStack(state.root, state.activeName);
+  }, [state.root, state.activeName, openStack]);
 
   const saveSchema = useCallback(async (properties: PropertyDef[]) => {
-    const updated = await window.memoryVault.savePropertySchema(properties);
+    const updated = await window.memoryStack.savePropertySchema(properties);
     setState((s) => ({ ...s, propertySchema: updated }));
   }, []);
 
   // Property edits (e.g. a "tags" property) can affect Note.tags/the graph,
-  // so refresh the whole vault after saving — same pattern used elsewhere
+  // so refresh the whole stack after saving — same pattern used elsewhere
   // (create/delete/rename) to keep notes/graph in sync post-mutation.
   const saveNoteProperties = useCallback(
     async (absPath: string, properties: Record<string, unknown>) => {
-      await window.memoryVault.saveNoteProperties(absPath, properties);
+      await window.memoryStack.saveNoteProperties(absPath, properties);
       await refresh();
     },
     [refresh]
@@ -131,10 +131,10 @@ export function useVault() {
     if (!state.root) return;
     const root = state.root;
     const name = state.activeName;
-    const unsubscribe = window.memoryVault.onFileChanged(() => {
+    const unsubscribe = window.memoryStack.onFileChanged(() => {
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
       reloadTimer.current = setTimeout(() => {
-        openVault(root, name);
+        openStack(root, name);
       }, 200);
     });
     return () => {
@@ -144,5 +144,5 @@ export function useVault() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.root]);
 
-  return { ...state, openVaultByEntry, addVault, removeVault, closeVault, refresh, saveSchema, saveNoteProperties };
+  return { ...state, openStackByEntry, addStack, removeStack, closeStack, refresh, saveSchema, saveNoteProperties };
 }

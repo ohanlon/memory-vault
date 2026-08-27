@@ -5,7 +5,7 @@ export interface TreeFolderNode {
   name: string;
   /** Absolute path on disk */
   path: string;
-  /** Path relative to the vault root ("" for the root itself) */
+  /** Path relative to the stack root ("" for the root itself) */
   relativePath: string;
   children: TreeNode[];
 }
@@ -21,7 +21,7 @@ function segments(relativePath: string): string[] {
   return relativePath.split(/[\\/]/).filter(Boolean);
 }
 
-/** Builds a nested folder/note tree from the flat lists a loaded vault provides. */
+/** Builds a nested folder/note tree from the flat lists a loaded stack provides. */
 export function buildFileTree(notes: Note[], folders: FolderEntry[], root: string): TreeFolderNode {
   const rootNode: TreeFolderNode = { type: "folder", name: "", path: root, relativePath: "", children: [] };
   const byRelativePath = new Map<string, TreeFolderNode>([["", rootNode]]);

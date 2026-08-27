@@ -29,7 +29,7 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Pro
       loadedPath.current = null;
       return;
     }
-    window.memoryVault.readNoteBody(note.path).then((body) => {
+    window.memoryStack.readNoteBody(note.path).then((body) => {
       if (!cancelled) {
         setContent(body);
         loadedPath.current = note.path;
@@ -45,7 +45,7 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Pro
     if (!note) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      await window.memoryVault.saveNote(note.path, value);
+      await window.memoryStack.saveNote(note.path, value);
       onSaved(note.path, value);
     }, SAVE_DEBOUNCE_MS);
   }
