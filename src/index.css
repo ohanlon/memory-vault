@@ -384,6 +384,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 13px;
 }
 
 .file-tree-item:hover {
@@ -472,6 +473,7 @@ body {
   display: inline-flex;
   align-items: center;
   min-width: 0;
+  font-size: 13px;
 }
 
 .tab-label-full {
