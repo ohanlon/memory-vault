@@ -837,7 +837,8 @@ body {
   padding: 8px 0;
 }
 
-.settings-row select {
+.settings-row select,
+.settings-row input[type="text"] {
   background: #1e1f24;
   color: #e6e6e6;
   border: 1px solid #4a4c63;

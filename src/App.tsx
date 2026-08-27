@@ -239,6 +239,13 @@ export default function App() {
     setDialog(null);
   }
 
+  async function handleOpenDailyNote() {
+    if (!root) return;
+    const result = await window.memoryVault.openOrCreateDailyNote(settings.dailyNotesFolder);
+    if (result.created) await refresh();
+    openTab(result.path);
+  }
+
   async function performDeleteNote(note: Note) {
     await window.memoryVault.deleteNote(note.path);
     closeTab(note.path);
@@ -300,6 +307,7 @@ export default function App() {
     pluginRegistry.registerCommand("vault.newFolder", () => {
       if (root) setDialog({ kind: "new-folder", dir: root });
     });
+    pluginRegistry.registerCommand("vault.openDailyNote", () => handleOpenDailyNote());
     pluginRegistry.registerCommand("vault.switchVault", () => handleSwitchVault());
     pluginRegistry.registerCommand("vault.deleteNote", (note: Note) => requestDelete({ type: "note", note }));
     pluginRegistry.registerCommand("vault.rename", (note: Note) => setDialog({ kind: "rename", note }));
@@ -421,6 +429,7 @@ export default function App() {
             onToggleSidebar={() => pluginRegistry.runCommand("view.toggleSidebar")}
             onNewNote={() => pluginRegistry.runCommand("vault.newNote")}
             onNewFolder={() => pluginRegistry.runCommand("vault.newFolder")}
+            onOpenDailyNote={() => pluginRegistry.runCommand("vault.openDailyNote")}
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
             onOpenSettings={() => pluginRegistry.runCommand("view.openSettings")}
             regionId={regionId("left-ribbon")}

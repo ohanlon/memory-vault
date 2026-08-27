@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   AppSettings,
+  DailyNoteResult,
   FileChangeEvent,
   LayoutPrefs,
   Note,
@@ -54,6 +55,8 @@ const api = {
   saveLayoutPrefs: (prefs: LayoutPrefs): Promise<boolean> => ipcRenderer.invoke("layout:save", prefs),
   readAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke("settings:read"),
   saveAppSettings: (settings: AppSettings): Promise<boolean> => ipcRenderer.invoke("settings:save", settings),
+  openOrCreateDailyNote: (folder: string): Promise<DailyNoteResult> =>
+    ipcRenderer.invoke("vault:openOrCreateDailyNote", folder),
   onFileChanged: (cb: (event: FileChangeEvent) => void): (() => void) => {
     const listener = (_e: unknown, change: FileChangeEvent) => cb(change);
     ipcRenderer.on("vault:file-changed", listener);

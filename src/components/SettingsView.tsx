@@ -33,6 +33,19 @@ export function SettingsView({ settings, onChange }: Props) {
           </select>
         </div>
       </section>
+
+      <section className="settings-section">
+        <h2>Notes</h2>
+        <div className="settings-row">
+          <label htmlFor="setting-daily-notes-folder">Daily notes folder</label>
+          <input
+            id="setting-daily-notes-folder"
+            type="text"
+            value={settings.dailyNotesFolder}
+            onChange={(e) => onChange({ ...settings, dailyNotesFolder: e.target.value })}
+          />
+        </div>
+      </section>
     </div>
   );
 }

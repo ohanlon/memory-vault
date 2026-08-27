@@ -19,13 +19,13 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
   it("creates the parent directory on first write", () => {
     const nested = path.join(os.tmpdir(), `app-settings-test-dir-${process.pid}`, "settings.json");
     expect(fs.existsSync(path.dirname(nested))).toBe(false);
-    writeAppSettingsFile(nested, { tabFolderDisplay: "always" });
+    writeAppSettingsFile(nested, { ...DEFAULT_APP_SETTINGS, tabFolderDisplay: "always" });
     expect(fs.existsSync(nested)).toBe(true);
     fs.rmSync(path.dirname(nested), { recursive: true, force: true });
   });
 
   it("round-trips settings through disk", () => {
-    const settings = { tabFolderDisplay: "never" as const };
+    const settings = { tabFolderDisplay: "never" as const, dailyNotesFolder: "Journal" };
     writeAppSettingsFile(tmpFile, settings);
     expect(readAppSettingsFile(tmpFile)).toEqual(settings);
   });

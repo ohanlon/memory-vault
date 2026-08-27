@@ -128,4 +128,13 @@ export type TabFolderDisplay = "never" | "hover" | "always";
 
 export interface AppSettings {
   tabFolderDisplay: TabFolderDisplay;
+  /** Vault-relative folder new daily notes are created in. */
+  dailyNotesFolder: string;
+}
+
+export interface DailyNoteResult {
+  /** Absolute path on disk */
+  path: string;
+  /** False if today's daily note already existed and was simply opened. */
+  created: boolean;
 }

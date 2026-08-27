@@ -1,5 +1,6 @@
 import type {
   AppSettings,
+  DailyNoteResult,
   FileChangeEvent,
   LayoutPrefs,
   Note,
@@ -35,6 +36,7 @@ export interface MemoryVaultAPI {
   saveLayoutPrefs(prefs: LayoutPrefs): Promise<boolean>;
   readAppSettings(): Promise<AppSettings>;
   saveAppSettings(settings: AppSettings): Promise<boolean>;
+  openOrCreateDailyNote(folder: string): Promise<DailyNoteResult>;
 }
 
 declare global {

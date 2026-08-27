@@ -10,6 +10,7 @@ import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } fr
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
+import { openOrCreateDailyNote } from "./dailyNote";
 import type { AppSettings, LayoutPrefs, PropertyDef } from "../shared/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -174,6 +175,11 @@ ipcMain.handle("settings:read", async () => {
 ipcMain.handle("settings:save", async (_event, settings: AppSettings) => {
   writeAppSettingsFile(appSettingsFilePath(), settings);
   return true;
+});
+
+ipcMain.handle("vault:openOrCreateDailyNote", async (_event, folder: string) => {
+  if (!currentRoot) throw new Error("No vault loaded");
+  return openOrCreateDailyNote(currentRoot, folder, app.getLocale(), new Date());
 });
 
 ipcMain.handle(

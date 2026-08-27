@@ -3,6 +3,7 @@ interface Props {
   onToggleSidebar: () => void;
   onNewNote: () => void;
   onNewFolder: () => void;
+  onOpenDailyNote: () => void;
   onGraphView: () => void;
   onOpenSettings: () => void;
   regionId?: string;
@@ -13,6 +14,7 @@ export function ActivityBar({
   onToggleSidebar,
   onNewNote,
   onNewFolder,
+  onOpenDailyNote,
   onGraphView,
   onOpenSettings,
   regionId,
@@ -33,6 +35,9 @@ export function ActivityBar({
       </button>
       <button className="activity-bar-btn" onClick={onNewFolder} title="New folder">
         ⊞
+      </button>
+      <button className="activity-bar-btn" onClick={onOpenDailyNote} title="New daily note">
+        📅
       </button>
       <button className="activity-bar-btn" onClick={onGraphView} title="Graph view">
         ◇
