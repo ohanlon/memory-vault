@@ -54,9 +54,6 @@ function deleteConfirmMessage(target: DeleteTarget, notes: Note[], folders: Fold
 }
 
 type DialogState =
-  | { kind: "new-note"; dir: string }
-  | { kind: "new-folder"; dir: string }
-  | { kind: "rename"; note: Note }
   | { kind: "name-vault"; root: string }
   | { kind: "manage-properties" }
   | { kind: "confirm-delete"; target: DeleteTarget }
@@ -83,6 +80,7 @@ export default function App() {
   } = useVault();
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -224,19 +222,19 @@ export default function App() {
     await removeVault(name);
   }
 
-  async function handleCreateNote(title: string) {
-    if (dialog?.kind !== "new-note") return;
-    const newPath = await window.memoryVault.createNote(dialog.dir, title);
+  async function handleCreateNote(dir: string) {
+    setSidebarCollapsed(false);
+    const newPath = await window.memoryVault.createNote(dir, "");
     await refresh();
     openTab(newPath);
-    setDialog(null);
+    setRenamingPath(newPath);
   }
 
-  async function handleCreateFolder(name: string) {
-    if (dialog?.kind !== "new-folder") return;
-    await window.memoryVault.createFolder(dialog.dir, name);
+  async function handleCreateFolder(dir: string) {
+    setSidebarCollapsed(false);
+    const newPath = await window.memoryVault.createFolder(dir, "");
     await refresh();
-    setDialog(null);
+    setRenamingPath(newPath);
   }
 
   async function handleOpenDailyNote() {
@@ -286,15 +284,21 @@ export default function App() {
     }
   }
 
-  async function handleRenameSubmit(newTitle: string) {
-    if (dialog?.kind !== "rename") return;
-    const note = dialog.note;
-    setDialog(null);
-    if (newTitle === note.title) return;
+  async function handleCommitNoteRename(note: Note, newTitle: string) {
+    setRenamingPath(null);
+    if (!newTitle || newTitle === note.title) return;
     const newPath = await window.memoryVault.renameNote(note.path, newTitle);
     setOpenPaths((paths) => renameTab(paths, note.path, newPath));
     await refresh();
-    setActivePath(newPath);
+    if (activePath === note.path) setActivePath(newPath);
+  }
+
+  async function handleCommitFolderRename(folder: FolderEntry, newName: string) {
+    setRenamingPath(null);
+    const currentName = folder.relativePath.split(/[\\/]/).pop() ?? "";
+    if (!newName || newName === currentName) return;
+    await window.memoryVault.renameFolder(folder.path, newName);
+    await refresh();
   }
 
   // Bind the commands core regions/views invoke by id. Re-registered every
@@ -302,21 +306,24 @@ export default function App() {
   // current state instead of going stale.
   useEffect(() => {
     pluginRegistry.registerCommand("vault.newNote", () => {
-      if (root) setDialog({ kind: "new-note", dir: root });
+      if (root) handleCreateNote(root);
     });
     pluginRegistry.registerCommand("vault.newFolder", () => {
-      if (root) setDialog({ kind: "new-folder", dir: root });
+      if (root) handleCreateFolder(root);
     });
     pluginRegistry.registerCommand("vault.openDailyNote", () => handleOpenDailyNote());
     pluginRegistry.registerCommand("vault.switchVault", () => handleSwitchVault());
     pluginRegistry.registerCommand("vault.deleteNote", (note: Note) => requestDelete({ type: "note", note }));
-    pluginRegistry.registerCommand("vault.rename", (note: Note) => setDialog({ kind: "rename", note }));
-    pluginRegistry.registerCommand("vault.newNoteInFolder", (dir: string) =>
-      setDialog({ kind: "new-note", dir })
-    );
-    pluginRegistry.registerCommand("vault.newFolderInFolder", (dir: string) =>
-      setDialog({ kind: "new-folder", dir })
-    );
+    pluginRegistry.registerCommand("vault.rename", (note: Note) => {
+      setSidebarCollapsed(false);
+      setRenamingPath(note.path);
+    });
+    pluginRegistry.registerCommand("vault.renameFolder", (folder: FolderEntry) => {
+      setSidebarCollapsed(false);
+      setRenamingPath(folder.path);
+    });
+    pluginRegistry.registerCommand("vault.newNoteInFolder", (dir: string) => handleCreateNote(dir));
+    pluginRegistry.registerCommand("vault.newFolderInFolder", (dir: string) => handleCreateFolder(dir));
     pluginRegistry.registerCommand("vault.deleteFolder", (folder: FolderEntry) =>
       requestDelete({ type: "folder", folder })
     );
@@ -341,7 +348,7 @@ export default function App() {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
       e.preventDefault();
-      setDialog({ kind: "rename", note: activeNote });
+      setRenamingPath(activeNote.path);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -448,9 +455,14 @@ export default function App() {
               notes,
               folders,
               activePath,
+              renamingPath,
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("vault.deleteNote", n),
               onRename: (n: Note) => pluginRegistry.runCommand("vault.rename", n),
+              onRenameFolder: (f: FolderEntry) => pluginRegistry.runCommand("vault.renameFolder", f),
+              onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
+              onCommitFolderRename: (f: FolderEntry, newName: string) => handleCommitFolderRename(f, newName),
+              onCancelRename: () => setRenamingPath(null),
               onNewNoteInFolder: (dir: string) => pluginRegistry.runCommand("vault.newNoteInFolder", dir),
               onNewFolderInFolder: (dir: string) => pluginRegistry.runCommand("vault.newFolderInFolder", dir),
               onDeleteFolder: (f: FolderEntry) => pluginRegistry.runCommand("vault.deleteFolder", f),
@@ -530,31 +542,6 @@ export default function App() {
           />
         )}
 
-        {dialog?.kind === "new-note" && (
-          <PromptModal
-            title="New note title"
-            confirmLabel="Create"
-            onSubmit={handleCreateNote}
-            onCancel={() => setDialog(null)}
-          />
-        )}
-        {dialog?.kind === "new-folder" && (
-          <PromptModal
-            title="New folder name"
-            confirmLabel="Create"
-            onSubmit={handleCreateFolder}
-            onCancel={() => setDialog(null)}
-          />
-        )}
-        {dialog?.kind === "rename" && (
-          <PromptModal
-            title="Rename note to"
-            initialValue={dialog.note.title}
-            confirmLabel="Rename"
-            onSubmit={handleRenameSubmit}
-            onCancel={() => setDialog(null)}
-          />
-        )}
         {dialog?.kind === "confirm-delete" && (
           <ConfirmModal
             title={dialog.target.type === "note" ? "Delete note" : "Delete folder"}

@@ -39,6 +39,8 @@ const api = {
     ipcRenderer.invoke("vault:moveNote", absPath, destDir),
   moveFolder: (absPath: string, destParentDir: string): Promise<string> =>
     ipcRenderer.invoke("vault:moveFolder", absPath, destParentDir),
+  renameFolder: (absPath: string, newName: string): Promise<string> =>
+    ipcRenderer.invoke("vault:renameFolder", absPath, newName),
   openExternal: (url: string): Promise<boolean> =>
     ipcRenderer.invoke("shell:openExternal", url),
   readNoteBody: (absPath: string): Promise<string> =>

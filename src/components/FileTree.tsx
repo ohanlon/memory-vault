@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
 import { buildFileTree, isSameOrDescendant } from "@shared/fileTree";
 import type { TreeNode } from "@shared/fileTree";
@@ -10,9 +10,14 @@ interface Props {
   notes: Note[];
   folders: FolderEntry[];
   activePath: string | null;
+  renamingPath: string | null;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
   onRename: (note: Note) => void;
+  onRenameFolder: (folder: FolderEntry) => void;
+  onCommitNoteRename: (note: Note, newTitle: string) => void;
+  onCommitFolderRename: (folder: FolderEntry, newName: string) => void;
+  onCancelRename: () => void;
   onNewNoteInFolder: (dir: string) => void;
   onNewFolderInFolder: (dir: string) => void;
   onDeleteFolder: (folder: FolderEntry) => void;
@@ -33,14 +38,76 @@ function acceptsDrag(e: DragEvent) {
   return e.dataTransfer.types.includes(NOTE_DRAG_TYPE) || e.dataTransfer.types.includes(FOLDER_DRAG_TYPE);
 }
 
+/** Every proper prefix of `segs`, e.g. ["a","b","c"] -> ["a", "a/b"] — the ancestor folders of the path, excluding the path itself. */
+function ancestorRelativePaths(segs: string[]): string[] {
+  const result: string[] = [];
+  for (let i = 1; i < segs.length; i++) result.push(segs.slice(0, i).join("/"));
+  return result;
+}
+
+interface EditableLabelProps {
+  initialValue: string;
+  className: string;
+  style?: React.CSSProperties;
+  onCommit: (value: string) => void;
+  onCancel: () => void;
+}
+
+function EditableLabel({ initialValue, className, style, onCommit, onCancel }: EditableLabelProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const doneRef = useRef(false);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  function commit() {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    onCommit(inputRef.current?.value.trim() ?? "");
+  }
+
+  function cancel() {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    onCancel();
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      className={className}
+      style={style}
+      defaultValue={initialValue}
+      onBlur={commit}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          cancel();
+        }
+      }}
+    />
+  );
+}
+
 export function FileTree({
   root,
   notes,
   folders,
   activePath,
+  renamingPath,
   onSelect,
   onDelete,
   onRename,
+  onRenameFolder,
+  onCommitNoteRename,
+  onCommitFolderRename,
+  onCancelRename,
   onNewNoteInFolder,
   onNewFolderInFolder,
   onDeleteFolder,
@@ -51,6 +118,23 @@ export function FileTree({
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const tree = buildFileTree(notes, folders, root);
+
+  // Make sure the row being created/renamed is actually visible, even if it
+  // sits inside a folder the user had collapsed.
+  useEffect(() => {
+    if (!renamingPath) return;
+    const note = notes.find((n) => n.path === renamingPath);
+    const folder = note ? null : folders.find((f) => f.path === renamingPath);
+    const relativePath = note?.relativePath ?? folder?.relativePath;
+    if (!relativePath) return;
+    const ancestors = ancestorRelativePaths(relativePath.split(/[\\/]/).filter(Boolean));
+    if (ancestors.length === 0) return;
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      for (const p of ancestors) next.delete(p);
+      return next;
+    });
+  }, [renamingPath, notes, folders]);
 
   function toggle(relativePath: string) {
     setCollapsed((prev) => {
@@ -79,6 +163,19 @@ export function FileTree({
   function renderNode(node: TreeNode, depth: number): ReactNode {
     if (node.type === "note") {
       const note = node.note;
+      if (note.path === renamingPath) {
+        return (
+          <li key={note.path} className={note.path === activePath ? "active" : ""}>
+            <EditableLabel
+              className="file-tree-item file-tree-item-edit"
+              style={{ paddingLeft: 10 + depth * 16 }}
+              initialValue={note.title}
+              onCommit={(value) => onCommitNoteRename(note, value)}
+              onCancel={onCancelRename}
+            />
+          </li>
+        );
+      }
       return (
         <li key={note.path} className={note.path === activePath ? "active" : ""}>
           <button
@@ -95,6 +192,11 @@ export function FileTree({
               setContextMenu({ target: { type: "note", note }, x: e.clientX, y: e.clientY });
             }}
             onKeyDown={(e) => {
+              if (e.key === "F2") {
+                e.preventDefault();
+                onRename(note);
+                return;
+              }
               if (e.key !== "Delete") return;
               e.preventDefault();
               onDelete(note);
@@ -108,13 +210,15 @@ export function FileTree({
 
     const isCollapsed = collapsed.has(node.relativePath);
     const isDragOver = dragOver === node.relativePath;
+    const folderEntry: FolderEntry = { path: node.path, relativePath: node.relativePath };
+    const isRenamingFolder = node.path === renamingPath;
     return (
       <li key={node.relativePath} className="file-tree-folder">
         <div
           className={`file-tree-folder-row${isDragOver ? " drag-over" : ""}`}
           style={{ paddingLeft: 4 + depth * 16 }}
           tabIndex={0}
-          draggable
+          draggable={!isRenamingFolder}
           onDragStart={(e) => {
             e.dataTransfer.setData(FOLDER_DRAG_TYPE, node.path);
             e.dataTransfer.effectAllowed = "move";
@@ -134,17 +238,30 @@ export function FileTree({
           onClick={() => toggle(node.relativePath)}
           onContextMenu={(e) => {
             e.preventDefault();
-            const folder = { path: node.path, relativePath: node.relativePath };
-            setContextMenu({ target: { type: "folder", folder }, x: e.clientX, y: e.clientY });
+            setContextMenu({ target: { type: "folder", folder: folderEntry }, x: e.clientX, y: e.clientY });
           }}
           onKeyDown={(e) => {
+            if (e.key === "F2") {
+              e.preventDefault();
+              onRenameFolder(folderEntry);
+              return;
+            }
             if (e.key !== "Delete") return;
             e.preventDefault();
-            onDeleteFolder({ path: node.path, relativePath: node.relativePath });
+            onDeleteFolder(folderEntry);
           }}
         >
           <span className="file-tree-disclosure">{isCollapsed ? "▸" : "▾"}</span>
-          <span className="file-tree-folder-name">{node.name}</span>
+          {isRenamingFolder ? (
+            <EditableLabel
+              className="file-tree-folder-name file-tree-folder-name-edit"
+              initialValue={node.name}
+              onCommit={(value) => onCommitFolderRename(folderEntry, value)}
+              onCancel={onCancelRename}
+            />
+          ) : (
+            <span className="file-tree-folder-name">{node.name}</span>
+          )}
           <span className="file-tree-folder-actions">
             <button
               title="New note in this folder"
@@ -210,7 +327,10 @@ export function FileTree({
                 })()
               : (() => {
                   const folder = contextMenu.target.folder;
-                  return [{ label: "Delete", shortcut: "Del", onClick: () => onDeleteFolder(folder) }];
+                  return [
+                    { label: "Rename", shortcut: "F2", onClick: () => onRenameFolder(folder) },
+                    { label: "Delete", shortcut: "Del", onClick: () => onDeleteFolder(folder) },
+                  ];
                 })()
           }
           onClose={() => setContextMenu(null)}

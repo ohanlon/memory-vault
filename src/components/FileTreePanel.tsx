@@ -8,9 +8,14 @@ interface Props {
   notes: Note[];
   folders: FolderEntry[];
   activePath: string | null;
+  renamingPath: string | null;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
   onRename: (note: Note) => void;
+  onRenameFolder: (folder: FolderEntry) => void;
+  onCommitNoteRename: (note: Note, newTitle: string) => void;
+  onCommitFolderRename: (folder: FolderEntry, newName: string) => void;
+  onCancelRename: () => void;
   onNewNoteInFolder: (dir: string) => void;
   onNewFolderInFolder: (dir: string) => void;
   onDeleteFolder: (folder: FolderEntry) => void;
@@ -26,9 +31,14 @@ export function FileTreePanel({
   notes,
   folders,
   activePath,
+  renamingPath,
   onSelect,
   onDelete,
   onRename,
+  onRenameFolder,
+  onCommitNoteRename,
+  onCommitFolderRename,
+  onCancelRename,
   onNewNoteInFolder,
   onNewFolderInFolder,
   onDeleteFolder,
@@ -44,9 +54,14 @@ export function FileTreePanel({
         notes={notes}
         folders={folders}
         activePath={activePath}
+        renamingPath={renamingPath}
         onSelect={onSelect}
         onDelete={onDelete}
         onRename={onRename}
+        onRenameFolder={onRenameFolder}
+        onCommitNoteRename={onCommitNoteRename}
+        onCommitFolderRename={onCommitFolderRename}
+        onCancelRename={onCancelRename}
         onNewNoteInFolder={onNewNoteInFolder}
         onNewFolderInFolder={onNewFolderInFolder}
         onDeleteFolder={onDeleteFolder}

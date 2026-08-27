@@ -25,6 +25,7 @@ export interface MemoryVaultAPI {
   deleteFolder(absPath: string): Promise<boolean>;
   moveNote(absPath: string, destDir: string): Promise<string>;
   moveFolder(absPath: string, destParentDir: string): Promise<string>;
+  renameFolder(absPath: string, newName: string): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   onFileChanged(cb: (event: FileChangeEvent) => void): () => void;
   readNoteBody(absPath: string): Promise<string>;

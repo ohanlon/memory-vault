@@ -391,6 +391,26 @@ body {
   color: #fff;
 }
 
+.file-tree-item-edit,
+.file-tree-folder-name-edit {
+  background: #1e1f24;
+  color: #e6e6e6;
+  border: 1px solid #7a7dc9;
+  border-radius: 3px;
+  outline: none;
+  font: inherit;
+}
+
+.file-tree-item-edit {
+  margin: 0 10px 0 0;
+  padding: 4px 6px;
+}
+
+.file-tree-folder-name-edit {
+  flex: 1;
+  padding: 2px 4px;
+}
+
 .file-tree-empty {
   padding: 10px;
   color: #777;

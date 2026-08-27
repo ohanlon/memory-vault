@@ -186,10 +186,10 @@ ipcMain.handle(
   "vault:createNote",
   async (_event, dir: string, title: string) => {
     if (!currentRoot) throw new Error("No vault loaded");
-    const safeTitle = title.trim() || "Untitled";
+    const safeTitle = title.trim() || "New File";
     let fileName = `${safeTitle}.md`;
     let fullPath = path.join(dir, fileName);
-    let n = 1;
+    let n = 0;
     while (fs.existsSync(fullPath)) {
       n += 1;
       fileName = `${safeTitle} ${n}.md`;
@@ -212,7 +212,7 @@ ipcMain.handle(
     const safeName = name.trim() || "New Folder";
     let folderName = safeName;
     let fullPath = path.join(dir, folderName);
-    let n = 1;
+    let n = 0;
     while (fs.existsSync(fullPath)) {
       n += 1;
       folderName = `${safeName} ${n}`;
@@ -255,6 +255,20 @@ ipcMain.handle(
     const target = path.join(destParentDir, folderName);
     if (fs.existsSync(target)) {
       throw new Error(`"${folderName}" already exists in that folder`);
+    }
+    fs.renameSync(absPath, target);
+    return target;
+  }
+);
+
+ipcMain.handle(
+  "vault:renameFolder",
+  async (_event, absPath: string, newName: string) => {
+    const dir = path.dirname(absPath);
+    const target = path.join(dir, newName);
+    if (target === absPath) return absPath;
+    if (fs.existsSync(target)) {
+      throw new Error(`"${newName}" already exists in that folder`);
     }
     fs.renameSync(absPath, target);
     return target;
