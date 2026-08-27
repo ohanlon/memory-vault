@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { FileChangeEvent, LayoutPrefs, Note, PropertyDef, VaultEntry, VaultIndex } from "../shared/types";
+import type {
+  AppSettings,
+  FileChangeEvent,
+  LayoutPrefs,
+  Note,
+  PropertyDef,
+  VaultEntry,
+  VaultIndex,
+} from "../shared/types";
 
 const api = {
   pickVault: (): Promise<string | null> => ipcRenderer.invoke("vault:pick"),
@@ -44,6 +52,8 @@ const api = {
     ipcRenderer.invoke("vault:savePropertySchema", properties),
   readLayoutPrefs: (): Promise<LayoutPrefs> => ipcRenderer.invoke("layout:read"),
   saveLayoutPrefs: (prefs: LayoutPrefs): Promise<boolean> => ipcRenderer.invoke("layout:save", prefs),
+  readAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke("settings:read"),
+  saveAppSettings: (settings: AppSettings): Promise<boolean> => ipcRenderer.invoke("settings:save", settings),
   onFileChanged: (cb: (event: FileChangeEvent) => void): (() => void) => {
     const listener = (_e: unknown, change: FileChangeEvent) => cb(change);
     ipcRenderer.on("vault:file-changed", listener);

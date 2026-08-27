@@ -4,6 +4,7 @@ interface Props {
   onNewNote: () => void;
   onNewFolder: () => void;
   onGraphView: () => void;
+  onOpenSettings: () => void;
   regionId?: string;
 }
 
@@ -13,6 +14,7 @@ export function ActivityBar({
   onNewNote,
   onNewFolder,
   onGraphView,
+  onOpenSettings,
   regionId,
 }: Props) {
   return (
@@ -34,6 +36,9 @@ export function ActivityBar({
       </button>
       <button className="activity-bar-btn" onClick={onGraphView} title="Graph view">
         ◇
+      </button>
+      <button className="activity-bar-btn activity-bar-btn-bottom" onClick={onOpenSettings} title="Settings">
+        ⚙
       </button>
     </nav>
   );

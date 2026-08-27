@@ -9,7 +9,8 @@ import { titleFromPath } from "../shared/parseNote";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
-import type { LayoutPrefs, PropertyDef } from "../shared/types";
+import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
+import type { AppSettings, LayoutPrefs, PropertyDef } from "../shared/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +28,10 @@ function vaultsFilePath(): string {
 
 function layoutPrefsFilePath(): string {
   return path.join(app.getPath("userData"), "layout-prefs.json");
+}
+
+function appSettingsFilePath(): string {
+  return path.join(app.getPath("userData"), "settings.json");
 }
 
 function createWindow() {
@@ -159,6 +164,15 @@ ipcMain.handle("layout:read", async () => {
 
 ipcMain.handle("layout:save", async (_event, prefs: LayoutPrefs) => {
   writeLayoutPrefsFile(layoutPrefsFilePath(), prefs);
+  return true;
+});
+
+ipcMain.handle("settings:read", async () => {
+  return readAppSettingsFile(appSettingsFilePath());
+});
+
+ipcMain.handle("settings:save", async (_event, settings: AppSettings) => {
+  writeAppSettingsFile(appSettingsFilePath(), settings);
   return true;
 });
 

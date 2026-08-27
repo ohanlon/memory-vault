@@ -1,7 +1,8 @@
-// Sentinel tab id for the graph view, which isn't a note path and should
+// Sentinel tab ids for non-note views, which aren't note paths and should
 // never collide with one — real note paths are always absolute filesystem
-// paths, never a bare "@graph".
+// paths, never a bare "@graph"/"@settings".
 export const GRAPH_TAB_ID = "@graph";
+export const SETTINGS_TAB_ID = "@settings";
 
 /** Adds a path to the open-tabs list if it isn't already open (no-op otherwise). */
 export function addTab(paths: string[], path: string): string[] {
@@ -33,6 +34,8 @@ export function renameTab(paths: string[], oldPath: string, newPath: string): st
  * callers can skip a state update.
  */
 export function reconcileTabs(paths: string[], existingPaths: ReadonlySet<string>): string[] {
-  const filtered = paths.filter((p) => p === GRAPH_TAB_ID || existingPaths.has(p));
+  const filtered = paths.filter(
+    (p) => p === GRAPH_TAB_ID || p === SETTINGS_TAB_ID || existingPaths.has(p)
+  );
   return filtered.length === paths.length ? paths : filtered;
 }

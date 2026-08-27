@@ -256,6 +256,10 @@ body {
   font-size: 14px;
 }
 
+.activity-bar-btn-bottom {
+  margin-top: auto;
+}
+
 .sidebar {
   background: #23242b;
   border-right: 1px solid #33343d;
@@ -461,6 +465,18 @@ body {
 
 .tab:hover {
   background: #2a2c38;
+}
+
+.tab-label-full {
+  display: none;
+}
+
+.tab:hover .tab-label-short {
+  display: none;
+}
+
+.tab:hover .tab-label-full {
+  display: inline;
 }
 
 .tab.active {
@@ -706,6 +722,48 @@ body {
 .graph-panel {
   flex: 1;
   min-height: 0;
+}
+
+.settings-view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px;
+}
+
+.settings-view h1 {
+  margin: 0 0 20px;
+  font-size: 18px;
+}
+
+.settings-section {
+  max-width: 560px;
+}
+
+.settings-section h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  color: #999;
+  border-bottom: 1px solid #33343d;
+  padding-bottom: 6px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.settings-row select {
+  background: #1e1f24;
+  color: #e6e6e6;
+  border: 1px solid #4a4c63;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 13px;
 }
 
 .backlinks-section h4 {

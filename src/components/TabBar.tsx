@@ -4,6 +4,8 @@ import { ContextMenu } from "./ContextMenu";
 export interface TabItem {
   id: string;
   label: string;
+  /** Full relative path (no extension), shown on hover when the note is in a subfolder. */
+  fullLabel?: string;
 }
 
 interface Props {
@@ -81,7 +83,10 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onRename, onDelete, 
               onDelete(t.id);
             }}
           >
-            <span className="tab-label">{t.label}</span>
+            <span className="tab-label">
+              <span className="tab-label-short">{t.label}</span>
+              {t.fullLabel && <span className="tab-label-full">{t.fullLabel}</span>}
+            </span>
             <button
               className="tab-close"
               title="Close tab"

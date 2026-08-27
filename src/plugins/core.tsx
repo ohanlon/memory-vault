@@ -7,8 +7,9 @@ import { GraphPanel } from "../components/GraphPanel";
 import { LinksPanel } from "../components/LinksPanel";
 import { TagsPanel } from "../components/TagsPanel";
 import { PropertiesPanel } from "../components/PropertiesPanel";
+import { SettingsView } from "../components/SettingsView";
 import { BacklinksStat, CharactersStat, PropertiesStat, WordsStat } from "../components/StatusItems";
-import { GRAPH_TAB_ID } from "../vault/tabs";
+import { GRAPH_TAB_ID, SETTINGS_TAB_ID } from "../vault/tabs";
 
 // The app's built-in functionality, expressed as a plugin against the same
 // API a future third-party plugin would use.
@@ -28,7 +29,16 @@ export function registerCorePlugin(): void {
   });
 
   pluginRegistry.registerTabKind({ id: "graph", matches: (tabId) => tabId === GRAPH_TAB_ID, component: GraphPanel });
-  pluginRegistry.registerTabKind({ id: "note", matches: (tabId) => tabId !== GRAPH_TAB_ID, component: EditorPane });
+  pluginRegistry.registerTabKind({
+    id: "settings",
+    matches: (tabId) => tabId === SETTINGS_TAB_ID,
+    component: SettingsView,
+  });
+  pluginRegistry.registerTabKind({
+    id: "note",
+    matches: (tabId) => tabId !== GRAPH_TAB_ID && tabId !== SETTINGS_TAB_ID,
+    component: EditorPane,
+  });
 
   pluginRegistry.registerStatusItem({ id: "backlinks", component: BacklinksStat });
   pluginRegistry.registerStatusItem({ id: "properties", component: PropertiesStat });

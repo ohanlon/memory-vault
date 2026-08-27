@@ -1,4 +1,12 @@
-import type { FileChangeEvent, LayoutPrefs, Note, PropertyDef, VaultEntry, VaultIndex } from "@shared/types";
+import type {
+  AppSettings,
+  FileChangeEvent,
+  LayoutPrefs,
+  Note,
+  PropertyDef,
+  VaultEntry,
+  VaultIndex,
+} from "@shared/types";
 
 export interface MemoryVaultAPI {
   pickVault(): Promise<string | null>;
@@ -25,6 +33,8 @@ export interface MemoryVaultAPI {
   savePropertySchema(properties: PropertyDef[]): Promise<PropertyDef[]>;
   readLayoutPrefs(): Promise<LayoutPrefs>;
   saveLayoutPrefs(prefs: LayoutPrefs): Promise<boolean>;
+  readAppSettings(): Promise<AppSettings>;
+  saveAppSettings(settings: AppSettings): Promise<boolean>;
 }
 
 declare global {

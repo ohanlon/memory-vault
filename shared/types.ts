@@ -122,3 +122,10 @@ export interface LayoutPrefs {
   sidebarWidth: number;
   rightPanelWidth: number;
 }
+
+/** How a note's parent folder path is shown in its tab header. */
+export type TabFolderDisplay = "never" | "hover" | "always";
+
+export interface AppSettings {
+  tabFolderDisplay: TabFolderDisplay;
+}

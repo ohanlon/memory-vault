@@ -9,12 +9,20 @@ import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
 import { TabKindSlot } from "./plugins/TabKindSlot";
-import { addTab as addTabPath, GRAPH_TAB_ID, reconcileTabs, removeTab, renameTab } from "./vault/tabs";
+import {
+  addTab as addTabPath,
+  GRAPH_TAB_ID,
+  SETTINGS_TAB_ID,
+  reconcileTabs,
+  removeTab,
+  renameTab,
+} from "./vault/tabs";
 import { stripMdExtension } from "@shared/displayName";
 import { isSameOrDescendant } from "@shared/fileTree";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
-import type { FolderEntry, LayoutRegionName, Note } from "@shared/types";
+import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
+import type { AppSettings, FolderEntry, LayoutRegionName, Note } from "@shared/types";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -81,6 +89,7 @@ export default function App() {
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_LAYOUT_PREFS.sidebarWidth);
   const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_LAYOUT_PREFS.rightPanelWidth);
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   // Mirrors the two widths above so the drag-end handler can save the exact
   // latest value without waiting for a re-render to read fresh state.
   const widthsRef = useRef(DEFAULT_LAYOUT_PREFS);
@@ -91,7 +100,13 @@ export default function App() {
       setRightPanelWidth(prefs.rightPanelWidth);
       widthsRef.current = prefs;
     });
+    window.memoryVault.readAppSettings().then(setSettings);
   }, []);
+
+  function updateSettings(next: AppSettings) {
+    setSettings(next);
+    window.memoryVault.saveAppSettings(next);
+  }
 
   function resizeSidebar(deltaX: number) {
     setSidebarWidth((w) => {
@@ -128,11 +143,21 @@ export default function App() {
       openPaths
         .map((p): TabItem | null => {
           if (p === GRAPH_TAB_ID) return { id: p, label: "Graph" };
+          if (p === SETTINGS_TAB_ID) return { id: p, label: "Settings" };
           const note = notes.find((n) => n.path === p);
-          return note ? { id: p, label: stripMdExtension(note.relativePath) } : null;
+          if (!note) return null;
+          const inSubfolder = /[\\/]/.test(note.relativePath);
+          if (!inSubfolder || settings.tabFolderDisplay === "never") {
+            return { id: p, label: note.title };
+          }
+          const fullPath = stripMdExtension(note.relativePath);
+          if (settings.tabFolderDisplay === "always") {
+            return { id: p, label: fullPath };
+          }
+          return { id: p, label: note.title, fullLabel: fullPath };
         })
         .filter((t): t is TabItem => t !== null),
-    [openPaths, notes]
+    [openPaths, notes, settings.tabFolderDisplay]
   );
 
   // Drop tabs (and clear the active tab) for notes that no longer exist —
@@ -296,6 +321,7 @@ export default function App() {
     pluginRegistry.registerCommand("view.toggleSidebar", () => setSidebarCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.toggleRightPanel", () => setRightPanelCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.openGraph", () => openTab(GRAPH_TAB_ID));
+    pluginRegistry.registerCommand("view.openSettings", () => openTab(SETTINGS_TAB_ID));
     pluginRegistry.registerCommand("properties.manageSchema", () => setDialog({ kind: "manage-properties" }));
   });
 
@@ -396,6 +422,7 @@ export default function App() {
             onNewNote={() => pluginRegistry.runCommand("vault.newNote")}
             onNewFolder={() => pluginRegistry.runCommand("vault.newFolder")}
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
+            onOpenSettings={() => pluginRegistry.runCommand("view.openSettings")}
             regionId={regionId("left-ribbon")}
           />
         )}
@@ -442,7 +469,7 @@ export default function App() {
               activeId={activePath}
               onSelect={openTab}
               onClose={closeTab}
-              isFileTab={(id) => id !== GRAPH_TAB_ID}
+              isFileTab={(id) => id !== GRAPH_TAB_ID && id !== SETTINGS_TAB_ID}
               onRename={(id) => {
                 const note = notes.find((n) => n.path === id);
                 if (note) pluginRegistry.runCommand("vault.rename", note);
@@ -461,6 +488,8 @@ export default function App() {
                 onSaved: refresh,
                 onSelectTitle: selectByTitle,
                 onOpenExternal: openExternal,
+                settings,
+                onChange: updateSettings,
               }}
             />
           </main>
