@@ -83,7 +83,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onRename, onDelete, 
               onDelete(t.id);
             }}
           >
-            <span className="tab-label">
+            <span className={`tab-label${t.fullLabel ? " has-full-label" : ""}`}>
               <span className="tab-label-short">{t.label}</span>
               {t.fullLabel && <span className="tab-label-full">{t.fullLabel}</span>}
             </span>
