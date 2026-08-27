@@ -745,6 +745,63 @@ body {
 .graph-panel {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+.graph-status-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-top: 1px solid #33343d;
+  background: #1a1b20;
+}
+
+.graph-filter-toggle {
+  background: none;
+  border: 1px solid #4a4c63;
+  border-radius: 4px;
+  color: #ccc;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.graph-filter-toggle:hover {
+  background: #2a2c38;
+  color: #fff;
+}
+
+.graph-filter-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 10px;
+  margin-bottom: 6px;
+  background: #2a2c38;
+  border: 1px solid #4a4c63;
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+
+.graph-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #e6e6e6;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .settings-view {
