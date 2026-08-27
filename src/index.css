@@ -583,6 +583,7 @@ body {
 .editor-pane .cm-editor {
   flex: 1;
   min-height: 0;
+  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arimo, sans-serif;
 }
 
 .editor-pane .cm-scroller {
