@@ -404,14 +404,6 @@ body {
   outline-offset: -1px;
 }
 
-.file-tree-disclosure {
-  width: 16px;
-  flex-shrink: 0;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
 .file-tree-folder-icon {
   flex-shrink: 0;
   margin-right: 6px;

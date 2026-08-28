@@ -251,7 +251,6 @@ export function FileTree({
             onDeleteFolder(folderEntry);
           }}
         >
-          <span className="file-tree-disclosure">{isCollapsed ? "▸" : "▾"}</span>
           <span className="file-tree-folder-icon" aria-hidden="true">
             {isCollapsed ? "📁" : "📂"}
           </span>
