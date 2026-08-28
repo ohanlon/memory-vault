@@ -15,6 +15,7 @@ export interface MemoryStackAPI {
   listStacks(): Promise<StackEntry[]>;
   addStack(name: string, root: string): Promise<StackEntry[]>;
   removeStack(name: string): Promise<StackEntry[]>;
+  renameStack(oldName: string, newName: string): Promise<StackEntry[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;

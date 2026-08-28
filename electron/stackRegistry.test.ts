@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { addStack, findByNameCI, readStacksFile, removeStack, writeStacksFile } from "./stackRegistry";
+import { addStack, findByNameCI, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import type { StackEntry } from "../shared/types";
 
 describe("addStack", () => {
@@ -63,6 +63,48 @@ describe("removeStack", () => {
   it("is a no-op when the name is not present", () => {
     const stacks: StackEntry[] = [{ name: "Work", root: "/stack/work" }];
     expect(removeStack(stacks, "Missing")).toEqual(stacks);
+  });
+});
+
+describe("renameStack", () => {
+  it("renames a stack by name case-insensitively", () => {
+    const stacks: StackEntry[] = [
+      { name: "Work", root: "/stack/work" },
+      { name: "Personal", root: "/stack/personal" },
+    ];
+    expect(renameStack(stacks, "WORK", "Job")).toEqual([
+      { name: "Job", root: "/stack/work" },
+      { name: "Personal", root: "/stack/personal" },
+    ]);
+  });
+
+  it("trims whitespace from the new name", () => {
+    const stacks: StackEntry[] = [{ name: "Work", root: "/stack/work" }];
+    expect(renameStack(stacks, "Work", "  Job  ")[0].name).toBe("Job");
+  });
+
+  it("rejects an empty new name", () => {
+    const stacks: StackEntry[] = [{ name: "Work", root: "/stack/work" }];
+    expect(() => renameStack(stacks, "Work", "   ")).toThrow();
+  });
+
+  it("rejects a new name that collides with a different stack", () => {
+    const stacks: StackEntry[] = [
+      { name: "Work", root: "/stack/work" },
+      { name: "Personal", root: "/stack/personal" },
+    ];
+    expect(() => renameStack(stacks, "Work", "personal")).toThrow(/already exists/);
+  });
+
+  it("allows renaming to the same name (case change only)", () => {
+    const stacks: StackEntry[] = [{ name: "Work", root: "/stack/work" }];
+    expect(renameStack(stacks, "Work", "WORK")[0].name).toBe("WORK");
+  });
+
+  it("does not mutate the input array", () => {
+    const stacks: StackEntry[] = [{ name: "Work", root: "/stack/work" }];
+    renameStack(stacks, "Work", "Job");
+    expect(stacks[0].name).toBe("Work");
   });
 });
 

@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
 import { listFolders, loadStack, readNote, watchStack } from "./stack";
-import { addStack, readStacksFile, removeStack, writeStacksFile } from "./stackRegistry";
+import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import { titleFromPath } from "../shared/parseNote";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
@@ -101,6 +101,13 @@ ipcMain.handle("stacks:add", async (_event, name: string, root: string) => {
 ipcMain.handle("stacks:remove", async (_event, name: string) => {
   const stacks = readStacksFile(stacksFilePath());
   const updated = removeStack(stacks, name);
+  writeStacksFile(stacksFilePath(), updated);
+  return updated;
+});
+
+ipcMain.handle("stacks:rename", async (_event, oldName: string, newName: string) => {
+  const stacks = readStacksFile(stacksFilePath());
+  const updated = renameStack(stacks, oldName, newName); // throws on empty/duplicate name
   writeStacksFile(stacksFilePath(), updated);
   return updated;
 });

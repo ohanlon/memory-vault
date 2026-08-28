@@ -40,3 +40,13 @@ export function removeStack(stacks: StackEntry[], name: string): StackEntry[] {
   const lower = name.toLowerCase();
   return stacks.filter((v) => v.name.toLowerCase() !== lower);
 }
+
+export function renameStack(stacks: StackEntry[], oldName: string, newName: string): StackEntry[] {
+  const trimmed = newName.trim();
+  if (!trimmed) throw new Error("Stack name cannot be empty");
+  const lowerOld = oldName.toLowerCase();
+  if (trimmed.toLowerCase() !== lowerOld && findByNameCI(stacks, trimmed)) {
+    throw new Error(`A stack named "${trimmed}" already exists`);
+  }
+  return stacks.map((v) => (v.name.toLowerCase() === lowerOld ? { ...v, name: trimmed } : v));
+}

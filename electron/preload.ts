@@ -19,6 +19,8 @@ const api = {
     ipcRenderer.invoke("stacks:add", name, root),
   removeStack: (name: string): Promise<StackEntry[]> =>
     ipcRenderer.invoke("stacks:remove", name),
+  renameStack: (oldName: string, newName: string): Promise<StackEntry[]> =>
+    ipcRenderer.invoke("stacks:rename", oldName, newName),
   readNote: (absPath: string): Promise<Note> =>
     ipcRenderer.invoke("stack:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>

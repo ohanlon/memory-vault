@@ -5,6 +5,7 @@ import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
 import { ConfirmModal } from "./components/ConfirmModal";
+import { ContextMenu } from "./components/ContextMenu";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
@@ -22,7 +23,7 @@ import { isSameOrDescendant } from "@shared/fileTree";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
 import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
-import type { AppSettings, FolderEntry, LayoutRegionName, Note } from "@shared/types";
+import type { AppSettings, FolderEntry, LayoutRegionName, Note, StackEntry } from "@shared/types";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -55,9 +56,12 @@ function deleteConfirmMessage(target: DeleteTarget, notes: Note[], folders: Fold
 
 type DialogState =
   | { kind: "name-stack"; root: string }
+  | { kind: "rename-stack"; stack: StackEntry }
   | { kind: "manage-properties" }
   | { kind: "confirm-delete"; target: DeleteTarget }
   | null;
+
+type StackContextMenuState = { stack: StackEntry; x: number; y: number };
 
 export default function App() {
   const {
@@ -73,6 +77,7 @@ export default function App() {
     openStackByEntry,
     addStack,
     removeStack,
+    renameStack,
     closeStack,
     refresh,
     saveSchema,
@@ -82,6 +87,7 @@ export default function App() {
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [stackContextMenu, setStackContextMenu] = useState<StackContextMenuState | null>(null);
   const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
@@ -220,6 +226,18 @@ export default function App() {
   async function handleRemoveStack(name: string) {
     if (!window.confirm(`Remove stack "${name}" from the list? The folder itself is untouched.`)) return;
     await removeStack(name);
+  }
+
+  async function handleRenameStackSubmit(newName: string) {
+    if (dialog?.kind !== "rename-stack") return;
+    const oldName = dialog.stack.name;
+    try {
+      await renameStack(oldName, newName);
+      setDialog(null);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+      // keep the dialog open so the user can retry with a different name
+    }
   }
 
   async function handleCreateNote(dir: string) {
@@ -376,16 +394,26 @@ export default function App() {
             <ul className="stack-list">
               {stacks.map((v) => (
                 <li key={v.name.toLowerCase()}>
-                  <button className="stack-list-item" onClick={() => openStackByEntry(v)}>
+                  <button
+                    className="stack-list-item"
+                    onClick={() => openStackByEntry(v)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setStackContextMenu({ stack: v, x: e.clientX, y: e.clientY });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "F2") {
+                        e.preventDefault();
+                        setDialog({ kind: "rename-stack", stack: v });
+                        return;
+                      }
+                      if (e.key !== "Delete") return;
+                      e.preventDefault();
+                      handleRemoveStack(v.name);
+                    }}
+                  >
                     <span className="stack-list-name">{v.name}</span>
                     <span className="stack-list-path">{v.root}</span>
-                  </button>
-                  <button
-                    className="stack-list-remove"
-                    title="Remove from list"
-                    onClick={() => handleRemoveStack(v.name)}
-                  >
-                    ×
                   </button>
                 </li>
               ))}
@@ -400,6 +428,34 @@ export default function App() {
               confirmLabel="Add"
               onSubmit={handleNameStackSubmit}
               onCancel={() => setDialog(null)}
+            />
+          )}
+          {dialog?.kind === "rename-stack" && (
+            <PromptModal
+              title="Rename stack to"
+              initialValue={dialog.stack.name}
+              confirmLabel="Rename"
+              onSubmit={handleRenameStackSubmit}
+              onCancel={() => setDialog(null)}
+            />
+          )}
+          {stackContextMenu && (
+            <ContextMenu
+              x={stackContextMenu.x}
+              y={stackContextMenu.y}
+              items={[
+                {
+                  label: "Rename",
+                  shortcut: "F2",
+                  onClick: () => setDialog({ kind: "rename-stack", stack: stackContextMenu.stack }),
+                },
+                {
+                  label: "Delete",
+                  shortcut: "Del",
+                  onClick: () => handleRemoveStack(stackContextMenu.stack.name),
+                },
+              ]}
+              onClose={() => setStackContextMenu(null)}
             />
           )}
         </div>

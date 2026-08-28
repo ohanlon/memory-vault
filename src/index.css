@@ -102,7 +102,7 @@ body {
   gap: 12px;
 }
 
-.empty-state button,
+.empty-state button:not(.context-menu-item),
 .sidebar-header button {
   background: #35374a;
   color: #e6e6e6;
@@ -112,7 +112,7 @@ body {
   cursor: pointer;
 }
 
-.empty-state button:hover,
+.empty-state button:not(.context-menu-item):hover,
 .sidebar-header button:hover {
   background: #454868;
 }
@@ -169,19 +169,6 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   width: 100%;
-}
-
-.stack-list-remove {
-  background: none;
-  border: none;
-  color: #888;
-  cursor: pointer;
-  padding: 0 8px;
-  font-size: 16px;
-}
-
-.stack-list-remove:hover {
-  color: #e07a7a;
 }
 
 .app-layout {

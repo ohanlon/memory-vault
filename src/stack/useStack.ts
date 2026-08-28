@@ -92,6 +92,18 @@ export function useStack() {
     []
   );
 
+  const renameStack = useCallback(
+    async (oldName: string, newName: string) => {
+      const stacks = await window.memoryStack.renameStack(oldName, newName); // throws on empty/duplicate name
+      setState((s) => ({
+        ...s,
+        stacks,
+        activeName: s.activeName?.toLowerCase() === oldName.toLowerCase() ? newName.trim() : s.activeName,
+      }));
+    },
+    []
+  );
+
   const closeStack = useCallback(() => {
     setState((s) => ({
       ...s,
@@ -144,5 +156,15 @@ export function useStack() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.root]);
 
-  return { ...state, openStackByEntry, addStack, removeStack, closeStack, refresh, saveSchema, saveNoteProperties };
+  return {
+    ...state,
+    openStackByEntry,
+    addStack,
+    removeStack,
+    renameStack,
+    closeStack,
+    refresh,
+    saveSchema,
+    saveNoteProperties,
+  };
 }
