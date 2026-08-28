@@ -70,7 +70,7 @@ function ListValueInput({ value, onChange }: { value: unknown[]; onChange: (v: s
 
   return (
     <div className="property-list-input">
-      <ul className="tag-list">
+      <ul className="tag-list tag-list-vertical">
         {items.map((item, i) => (
           <li key={`${item}-${i}`}>
             <span className="tag-chip">
