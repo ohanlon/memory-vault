@@ -142,3 +142,26 @@ export interface DailyNoteResult {
   /** False if today's daily note already existed and was simply opened. */
   created: boolean;
 }
+
+// A plugin declares itself via a manifest.json under
+// <stackRoot>/.cairn/plugins/<folder>/manifest.json. Note read/write against
+// the current stack is default-granted (see electron/pluginPermissions.ts)
+// and therefore isn't a declarable permission here — only capabilities that
+// reach outside the current stack need an explicit grant.
+export type PluginPermission = "network" | "shell:openExternal";
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  /** Entry point file, relative to the plugin's own folder. */
+  main: string;
+  permissions: PluginPermission[];
+}
+
+export interface PluginPermissionState {
+  granted: PluginPermission[];
+  deniedDomains?: string[];
+}
+
+export type PluginPermissionsFile = Record<string, PluginPermissionState>;

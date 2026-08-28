@@ -11,7 +11,17 @@ import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
-import type { AppSettings, LayoutPrefs, PropertyDef, ThemeSetting } from "../shared/types";
+import { isAllowedExternalUrl } from "./domainPolicy";
+import { createPluginWindow, pluginIdForWebContents } from "./pluginHost";
+import { discoverPlugins } from "./pluginRegistry";
+import {
+  grantPermission,
+  hasPermission,
+  readPluginPermissionsFile,
+  revokePermission,
+  writePluginPermissionsFile,
+} from "./pluginPermissions";
+import type { AppSettings, LayoutPrefs, PluginPermission, PropertyDef, ThemeSetting } from "../shared/types";
 
 // Kept in step with the --bg-base/--text-primary custom properties in
 // src/index.css for each theme, since the native titleBarOverlay buttons
@@ -35,6 +45,7 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 let win: BrowserWindow | null = null;
 let currentWatcher: FSWatcher | null = null;
 let currentRoot: string | null = null;
+let pluginWindows: BrowserWindow[] = [];
 
 function stacksFilePath(): string {
   return path.join(app.getPath("userData"), "stacks.json");
@@ -46,6 +57,10 @@ function layoutPrefsFilePath(): string {
 
 function appSettingsFilePath(): string {
   return path.join(app.getPath("userData"), "settings.json");
+}
+
+function pluginPermissionsFilePath(): string {
+  return path.join(app.getPath("userData"), "plugin-permissions.json");
 }
 
 function createWindow() {
@@ -84,10 +99,15 @@ function stopWatching() {
   }
 }
 
-const OPEN_EXTERNAL_RE = /^(https?:|mailto:)/i;
+function stopPluginWindows() {
+  for (const pluginWindow of pluginWindows) pluginWindow.destroy();
+  pluginWindows = [];
+}
 
-ipcMain.handle("shell:openExternal", async (_event, url: string) => {
-  if (!OPEN_EXTERNAL_RE.test(url)) return false;
+ipcMain.handle("shell:openExternal", async (event, url: string) => {
+  const pluginId = pluginIdForWebContents(event.sender.id) ?? null;
+  const permissions = readPluginPermissionsFile(pluginPermissionsFilePath());
+  if (!isAllowedExternalUrl(url, pluginId, permissions)) return false;
   await shell.openExternal(url);
   return true;
 });
@@ -128,6 +148,7 @@ ipcMain.handle("stacks:rename", async (_event, oldName: string, newName: string)
 
 ipcMain.handle("stack:load", async (_event, root: string) => {
   stopWatching();
+  stopPluginWindows();
   currentRoot = root;
   const notes = loadStack(root);
   const folders = listFolders(root);
@@ -136,7 +157,14 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
     win?.webContents.send("stack:file-changed", change);
   });
 
+  pluginWindows = discoverPlugins(root).map((plugin) => createPluginWindow(plugin, pluginPermissionsFilePath()));
+
   return { root, notes, folders };
+});
+
+ipcMain.handle("plugin:list", async () => {
+  if (!currentRoot) return [];
+  return discoverPlugins(currentRoot).map((p) => p.manifest);
 });
 
 ipcMain.handle("stack:readNote", async (_event, absPath: string) => {
@@ -336,8 +364,63 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function resolveWithinStackRoot(root: string, relativePath: string): string {
+  const resolved = path.resolve(root, relativePath);
+  const rel = path.relative(root, resolved);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error("Path escapes the stack root");
+  }
+  return resolved;
+}
+
+ipcMain.handle("plugin:notes:read", async (_event, relativePath: string) => {
+  if (!currentRoot) throw new Error("No stack loaded");
+  return readNoteBody(resolveWithinStackRoot(currentRoot, relativePath));
+});
+
+ipcMain.handle("plugin:notes:write", async (_event, relativePath: string, body: string) => {
+  if (!currentRoot) throw new Error("No stack loaded");
+  saveNoteBody(resolveWithinStackRoot(currentRoot, relativePath), body);
+  return true;
+});
+
+ipcMain.handle("plugin:getPermissions", async () => {
+  return readPluginPermissionsFile(pluginPermissionsFilePath());
+});
+
+ipcMain.handle(
+  "plugin:requestPermission",
+  async (_event, pluginId: string, pluginName: string, permission: PluginPermission) => {
+    const permissions = readPluginPermissionsFile(pluginPermissionsFilePath());
+    if (hasPermission(permissions, pluginId, permission)) return true;
+    if (!win) return false;
+
+    const result = await dialog.showMessageBox(win, {
+      type: "question",
+      buttons: ["Deny", "Allow"],
+      defaultId: 0,
+      cancelId: 0,
+      title: "Plugin permission request",
+      message: `"${pluginName}" wants to use "${permission}"`,
+      detail: "This grants the plugin capability beyond reading and writing notes in this stack.",
+    });
+    const granted = result.response === 1;
+    if (granted) {
+      writePluginPermissionsFile(pluginPermissionsFilePath(), grantPermission(permissions, pluginId, permission));
+    }
+    return granted;
+  }
+);
+
+ipcMain.handle("plugin:revokePermission", async (_event, pluginId: string, permission: PluginPermission) => {
+  const permissions = readPluginPermissionsFile(pluginPermissionsFilePath());
+  writePluginPermissionsFile(pluginPermissionsFilePath(), revokePermission(permissions, pluginId, permission));
+  return true;
+});
+
 app.on("window-all-closed", () => {
   stopWatching();
+  stopPluginWindows();
   if (process.platform !== "darwin") {
     app.quit();
     win = null;

@@ -5,6 +5,9 @@ import type {
   FileChangeEvent,
   LayoutPrefs,
   Note,
+  PluginManifest,
+  PluginPermission,
+  PluginPermissionsFile,
   PropertyDef,
   StackEntry,
   StackIndex,
@@ -63,6 +66,11 @@ const api = {
     ipcRenderer.invoke("window:setTitleBarOverlay", theme),
   openOrCreateDailyNote: (folder: string): Promise<DailyNoteResult> =>
     ipcRenderer.invoke("stack:openOrCreateDailyNote", folder),
+  listPlugins: (): Promise<PluginManifest[]> => ipcRenderer.invoke("plugin:list"),
+  getPluginPermissions: (): Promise<PluginPermissionsFile> =>
+    ipcRenderer.invoke("plugin:getPermissions"),
+  revokePluginPermission: (pluginId: string, permission: PluginPermission): Promise<boolean> =>
+    ipcRenderer.invoke("plugin:revokePermission", pluginId, permission),
   onFileChanged: (cb: (event: FileChangeEvent) => void): (() => void) => {
     const listener = (_e: unknown, change: FileChangeEvent) => cb(change);
     ipcRenderer.on("stack:file-changed", listener);

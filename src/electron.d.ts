@@ -4,6 +4,9 @@ import type {
   FileChangeEvent,
   LayoutPrefs,
   Note,
+  PluginManifest,
+  PluginPermission,
+  PluginPermissionsFile,
   PropertyDef,
   StackEntry,
   StackIndex,
@@ -40,6 +43,9 @@ export interface MemoryStackAPI {
   saveAppSettings(settings: AppSettings): Promise<boolean>;
   setTitleBarOverlay(theme: "dark" | "light"): Promise<boolean>;
   openOrCreateDailyNote(folder: string): Promise<DailyNoteResult>;
+  listPlugins(): Promise<PluginManifest[]>;
+  getPluginPermissions(): Promise<PluginPermissionsFile>;
+  revokePluginPermission(pluginId: string, permission: PluginPermission): Promise<boolean>;
 }
 
 declare global {

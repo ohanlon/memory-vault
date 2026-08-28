@@ -16,13 +16,17 @@ export default defineConfig({
         },
       },
       preload: {
-        input: path.join(__dirname, "electron/preload.ts"),
+        input: {
+          preload: path.join(__dirname, "electron/preload.ts"),
+          pluginPreload: path.join(__dirname, "electron/pluginPreload.ts"),
+        },
         vite: {
           build: {
             outDir: "dist-electron",
             rollupOptions: {
               output: {
-                entryFileNames: "preload.mjs",
+                entryFileNames: "[name].mjs",
+                inlineDynamicImports: false,
               },
             },
           },

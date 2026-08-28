@@ -1,4 +1,5 @@
-import type { AppSettings, TabFolderDisplay, ThemeSetting } from "@shared/types";
+import { useEffect, useState } from "react";
+import type { AppSettings, PluginManifest, PluginPermissionsFile, TabFolderDisplay, ThemeSetting } from "@shared/types";
 
 interface Props {
   settings: AppSettings;
@@ -16,6 +17,61 @@ const THEME_OPTIONS: { value: ThemeSetting; label: string }[] = [
   { value: "light", label: "Light" },
   { value: "system", label: "System" },
 ];
+
+function PluginsSection() {
+  const [plugins, setPlugins] = useState<PluginManifest[]>([]);
+  const [permissions, setPermissions] = useState<PluginPermissionsFile>({});
+
+  const reload = () => {
+    window.memoryStack.listPlugins().then(setPlugins);
+    window.memoryStack.getPluginPermissions().then(setPermissions);
+  };
+
+  useEffect(reload, []);
+
+  const revoke = async (pluginId: string, permission: PluginManifest["permissions"][number]) => {
+    await window.memoryStack.revokePluginPermission(pluginId, permission);
+    reload();
+  };
+
+  return (
+    <section className="settings-section">
+      <h2>Plugins</h2>
+      {plugins.length === 0 ? (
+        <p className="settings-empty">No plugins found in this stack's .cairn/plugins folder.</p>
+      ) : (
+        <ul className="settings-plugin-list">
+          {plugins.map((plugin) => {
+            const granted = permissions[plugin.id]?.granted ?? [];
+            return (
+              <li key={plugin.id} className="settings-plugin-item">
+                <div className="settings-plugin-name">
+                  {plugin.name} <span className="settings-plugin-version">v{plugin.version}</span>
+                </div>
+                {plugin.permissions.length === 0 ? (
+                  <p className="settings-plugin-permissions">No gated permissions declared.</p>
+                ) : (
+                  <ul className="settings-plugin-permissions">
+                    {plugin.permissions.map((permission) => (
+                      <li key={permission}>
+                        {permission}: {granted.includes(permission) ? "Allowed" : "Not granted"}
+                        {granted.includes(permission) && (
+                          <button type="button" onClick={() => revoke(plugin.id, permission)}>
+                            Revoke
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 export function SettingsView({ settings, onChange }: Props) {
   return (
@@ -70,6 +126,8 @@ export function SettingsView({ settings, onChange }: Props) {
           />
         </div>
       </section>
+
+      <PluginsSection />
     </div>
   );
 }

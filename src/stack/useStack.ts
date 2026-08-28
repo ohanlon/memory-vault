@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FolderEntry, GraphModel, Note, PropertyDef, StackEntry } from "@shared/types";
 import { buildGraph } from "@shared/buildGraph";
+import { loadThirdPartyPlugins } from "../plugins/loader";
 
 export interface StackState {
   stacks: StackEntry[];
@@ -52,6 +53,7 @@ export function useStack() {
         loading: false,
         error: null,
       }));
+      await loadThirdPartyPlugins();
     } catch (err) {
       setState((s) => ({ ...s, loading: false, error: String(err) }));
     }
