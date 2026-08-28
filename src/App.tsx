@@ -208,10 +208,18 @@ export default function App() {
 
   const selectByTitle = useCallback(
     (title: string) => {
-      const found = notes.find((n) => n.title === title);
-      if (found) openTab(found.path);
+      const found = notes.find((n) => n.title.toLowerCase() === title.toLowerCase());
+      if (found) {
+        openTab(found.path);
+        return;
+      }
+      if (!root) return;
+      window.memoryStack.createNote(root, title).then(async (newPath) => {
+        await refresh();
+        openTab(newPath);
+      });
     },
-    [notes, openTab]
+    [notes, openTab, root, refresh]
   );
 
   const openExternal = useCallback((url: string) => {

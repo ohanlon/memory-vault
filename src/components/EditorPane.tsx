@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorView } from "@codemirror/view";
-import type { Note } from "@shared/types";
+import type { GraphModel, Note } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
-import { livePreview } from "../editor/livePreview";
+import { livePreview, selectionLinkMenu, type LinkSelectionRequest } from "../editor/livePreview";
 import { MarkdownPreview } from "./MarkdownPreview";
+import { ContextMenu } from "./ContextMenu";
 
 interface Props {
   note: Note | null;
+  graph: GraphModel;
   onSaved: (absPath: string, content: string) => void;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
@@ -17,11 +19,17 @@ interface Props {
 
 const SAVE_DEBOUNCE_MS = 500;
 
-export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal, theme = "dark" }: Props) {
+export function EditorPane({ note, graph, onSaved, onSelectTitle, onOpenExternal, theme = "dark" }: Props) {
   const [content, setContent] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
+  const [linkMenu, setLinkMenu] = useState<LinkSelectionRequest | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
+
+  const noteTitles = useMemo(
+    () => new Set(graph.nodes.filter((n) => !n.external && !n.isTag).map((n) => n.id.toLowerCase())),
+    [graph]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -52,8 +60,13 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal, theme
   }
 
   const extensions = useMemo(
-    () => [markdown(), EditorView.lineWrapping, livePreview({ onSelectTitle, onOpenExternal })],
-    [onSelectTitle, onOpenExternal]
+    () => [
+      markdown(),
+      EditorView.lineWrapping,
+      livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
+      selectionLinkMenu(setLinkMenu),
+    ],
+    [onSelectTitle, onOpenExternal, noteTitles]
   );
 
   if (!note) {
@@ -73,7 +86,12 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal, theme
         </button>
       </div>
       {previewMode ? (
-        <MarkdownPreview content={content} onSelectTitle={onSelectTitle} onOpenExternal={onOpenExternal} />
+        <MarkdownPreview
+          content={content}
+          noteTitles={noteTitles}
+          onSelectTitle={onSelectTitle}
+          onOpenExternal={onOpenExternal}
+        />
       ) : (
         <CodeMirror
           value={content}
@@ -81,6 +99,14 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal, theme
           extensions={extensions}
           onChange={handleChange}
           theme={theme}
+        />
+      )}
+      {linkMenu && (
+        <ContextMenu
+          x={linkMenu.x}
+          y={linkMenu.y}
+          items={[{ label: `Link to "${linkMenu.text}"`, onClick: linkMenu.apply }]}
+          onClose={() => setLinkMenu(null)}
         />
       )}
     </div>

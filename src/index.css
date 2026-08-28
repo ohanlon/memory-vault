@@ -12,6 +12,7 @@
   --bg-selected: #3a3d55;
   --bg-tag: #3a2d4a;
   --bg-wikilink: #22304a;
+  --bg-wikilink-orphan: #3a2323;
 
   --scrollbar-thumb: #3a3d55;
   --scrollbar-thumb-hover: #4a4c68;
@@ -59,6 +60,7 @@
   --bg-selected: #dbe7fb;
   --bg-tag: #f1e9fb;
   --bg-wikilink: #e3edfb;
+  --bg-wikilink-orphan: #fbe4e4;
 
   --scrollbar-thumb: #c7cad1;
   --scrollbar-thumb-hover: #b3b7c1;
@@ -730,6 +732,11 @@ body {
   text-decoration: underline;
 }
 
+.cm-wikilink-pill-orphan {
+  color: var(--accent-red-soft);
+  background: var(--bg-wikilink-orphan);
+}
+
 .cm-tag {
   display: inline-block;
   color: var(--accent-purple);
@@ -794,6 +801,11 @@ body {
 
 .markdown-preview .md-wikilink:hover {
   text-decoration: underline;
+}
+
+.markdown-preview .md-wikilink-orphan {
+  color: var(--accent-red-soft);
+  background: var(--bg-wikilink-orphan);
 }
 
 .markdown-preview .md-tag {

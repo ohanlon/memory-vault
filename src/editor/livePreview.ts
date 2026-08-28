@@ -11,6 +11,8 @@ import {
 export interface LivePreviewHandlers {
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
+  /** Lowercased note titles that exist in the stack, for orphan-link styling. */
+  noteTitles: Set<string>;
 }
 
 export const EXTERNAL_SCHEME_RE = /^(https?:|mailto:)/i;
@@ -122,9 +124,11 @@ function processLine(
     if (cursorHere) {
       items.push(Decoration.mark({ class: "cm-link-raw" }).range(lineFrom + s, lineFrom + e));
     } else {
+      const orphan = !handlers.noteTitles.has(target.toLowerCase());
+      const className = orphan ? "cm-wikilink-pill cm-wikilink-pill-orphan" : "cm-wikilink-pill";
       items.push(
         Decoration.replace({
-          widget: new PillWidget(display, "cm-wikilink-pill", () => handlers.onSelectTitle(target)),
+          widget: new PillWidget(display, className, () => handlers.onSelectTitle(target)),
         }).range(lineFrom + s, lineFrom + e)
       );
     }
@@ -208,6 +212,38 @@ function buildDecorations(view: EditorView, handlers: LivePreviewHandlers): Deco
     }
   }
   return Decoration.set(items, true);
+}
+
+export interface LinkSelectionRequest {
+  x: number;
+  y: number;
+  text: string;
+  apply: () => void;
+}
+
+// Lets a right-click on a selection turn it into a [[wikilink]] in place.
+export function selectionLinkMenu(onRequest: (req: LinkSelectionRequest) => void) {
+  return EditorView.domEventHandlers({
+    contextmenu(event, view) {
+      const sel = view.state.selection.main;
+      if (sel.empty) return false;
+      const text = view.state.sliceDoc(sel.from, sel.to);
+      event.preventDefault();
+      onRequest({
+        x: event.clientX,
+        y: event.clientY,
+        text,
+        apply: () => {
+          view.dispatch({
+            changes: { from: sel.from, to: sel.to, insert: `[[${text}]]` },
+            selection: { anchor: sel.to + 4 },
+          });
+          view.focus();
+        },
+      });
+      return true;
+    },
+  });
 }
 
 export function livePreview(handlers: LivePreviewHandlers) {
