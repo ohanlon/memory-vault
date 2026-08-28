@@ -3,13 +3,19 @@ import { DEFAULT_APP_SETTINGS, normalizeAppSettings } from "./appSettings";
 
 describe("normalizeAppSettings", () => {
   it("passes through valid values unchanged", () => {
-    expect(normalizeAppSettings({ tabFolderDisplay: "always", dailyNotesFolder: "Journal" })).toEqual({
+    expect(
+      normalizeAppSettings({ tabFolderDisplay: "always", dailyNotesFolder: "Journal", theme: "light" })
+    ).toEqual({
       tabFolderDisplay: "always",
       dailyNotesFolder: "Journal",
+      theme: "light",
     });
-    expect(normalizeAppSettings({ tabFolderDisplay: "never", dailyNotesFolder: "Journal" })).toEqual({
+    expect(
+      normalizeAppSettings({ tabFolderDisplay: "never", dailyNotesFolder: "Journal", theme: "system" })
+    ).toEqual({
       tabFolderDisplay: "never",
       dailyNotesFolder: "Journal",
+      theme: "system",
     });
   });
 
@@ -28,5 +34,16 @@ describe("normalizeAppSettings", () => {
     expect(normalizeAppSettings({ dailyNotesFolder: "" })).toEqual(DEFAULT_APP_SETTINGS);
     expect(normalizeAppSettings({ dailyNotesFolder: "   " })).toEqual(DEFAULT_APP_SETTINGS);
     expect(normalizeAppSettings({ dailyNotesFolder: 42 })).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("falls back to the default for an invalid theme value", () => {
+    expect(normalizeAppSettings({ theme: "solarized" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ theme: 1 })).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("accepts every valid theme value", () => {
+    expect(normalizeAppSettings({ theme: "dark" }).theme).toBe("dark");
+    expect(normalizeAppSettings({ theme: "light" }).theme).toBe("light");
+    expect(normalizeAppSettings({ theme: "system" }).theme).toBe("system");
   });
 });

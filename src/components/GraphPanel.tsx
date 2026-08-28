@@ -9,19 +9,41 @@ interface Props {
   activeTitle: string | null;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
+  theme?: "dark" | "light";
 }
 
-const EDGE_COLOR: Record<string, string> = {
-  wikilink: "#6c9bd1",
-  tag: "#a97bd1",
-  "external-link": "#5a9b6e",
+interface GraphPalette {
+  edgeColor: Record<string, string>;
+  edgeColorDefault: string;
+  tagNode: string;
+  externalNode: string;
+  noteNode: string;
+  orphanNode: string;
+  activeNode: string;
+  label: string;
+}
+
+const DARK_PALETTE: GraphPalette = {
+  edgeColor: { wikilink: "#6c9bd1", tag: "#a97bd1", "external-link": "#5a9b6e" },
+  edgeColorDefault: "#888",
+  tagNode: "#a97bd1",
+  externalNode: "#5a9b6e",
+  noteNode: "#4f8cc9",
+  orphanNode: "#8a8f98",
+  activeNode: "#e0a53c",
+  label: "#ccc",
 };
 
-const TAG_NODE_COLOR = "#a97bd1";
-const EXTERNAL_NODE_COLOR = "#5a9b6e";
-const NOTE_NODE_COLOR = "#4f8cc9";
-const ORPHAN_NODE_COLOR = "#8a8f98";
-const ACTIVE_NODE_COLOR = "#e0a53c";
+const LIGHT_PALETTE: GraphPalette = {
+  edgeColor: { wikilink: "#2b6cb0", tag: "#7a4fc2", "external-link": "#2f8552" },
+  edgeColorDefault: "#9aa1ad",
+  tagNode: "#7a4fc2",
+  externalNode: "#2f8552",
+  noteNode: "#2f6fb0",
+  orphanNode: "#6b7280",
+  activeNode: "#b8790a",
+  label: "#40454f",
+};
 
 const MAX_LABEL_LENGTH = 40;
 
@@ -29,7 +51,8 @@ function truncateLabel(label: string): string {
   return label.length > MAX_LABEL_LENGTH ? `${label.slice(0, MAX_LABEL_LENGTH - 1)}…` : label;
 }
 
-export function GraphPanel({ graph, activeTitle, onSelectTitle, onOpenExternal }: Props) {
+export function GraphPanel({ graph, activeTitle, onSelectTitle, onOpenExternal, theme = "dark" }: Props) {
+  const palette = theme === "light" ? LIGHT_PALETTE : DARK_PALETTE;
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ width: 300, height: 300 });
@@ -80,21 +103,21 @@ export function GraphPanel({ graph, activeTitle, onSelectTitle, onOpenExternal }
           graphData={data}
           nodeId="id"
           nodeLabel="id"
-          linkColor={(link: any) => EDGE_COLOR[link.kind] ?? "#888"}
+          linkColor={(link: any) => palette.edgeColor[link.kind] ?? palette.edgeColorDefault}
           linkWidth={(link: any) => (link.kind === "wikilink" ? 1.5 : 0.75)}
           nodeColor={(node: any) => {
-            if (node.id === activeTitle) return ACTIVE_NODE_COLOR;
-            if (node.isTag) return TAG_NODE_COLOR;
-            if (node.external) return EXTERNAL_NODE_COLOR;
-            if (!connectedIds.has(node.id)) return ORPHAN_NODE_COLOR;
-            return NOTE_NODE_COLOR;
+            if (node.id === activeTitle) return palette.activeNode;
+            if (node.isTag) return palette.tagNode;
+            if (node.external) return palette.externalNode;
+            if (!connectedIds.has(node.id)) return palette.orphanNode;
+            return palette.noteNode;
           }}
           nodeCanvasObjectMode={() => "after"}
           nodeCanvasObject={(node: any, ctx, globalScale) => {
             const label = truncateLabel(node.id as string);
             const fontSize = 12 / globalScale;
             ctx.font = `${fontSize}px sans-serif`;
-            ctx.fillStyle = "#ccc";
+            ctx.fillStyle = palette.label;
             ctx.textAlign = "center";
             ctx.fillText(label, node.x, node.y + 8);
           }}

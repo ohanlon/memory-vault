@@ -94,9 +94,27 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_LAYOUT_PREFS.sidebarWidth);
   const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_LAYOUT_PREFS.rightPanelWidth);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
   // Mirrors the two widths above so the drag-end handler can save the exact
   // latest value without waiting for a re-render to read fresh state.
   const widthsRef = useRef(DEFAULT_LAYOUT_PREFS);
+
+  // Resolves the "system" theme setting against the OS preference and
+  // reflects the result on <html> so index.css's [data-theme] rules apply.
+  // Also stays in sync if the OS preference changes while "system" is active.
+  useEffect(() => {
+    const theme = settings.theme;
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    function apply() {
+      const resolved = theme === "system" ? (media.matches ? "light" : "dark") : theme;
+      setResolvedTheme(resolved);
+      document.documentElement.dataset.theme = resolved;
+    }
+    apply();
+    if (theme !== "system") return;
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [settings.theme]);
 
   useEffect(() => {
     window.memoryStack.readLayoutPrefs().then((prefs) => {
@@ -567,6 +585,7 @@ export default function App() {
                 onOpenExternal: openExternal,
                 settings,
                 onChange: updateSettings,
+                theme: resolvedTheme,
               }}
             />
           </main>

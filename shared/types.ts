@@ -126,10 +126,14 @@ export interface LayoutPrefs {
 /** How a note's parent folder path is shown in its tab header. */
 export type TabFolderDisplay = "never" | "hover" | "always";
 
+/** "system" follows the OS light/dark preference. */
+export type ThemeSetting = "dark" | "light" | "system";
+
 export interface AppSettings {
   tabFolderDisplay: TabFolderDisplay;
   /** Stack-relative folder new daily notes are created in. */
   dailyNotesFolder: string;
+  theme: ThemeSetting;
 }
 
 export interface DailyNoteResult {

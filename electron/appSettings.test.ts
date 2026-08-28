@@ -25,7 +25,7 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
   });
 
   it("round-trips settings through disk", () => {
-    const settings = { tabFolderDisplay: "never" as const, dailyNotesFolder: "Journal" };
+    const settings = { tabFolderDisplay: "never" as const, dailyNotesFolder: "Journal", theme: "light" as const };
     writeAppSettingsFile(tmpFile, settings);
     expect(readAppSettingsFile(tmpFile)).toEqual(settings);
   });

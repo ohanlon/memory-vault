@@ -12,11 +12,12 @@ interface Props {
   onSaved: (absPath: string, content: string) => void;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
+  theme?: "dark" | "light";
 }
 
 const SAVE_DEBOUNCE_MS = 500;
 
-export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Props) {
+export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal, theme = "dark" }: Props) {
   const [content, setContent] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,7 +80,7 @@ export function EditorPane({ note, onSaved, onSelectTitle, onOpenExternal }: Pro
           height="100%"
           extensions={extensions}
           onChange={handleChange}
-          theme="dark"
+          theme={theme}
         />
       )}
     </div>
