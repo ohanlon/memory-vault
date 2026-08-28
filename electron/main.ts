@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,7 +11,20 @@ import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
-import type { AppSettings, LayoutPrefs, PropertyDef } from "../shared/types";
+import type { AppSettings, LayoutPrefs, PropertyDef, ThemeSetting } from "../shared/types";
+
+// Kept in step with the --bg-base/--text-primary custom properties in
+// src/index.css for each theme, since the native titleBarOverlay buttons
+// can't be styled with CSS.
+const TITLE_BAR_OVERLAY_COLORS: Record<"dark" | "light", { color: string; symbolColor: string }> = {
+  dark: { color: "#1e1f24", symbolColor: "#e6e6e6" },
+  light: { color: "#ffffff", symbolColor: "#1f2328" },
+};
+
+function resolveTheme(theme: ThemeSetting): "dark" | "light" {
+  if (theme === "system") return nativeTheme.shouldUseDarkColors ? "dark" : "light";
+  return theme;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,6 +51,8 @@ function appSettingsFilePath(): string {
 function createWindow() {
   Menu.setApplicationMenu(null);
 
+  const initialTheme = resolveTheme(readAppSettingsFile(appSettingsFilePath()).theme);
+
   win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -45,8 +60,7 @@ function createWindow() {
     // minimize/maximize/close buttons via the overlay.
     titleBarStyle: "hidden",
     titleBarOverlay: {
-      color: "#1e1f24",
-      symbolColor: "#e6e6e6",
+      ...TITLE_BAR_OVERLAY_COLORS[initialTheme],
       height: 32,
     },
     webPreferences: {
@@ -181,6 +195,16 @@ ipcMain.handle("settings:read", async () => {
 
 ipcMain.handle("settings:save", async (_event, settings: AppSettings) => {
   writeAppSettingsFile(appSettingsFilePath(), settings);
+  return true;
+});
+
+ipcMain.handle("window:setTitleBarOverlay", async (_event, theme: "dark" | "light") => {
+  // setTitleBarOverlay is Windows-only; no-op (and possibly a throw) elsewhere.
+  try {
+    win?.setTitleBarOverlay({ ...TITLE_BAR_OVERLAY_COLORS[theme], height: 32 });
+  } catch {
+    // unsupported platform — the window just keeps its native chrome
+  }
   return true;
 });
 

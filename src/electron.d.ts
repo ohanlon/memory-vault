@@ -38,6 +38,7 @@ export interface MemoryStackAPI {
   saveLayoutPrefs(prefs: LayoutPrefs): Promise<boolean>;
   readAppSettings(): Promise<AppSettings>;
   saveAppSettings(settings: AppSettings): Promise<boolean>;
+  setTitleBarOverlay(theme: "dark" | "light"): Promise<boolean>;
   openOrCreateDailyNote(folder: string): Promise<DailyNoteResult>;
 }
 

@@ -109,6 +109,7 @@ export default function App() {
       const resolved = theme === "system" ? (media.matches ? "light" : "dark") : theme;
       setResolvedTheme(resolved);
       document.documentElement.dataset.theme = resolved;
+      window.memoryStack.setTitleBarOverlay(resolved);
     }
     apply();
     if (theme !== "system") return;

@@ -59,6 +59,8 @@ const api = {
   saveLayoutPrefs: (prefs: LayoutPrefs): Promise<boolean> => ipcRenderer.invoke("layout:save", prefs),
   readAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke("settings:read"),
   saveAppSettings: (settings: AppSettings): Promise<boolean> => ipcRenderer.invoke("settings:save", settings),
+  setTitleBarOverlay: (theme: "dark" | "light"): Promise<boolean> =>
+    ipcRenderer.invoke("window:setTitleBarOverlay", theme),
   openOrCreateDailyNote: (folder: string): Promise<DailyNoteResult> =>
     ipcRenderer.invoke("stack:openOrCreateDailyNote", folder),
   onFileChanged: (cb: (event: FileChangeEvent) => void): (() => void) => {
