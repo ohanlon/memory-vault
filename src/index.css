@@ -412,6 +412,13 @@ body {
   font-size: 10px;
 }
 
+.file-tree-folder-icon {
+  flex-shrink: 0;
+  margin-right: 6px;
+  font-size: 13px;
+  line-height: 1;
+}
+
 .file-tree-folder-name {
   flex: 1;
   color: var(--text-tertiary);
