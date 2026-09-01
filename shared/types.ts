@@ -138,6 +138,8 @@ export interface AppSettings {
   addHeadingToNewNotes: boolean;
   /** Whether a note's properties are collapsed by default in the editor pane. */
   hidePropertiesByDefault: boolean;
+  /** Whether the editor shows line numbers in the gutter. */
+  showLineNumbers: boolean;
 }
 
 export interface DailyNoteResult {

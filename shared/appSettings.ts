@@ -6,6 +6,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   theme: "dark",
   addHeadingToNewNotes: true,
   hidePropertiesByDefault: true,
+  showLineNumbers: true,
 };
 
 const VALID_TAB_FOLDER_DISPLAY: TabFolderDisplay[] = ["never", "hover", "always"];
@@ -31,5 +32,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof raw.hidePropertiesByDefault === "boolean"
         ? raw.hidePropertiesByDefault
         : DEFAULT_APP_SETTINGS.hidePropertiesByDefault,
+    showLineNumbers:
+      typeof raw.showLineNumbers === "boolean" ? raw.showLineNumbers : DEFAULT_APP_SETTINGS.showLineNumbers,
   };
 }

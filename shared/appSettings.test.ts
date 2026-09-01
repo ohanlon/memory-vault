@@ -10,6 +10,7 @@ describe("normalizeAppSettings", () => {
         theme: "light",
         addHeadingToNewNotes: false,
         hidePropertiesByDefault: false,
+        showLineNumbers: false,
       })
     ).toEqual({
       tabFolderDisplay: "always",
@@ -17,6 +18,7 @@ describe("normalizeAppSettings", () => {
       theme: "light",
       addHeadingToNewNotes: false,
       hidePropertiesByDefault: false,
+      showLineNumbers: false,
     });
     expect(
       normalizeAppSettings({
@@ -25,6 +27,7 @@ describe("normalizeAppSettings", () => {
         theme: "system",
         addHeadingToNewNotes: true,
         hidePropertiesByDefault: true,
+        showLineNumbers: true,
       })
     ).toEqual({
       tabFolderDisplay: "never",
@@ -32,6 +35,7 @@ describe("normalizeAppSettings", () => {
       theme: "system",
       addHeadingToNewNotes: true,
       hidePropertiesByDefault: true,
+      showLineNumbers: true,
     });
   });
 
@@ -81,5 +85,15 @@ describe("normalizeAppSettings", () => {
   it("accepts both boolean hidePropertiesByDefault values", () => {
     expect(normalizeAppSettings({ hidePropertiesByDefault: true }).hidePropertiesByDefault).toBe(true);
     expect(normalizeAppSettings({ hidePropertiesByDefault: false }).hidePropertiesByDefault).toBe(false);
+  });
+
+  it("falls back to the default for a non-boolean showLineNumbers", () => {
+    expect(normalizeAppSettings({ showLineNumbers: "no" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ showLineNumbers: undefined })).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("accepts both boolean showLineNumbers values", () => {
+    expect(normalizeAppSettings({ showLineNumbers: true }).showLineNumbers).toBe(true);
+    expect(normalizeAppSettings({ showLineNumbers: false }).showLineNumbers).toBe(false);
   });
 });

@@ -31,6 +31,7 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
       theme: "light" as const,
       addHeadingToNewNotes: false,
       hidePropertiesByDefault: false,
+      showLineNumbers: false,
     };
     writeAppSettingsFile(tmpFile, settings);
     expect(readAppSettingsFile(tmpFile)).toEqual(settings);

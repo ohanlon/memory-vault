@@ -121,6 +121,15 @@ export function SettingsView({ settings, onChange }: Props) {
             onChange={(e) => onChange({ ...settings, hidePropertiesByDefault: e.target.checked })}
           />
         </div>
+        <div className="settings-row">
+          <label htmlFor="setting-show-line-numbers">Show line numbers</label>
+          <input
+            id="setting-show-line-numbers"
+            type="checkbox"
+            checked={settings.showLineNumbers}
+            onChange={(e) => onChange({ ...settings, showLineNumbers: e.target.checked })}
+          />
+        </div>
       </section>
 
       <section className="settings-section">

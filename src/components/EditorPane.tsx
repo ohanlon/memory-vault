@@ -170,6 +170,7 @@ export function EditorPane({
           extensions={extensions}
           onChange={handleChange}
           theme={theme}
+          basicSetup={{ lineNumbers: settings.showLineNumbers }}
         />
       )}
       {linkMenu && (
