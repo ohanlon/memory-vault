@@ -134,6 +134,8 @@ export interface AppSettings {
   /** Stack-relative folder new daily notes are created in. */
   dailyNotesFolder: string;
   theme: ThemeSetting;
+  /** Whether a new note is scaffolded with a "# Title" heading. */
+  addHeadingToNewNotes: boolean;
 }
 
 export interface DailyNoteResult {

@@ -259,7 +259,8 @@ ipcMain.handle(
       fileName = `${safeTitle} ${n}.md`;
       fullPath = path.join(dir, fileName);
     }
-    const scaffold = `---\ntags: []\n---\n\n# ${safeTitle}\n`;
+    const addHeading = readAppSettingsFile(appSettingsFilePath()).addHeadingToNewNotes;
+    const scaffold = addHeading ? `---\ntags: []\n---\n\n# ${safeTitle}\n` : `---\ntags: []\n---\n\n`;
     fs.writeFileSync(fullPath, scaffold, "utf-8");
     return fullPath;
   }

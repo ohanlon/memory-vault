@@ -4,6 +4,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   tabFolderDisplay: "hover",
   dailyNotesFolder: "Daily Notes",
   theme: "dark",
+  addHeadingToNewNotes: true,
 };
 
 const VALID_TAB_FOLDER_DISPLAY: TabFolderDisplay[] = ["never", "hover", "always"];
@@ -21,5 +22,9 @@ export function normalizeAppSettings(value: unknown): AppSettings {
         ? raw.dailyNotesFolder
         : DEFAULT_APP_SETTINGS.dailyNotesFolder,
     theme: VALID_THEME.includes(raw.theme as ThemeSetting) ? (raw.theme as ThemeSetting) : DEFAULT_APP_SETTINGS.theme,
+    addHeadingToNewNotes:
+      typeof raw.addHeadingToNewNotes === "boolean"
+        ? raw.addHeadingToNewNotes
+        : DEFAULT_APP_SETTINGS.addHeadingToNewNotes,
   };
 }

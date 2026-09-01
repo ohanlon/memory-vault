@@ -4,18 +4,30 @@ import { DEFAULT_APP_SETTINGS, normalizeAppSettings } from "./appSettings";
 describe("normalizeAppSettings", () => {
   it("passes through valid values unchanged", () => {
     expect(
-      normalizeAppSettings({ tabFolderDisplay: "always", dailyNotesFolder: "Journal", theme: "light" })
+      normalizeAppSettings({
+        tabFolderDisplay: "always",
+        dailyNotesFolder: "Journal",
+        theme: "light",
+        addHeadingToNewNotes: false,
+      })
     ).toEqual({
       tabFolderDisplay: "always",
       dailyNotesFolder: "Journal",
       theme: "light",
+      addHeadingToNewNotes: false,
     });
     expect(
-      normalizeAppSettings({ tabFolderDisplay: "never", dailyNotesFolder: "Journal", theme: "system" })
+      normalizeAppSettings({
+        tabFolderDisplay: "never",
+        dailyNotesFolder: "Journal",
+        theme: "system",
+        addHeadingToNewNotes: true,
+      })
     ).toEqual({
       tabFolderDisplay: "never",
       dailyNotesFolder: "Journal",
       theme: "system",
+      addHeadingToNewNotes: true,
     });
   });
 
@@ -45,5 +57,15 @@ describe("normalizeAppSettings", () => {
     expect(normalizeAppSettings({ theme: "dark" }).theme).toBe("dark");
     expect(normalizeAppSettings({ theme: "light" }).theme).toBe("light");
     expect(normalizeAppSettings({ theme: "system" }).theme).toBe("system");
+  });
+
+  it("falls back to the default for a non-boolean addHeadingToNewNotes", () => {
+    expect(normalizeAppSettings({ addHeadingToNewNotes: "no" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ addHeadingToNewNotes: undefined })).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("accepts both boolean addHeadingToNewNotes values", () => {
+    expect(normalizeAppSettings({ addHeadingToNewNotes: true }).addHeadingToNewNotes).toBe(true);
+    expect(normalizeAppSettings({ addHeadingToNewNotes: false }).addHeadingToNewNotes).toBe(false);
   });
 });

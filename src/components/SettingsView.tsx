@@ -125,6 +125,15 @@ export function SettingsView({ settings, onChange }: Props) {
             onChange={(e) => onChange({ ...settings, dailyNotesFolder: e.target.value })}
           />
         </div>
+        <div className="settings-row">
+          <label htmlFor="setting-add-heading">Add heading to new notes</label>
+          <input
+            id="setting-add-heading"
+            type="checkbox"
+            checked={settings.addHeadingToNewNotes}
+            onChange={(e) => onChange({ ...settings, addHeadingToNewNotes: e.target.checked })}
+          />
+        </div>
       </section>
 
       <PluginsSection />
