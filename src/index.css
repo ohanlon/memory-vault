@@ -662,13 +662,23 @@ body {
 
 .preview-toggle-btn,
 .properties-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--bg-control);
   color: var(--text-onbutton);
   border: none;
   border-radius: 4px;
+  cursor: pointer;
+}
+
+.preview-toggle-btn {
   padding: 4px 10px;
   font-size: 12px;
-  cursor: pointer;
+}
+
+.properties-toggle-btn {
+  padding: 4px;
 }
 
 .preview-toggle-btn:hover,
