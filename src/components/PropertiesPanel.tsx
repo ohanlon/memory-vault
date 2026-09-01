@@ -8,6 +8,7 @@ interface Props {
   schema: PropertyDef[];
   onSaveProperties: (absPath: string, properties: Record<string, unknown>) => void;
   onOpenSchemaManager: () => void;
+  readOnly?: boolean;
 }
 
 interface CustomRow {
@@ -20,7 +21,13 @@ interface CustomRow {
 const SAVE_DEBOUNCE_MS = 500;
 const PROPERTY_TYPES: PropertyType[] = ["text", "list", "number", "checkbox", "date", "datetime"];
 
-export function PropertiesPanel({ note, schema, onSaveProperties, onOpenSchemaManager }: Props) {
+export function PropertiesPanel({
+  note,
+  schema,
+  onSaveProperties,
+  onOpenSchemaManager,
+  readOnly = false,
+}: Props) {
   const [boundedValues, setBoundedValues] = useState<Record<string, unknown>>({});
   const [customRows, setCustomRows] = useState<CustomRow[]>([]);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,11 +105,13 @@ export function PropertiesPanel({ note, schema, onSaveProperties, onOpenSchemaMa
 
   return (
     <>
-      <div className="properties-section-header">
-        <button type="button" className="manage-properties-btn" onClick={onOpenSchemaManager}>
-          Manage properties
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="properties-section-header">
+          <button type="button" className="manage-properties-btn" onClick={onOpenSchemaManager}>
+            Manage properties
+          </button>
+        </div>
+      )}
 
       {!note ? (
         <p className="backlinks-empty">Select a note to see its properties</p>
@@ -121,6 +130,7 @@ export function PropertiesPanel({ note, schema, onSaveProperties, onOpenSchemaMa
                     value={value}
                     rules={def.rules}
                     onChange={(v) => updateBounded(def.name, v)}
+                    readOnly={readOnly}
                   />
                   {error && <span className="property-error">{error}</span>}
                 </div>
@@ -128,47 +138,60 @@ export function PropertiesPanel({ note, schema, onSaveProperties, onOpenSchemaMa
             })}
           </div>
 
-          <div className="properties-section">
-            <h4>Custom</h4>
-            {customRows.map((row) => (
-              <div className="property-row property-row-custom" key={row.key}>
-                <div className="property-row-custom-header">
-                  <input
-                    type="text"
-                    className="property-name-input"
-                    placeholder="Name"
-                    value={row.name}
-                    onChange={(e) => updateCustomRow(row.key, { name: e.target.value })}
+          {(!readOnly || customRows.length > 0) && (
+            <div className="properties-section">
+              <h4>Custom</h4>
+              {customRows.map((row) => (
+                <div className="property-row property-row-custom" key={row.key}>
+                  <div className="property-row-custom-header">
+                    <input
+                      type="text"
+                      className="property-name-input"
+                      placeholder="Name"
+                      value={row.name}
+                      onChange={(e) => updateCustomRow(row.key, { name: e.target.value })}
+                      disabled={readOnly}
+                    />
+                    <select
+                      value={row.type}
+                      onChange={(e) => {
+                        const type = e.target.value as PropertyType;
+                        updateCustomRow(row.key, { type, value: defaultValueFor(type) });
+                      }}
+                      disabled={readOnly}
+                    >
+                      {PROPERTY_TYPES.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="property-remove-btn"
+                        title="Remove property"
+                        onClick={() => removeCustomRow(row.key)}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <PropertyValueInput
+                    type={row.type}
+                    value={row.value}
+                    onChange={(v) => updateCustomRow(row.key, { value: v })}
+                    readOnly={readOnly}
                   />
-                  <select
-                    value={row.type}
-                    onChange={(e) => {
-                      const type = e.target.value as PropertyType;
-                      updateCustomRow(row.key, { type, value: defaultValueFor(type) });
-                    }}
-                  >
-                    {PROPERTY_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="property-remove-btn"
-                    title="Remove property"
-                    onClick={() => removeCustomRow(row.key)}
-                  >
-                    ×
-                  </button>
                 </div>
-                <PropertyValueInput type={row.type} value={row.value} onChange={(v) => updateCustomRow(row.key, { value: v })} />
-              </div>
-            ))}
-            <button type="button" className="add-property-btn" onClick={addCustomRow}>
-              + Add property
-            </button>
-          </div>
+              ))}
+              {!readOnly && (
+                <button type="button" className="add-property-btn" onClick={addCustomRow}>
+                  + Add property
+                </button>
+              )}
+            </div>
+          )}
         </>
       )}
     </>

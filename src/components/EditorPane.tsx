@@ -153,6 +153,7 @@ export function EditorPane({
             schema={schema}
             onSaveProperties={onSaveProperties}
             onOpenSchemaManager={onOpenSchemaManager}
+            readOnly={previewMode}
           />
         </div>
       )}

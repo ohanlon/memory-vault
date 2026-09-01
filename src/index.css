@@ -1121,6 +1121,12 @@ body {
   font-size: 13px;
 }
 
+.property-row input:disabled,
+.property-row select:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+
 .property-list-input .tag-list {
   margin-bottom: 4px;
 }

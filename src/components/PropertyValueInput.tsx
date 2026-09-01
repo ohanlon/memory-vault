@@ -6,9 +6,10 @@ interface Props {
   value: unknown;
   rules?: PropertyRules;
   onChange: (value: unknown) => void;
+  readOnly?: boolean;
 }
 
-export function PropertyValueInput({ type, value, rules, onChange }: Props) {
+export function PropertyValueInput({ type, value, rules, onChange, readOnly = false }: Props) {
   switch (type) {
     case "text":
       return (
@@ -17,6 +18,7 @@ export function PropertyValueInput({ type, value, rules, onChange }: Props) {
           value={typeof value === "string" ? value : ""}
           maxLength={rules?.maxLength}
           onChange={(e) => onChange(e.target.value)}
+          disabled={readOnly}
         />
       );
     case "number":
@@ -31,11 +33,17 @@ export function PropertyValueInput({ type, value, rules, onChange }: Props) {
             const raw = e.target.value;
             onChange(raw === "" ? undefined : Number(raw));
           }}
+          disabled={readOnly}
         />
       );
     case "checkbox":
       return (
-        <input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={value === true}
+          onChange={(e) => onChange(e.target.checked)}
+          disabled={readOnly}
+        />
       );
     case "date":
       return (
@@ -43,6 +51,7 @@ export function PropertyValueInput({ type, value, rules, onChange }: Props) {
           type="date"
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
+          disabled={readOnly}
         />
       );
     case "datetime":
@@ -51,14 +60,23 @@ export function PropertyValueInput({ type, value, rules, onChange }: Props) {
           type="datetime-local"
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
+          disabled={readOnly}
         />
       );
     case "list":
-      return <ListValueInput value={Array.isArray(value) ? value : []} onChange={onChange} />;
+      return <ListValueInput value={Array.isArray(value) ? value : []} onChange={onChange} readOnly={readOnly} />;
   }
 }
 
-function ListValueInput({ value, onChange }: { value: unknown[]; onChange: (v: string[]) => void }) {
+function ListValueInput({
+  value,
+  onChange,
+  readOnly = false,
+}: {
+  value: unknown[];
+  onChange: (v: string[]) => void;
+  readOnly?: boolean;
+}) {
   const [draft, setDraft] = useState("");
   const items = value.filter((v): v is string => typeof v === "string");
 
@@ -75,30 +93,34 @@ function ListValueInput({ value, onChange }: { value: unknown[]; onChange: (v: s
           <li key={`${item}-${i}`}>
             <span className="tag-chip">
               {item}
-              <button
-                type="button"
-                className="property-list-remove"
-                onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-              >
-                ×
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  className="property-list-remove"
+                  onClick={() => onChange(items.filter((_, idx) => idx !== i))}
+                >
+                  ×
+                </button>
+              )}
             </span>
           </li>
         ))}
       </ul>
-      <input
-        type="text"
-        value={draft}
-        placeholder="Add value..."
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
-            commitDraft();
-          }
-        }}
-        onBlur={commitDraft}
-      />
+      {!readOnly && (
+        <input
+          type="text"
+          value={draft}
+          placeholder="Add value..."
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              commitDraft();
+            }
+          }}
+          onBlur={commitDraft}
+        />
+      )}
     </div>
   );
 }
