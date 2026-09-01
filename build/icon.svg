@@ -1,0 +1,36 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5aa8e0"/>
+      <stop offset="100%" stop-color="#1c4f86"/>
+    </linearGradient>
+    <linearGradient id="stoneTop" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#dfe9f2"/>
+    </linearGradient>
+    <linearGradient id="stoneMid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6fb3c9"/>
+      <stop offset="100%" stop-color="#3f7f97"/>
+    </linearGradient>
+    <linearGradient id="stoneBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2c3f63"/>
+      <stop offset="100%" stop-color="#182747"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background card -->
+  <rect x="32" y="32" width="960" height="960" rx="210" fill="url(#bg)"/>
+
+  <!-- cairn stones -->
+  <ellipse cx="512" cy="700" rx="230" ry="105" fill="url(#stoneBase)"/>
+  <ellipse cx="500" cy="560" rx="165" ry="85" fill="url(#stoneMid)"/>
+  <ellipse cx="520" cy="430" rx="105" ry="62" fill="url(#stoneTop)"/>
+
+  <!-- pencil, diagonal across the base stone -->
+  <g transform="rotate(45 700 620)">
+    <rect x="655" y="500" width="90" height="330" rx="18" fill="#f4f4f4"/>
+    <rect x="655" y="500" width="90" height="60" fill="#e0574a"/>
+    <path d="M655 830 L745 830 L700 900 Z" fill="#c9c9c9"/>
+    <path d="M685 870 L715 870 L700 900 Z" fill="#3a3a3a"/>
+  </g>
+</svg>

@@ -68,9 +68,14 @@ function createWindow() {
 
   const initialTheme = resolveTheme(readAppSettingsFile(appSettingsFilePath()).theme);
 
+  const iconPath = VITE_DEV_SERVER_URL
+    ? path.join(process.env.APP_ROOT!, "public", "icon.png")
+    : path.join(RENDERER_DIST, "icon.png");
+
   win = new BrowserWindow({
     width: 1280,
     height: 800,
+    icon: iconPath,
     // Hides the title bar (icon, title text, menu) but keeps the native
     // minimize/maximize/close buttons via the overlay.
     titleBarStyle: "hidden",
