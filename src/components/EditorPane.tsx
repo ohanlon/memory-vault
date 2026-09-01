@@ -2,27 +2,44 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorView } from "@codemirror/view";
-import type { GraphModel, Note } from "@shared/types";
+import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { livePreview, selectionLinkMenu, type LinkSelectionRequest } from "../editor/livePreview";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
+import { PropertiesPanel } from "./PropertiesPanel";
 
 interface Props {
   note: Note | null;
   graph: GraphModel;
+  settings: AppSettings;
+  schema: PropertyDef[];
   onSaved: (absPath: string, content: string) => void;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
+  onSaveProperties: (absPath: string, properties: Record<string, unknown>) => void;
+  onOpenSchemaManager: () => void;
   theme?: "dark" | "light";
 }
 
 const SAVE_DEBOUNCE_MS = 500;
 
-export function EditorPane({ note, graph, onSaved, onSelectTitle, onOpenExternal, theme = "dark" }: Props) {
+export function EditorPane({
+  note,
+  graph,
+  settings,
+  schema,
+  onSaved,
+  onSelectTitle,
+  onOpenExternal,
+  onSaveProperties,
+  onOpenSchemaManager,
+  theme = "dark",
+}: Props) {
   const [content, setContent] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
   const [linkMenu, setLinkMenu] = useState<LinkSelectionRequest | null>(null);
+  const [propertiesVisible, setPropertiesVisible] = useState(!settings.hidePropertiesByDefault);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
 
@@ -30,6 +47,8 @@ export function EditorPane({ note, graph, onSaved, onSelectTitle, onOpenExternal
     () => new Set(graph.nodes.filter((n) => !n.external && !n.isTag).map((n) => n.id.toLowerCase())),
     [graph]
   );
+
+  const hasProperties = note ? Object.keys(note.frontmatter).length > 0 : false;
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +63,7 @@ export function EditorPane({ note, graph, onSaved, onSelectTitle, onOpenExternal
         loadedPath.current = note.path;
       }
     });
+    setPropertiesVisible(!settings.hidePropertiesByDefault);
     return () => {
       cancelled = true;
     };
@@ -77,14 +97,35 @@ export function EditorPane({ note, graph, onSaved, onSelectTitle, onOpenExternal
     <div className="editor-pane">
       <div className="editor-title-row">
         <div className="editor-title">{stripMdExtension(note.relativePath)}</div>
-        <button
-          className="preview-toggle-btn"
-          onClick={() => setPreviewMode((v) => !v)}
-          title={previewMode ? "Edit" : "Preview"}
-        >
-          {previewMode ? "✎" : "👁"}
-        </button>
+        <div className="editor-title-row-actions">
+          {hasProperties && (
+            <button
+              className="properties-toggle-btn"
+              onClick={() => setPropertiesVisible((v) => !v)}
+              title={propertiesVisible ? "Hide properties" : "Edit properties"}
+            >
+              {propertiesVisible ? "Hide properties" : "Edit properties"}
+            </button>
+          )}
+          <button
+            className="preview-toggle-btn"
+            onClick={() => setPreviewMode((v) => !v)}
+            title={previewMode ? "Edit" : "Preview"}
+          >
+            {previewMode ? "✎" : "👁"}
+          </button>
+        </div>
       </div>
+      {hasProperties && propertiesVisible && (
+        <div className="editor-inline-properties">
+          <PropertiesPanel
+            note={note}
+            schema={schema}
+            onSaveProperties={onSaveProperties}
+            onOpenSchemaManager={onOpenSchemaManager}
+          />
+        </div>
+      )}
       {previewMode ? (
         <MarkdownPreview
           content={content}

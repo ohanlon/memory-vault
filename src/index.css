@@ -654,7 +654,14 @@ body {
   color: var(--text-secondary);
 }
 
-.preview-toggle-btn {
+.editor-title-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-toggle-btn,
+.properties-toggle-btn {
   background: var(--bg-control);
   color: var(--text-onbutton);
   border: none;
@@ -664,8 +671,16 @@ body {
   cursor: pointer;
 }
 
-.preview-toggle-btn:hover {
+.preview-toggle-btn:hover,
+.properties-toggle-btn:hover {
   background: var(--bg-control-hover);
+}
+
+.editor-inline-properties {
+  border-bottom: 1px solid var(--border-divider);
+  padding: 4px 10px;
+  max-height: 40%;
+  overflow-y: auto;
 }
 
 /* @uiw/react-codemirror wraps its output in a theme div (.cm-theme-dark or

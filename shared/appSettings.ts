@@ -5,6 +5,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   dailyNotesFolder: "Daily Notes",
   theme: "dark",
   addHeadingToNewNotes: true,
+  hidePropertiesByDefault: true,
 };
 
 const VALID_TAB_FOLDER_DISPLAY: TabFolderDisplay[] = ["never", "hover", "always"];
@@ -26,5 +27,9 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof raw.addHeadingToNewNotes === "boolean"
         ? raw.addHeadingToNewNotes
         : DEFAULT_APP_SETTINGS.addHeadingToNewNotes,
+    hidePropertiesByDefault:
+      typeof raw.hidePropertiesByDefault === "boolean"
+        ? raw.hidePropertiesByDefault
+        : DEFAULT_APP_SETTINGS.hidePropertiesByDefault,
   };
 }

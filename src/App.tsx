@@ -595,6 +595,9 @@ export default function App() {
                 settings,
                 onChange: updateSettings,
                 theme: resolvedTheme,
+                schema: propertySchema,
+                onSaveProperties: saveNoteProperties,
+                onOpenSchemaManager: () => pluginRegistry.runCommand("properties.manageSchema"),
               }}
             />
           </main>

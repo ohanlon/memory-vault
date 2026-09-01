@@ -9,12 +9,14 @@ describe("normalizeAppSettings", () => {
         dailyNotesFolder: "Journal",
         theme: "light",
         addHeadingToNewNotes: false,
+        hidePropertiesByDefault: false,
       })
     ).toEqual({
       tabFolderDisplay: "always",
       dailyNotesFolder: "Journal",
       theme: "light",
       addHeadingToNewNotes: false,
+      hidePropertiesByDefault: false,
     });
     expect(
       normalizeAppSettings({
@@ -22,12 +24,14 @@ describe("normalizeAppSettings", () => {
         dailyNotesFolder: "Journal",
         theme: "system",
         addHeadingToNewNotes: true,
+        hidePropertiesByDefault: true,
       })
     ).toEqual({
       tabFolderDisplay: "never",
       dailyNotesFolder: "Journal",
       theme: "system",
       addHeadingToNewNotes: true,
+      hidePropertiesByDefault: true,
     });
   });
 
@@ -67,5 +71,15 @@ describe("normalizeAppSettings", () => {
   it("accepts both boolean addHeadingToNewNotes values", () => {
     expect(normalizeAppSettings({ addHeadingToNewNotes: true }).addHeadingToNewNotes).toBe(true);
     expect(normalizeAppSettings({ addHeadingToNewNotes: false }).addHeadingToNewNotes).toBe(false);
+  });
+
+  it("falls back to the default for a non-boolean hidePropertiesByDefault", () => {
+    expect(normalizeAppSettings({ hidePropertiesByDefault: "no" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ hidePropertiesByDefault: undefined })).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("accepts both boolean hidePropertiesByDefault values", () => {
+    expect(normalizeAppSettings({ hidePropertiesByDefault: true }).hidePropertiesByDefault).toBe(true);
+    expect(normalizeAppSettings({ hidePropertiesByDefault: false }).hidePropertiesByDefault).toBe(false);
   });
 });

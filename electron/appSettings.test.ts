@@ -30,6 +30,7 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
       dailyNotesFolder: "Journal",
       theme: "light" as const,
       addHeadingToNewNotes: false,
+      hidePropertiesByDefault: false,
     };
     writeAppSettingsFile(tmpFile, settings);
     expect(readAppSettingsFile(tmpFile)).toEqual(settings);

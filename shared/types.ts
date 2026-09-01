@@ -136,6 +136,8 @@ export interface AppSettings {
   theme: ThemeSetting;
   /** Whether a new note is scaffolded with a "# Title" heading. */
   addHeadingToNewNotes: boolean;
+  /** Whether a note's properties are collapsed by default in the editor pane. */
+  hidePropertiesByDefault: boolean;
 }
 
 export interface DailyNoteResult {

@@ -112,6 +112,15 @@ export function SettingsView({ settings, onChange }: Props) {
             ))}
           </select>
         </div>
+        <div className="settings-row">
+          <label htmlFor="setting-hide-properties">Hide note properties by default</label>
+          <input
+            id="setting-hide-properties"
+            type="checkbox"
+            checked={settings.hidePropertiesByDefault}
+            onChange={(e) => onChange({ ...settings, hidePropertiesByDefault: e.target.checked })}
+          />
+        </div>
       </section>
 
       <section className="settings-section">
