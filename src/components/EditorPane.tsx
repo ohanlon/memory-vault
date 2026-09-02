@@ -4,6 +4,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { EditorView } from "@codemirror/view";
 import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
+import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
 import { livePreview, selectionLinkMenu, type LinkSelectionRequest } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { MarkdownPreview } from "./MarkdownPreview";
@@ -110,6 +111,15 @@ export function EditorPane({
     }, SAVE_DEBOUNCE_MS);
   }
 
+  const fontTheme = useMemo(
+    () =>
+      EditorView.theme({
+        "&": { fontSize: `${settings.editorFontSize}px` },
+        ".cm-content": { fontFamily: EDITOR_FONT_STACKS[settings.editorFontFamily] },
+      }),
+    [settings.editorFontFamily, settings.editorFontSize]
+  );
+
   const extensions = useMemo(
     () => [
       markdown(),
@@ -118,8 +128,9 @@ export function EditorPane({
       selectionLinkMenu(setLinkMenu),
       loremIpsumExpand(),
       noCurlyBraceAutoClose(),
+      fontTheme,
     ],
-    [onSelectTitle, onOpenExternal, noteTitles]
+    [onSelectTitle, onOpenExternal, noteTitles, fontTheme]
   );
 
   if (!note) {

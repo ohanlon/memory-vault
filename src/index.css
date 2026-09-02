@@ -727,7 +727,7 @@ body {
 .editor-pane .cm-editor {
   flex: 1;
   min-height: 0;
-  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arimo, sans-serif;
+  /* Font family/size are set per-instance via EditorPane's fontTheme (settings.editorFontFamily/editorFontSize). */
 }
 
 .editor-pane .cm-scroller {

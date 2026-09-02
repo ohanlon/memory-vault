@@ -32,6 +32,8 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
       addHeadingToNewNotes: false,
       hidePropertiesByDefault: false,
       showLineNumbers: false,
+      editorFontFamily: "monospace" as const,
+      editorFontSize: 18,
     };
     writeAppSettingsFile(tmpFile, settings);
     expect(readAppSettingsFile(tmpFile)).toEqual(settings);

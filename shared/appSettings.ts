@@ -1,4 +1,5 @@
-import type { AppSettings, TabFolderDisplay, ThemeSetting } from "./types";
+import type { AppSettings, EditorFontFamily, TabFolderDisplay, ThemeSetting } from "./types";
+import { MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "./editorFonts";
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   tabFolderDisplay: "hover",
@@ -7,10 +8,18 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   addHeadingToNewNotes: true,
   hidePropertiesByDefault: true,
   showLineNumbers: true,
+  editorFontFamily: "roboto",
+  editorFontSize: 14,
 };
 
 const VALID_TAB_FOLDER_DISPLAY: TabFolderDisplay[] = ["never", "hover", "always"];
 const VALID_THEME: ThemeSetting[] = ["dark", "light", "system"];
+const VALID_EDITOR_FONT_FAMILY: EditorFontFamily[] = ["system-ui", "roboto", "arimo", "monospace"];
+
+function clampFontSize(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(MAX_EDITOR_FONT_SIZE, Math.max(MIN_EDITOR_FONT_SIZE, Math.round(value)));
+}
 
 /** Fills in missing/invalid fields with defaults. */
 export function normalizeAppSettings(value: unknown): AppSettings {
@@ -34,5 +43,9 @@ export function normalizeAppSettings(value: unknown): AppSettings {
         : DEFAULT_APP_SETTINGS.hidePropertiesByDefault,
     showLineNumbers:
       typeof raw.showLineNumbers === "boolean" ? raw.showLineNumbers : DEFAULT_APP_SETTINGS.showLineNumbers,
+    editorFontFamily: VALID_EDITOR_FONT_FAMILY.includes(raw.editorFontFamily as EditorFontFamily)
+      ? (raw.editorFontFamily as EditorFontFamily)
+      : DEFAULT_APP_SETTINGS.editorFontFamily,
+    editorFontSize: clampFontSize(raw.editorFontSize, DEFAULT_APP_SETTINGS.editorFontSize),
   };
 }

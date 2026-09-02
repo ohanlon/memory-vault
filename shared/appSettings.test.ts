@@ -11,6 +11,8 @@ describe("normalizeAppSettings", () => {
         addHeadingToNewNotes: false,
         hidePropertiesByDefault: false,
         showLineNumbers: false,
+        editorFontFamily: "monospace",
+        editorFontSize: 18,
       })
     ).toEqual({
       tabFolderDisplay: "always",
@@ -19,6 +21,8 @@ describe("normalizeAppSettings", () => {
       addHeadingToNewNotes: false,
       hidePropertiesByDefault: false,
       showLineNumbers: false,
+      editorFontFamily: "monospace",
+      editorFontSize: 18,
     });
     expect(
       normalizeAppSettings({
@@ -28,6 +32,8 @@ describe("normalizeAppSettings", () => {
         addHeadingToNewNotes: true,
         hidePropertiesByDefault: true,
         showLineNumbers: true,
+        editorFontFamily: "arimo",
+        editorFontSize: 12,
       })
     ).toEqual({
       tabFolderDisplay: "never",
@@ -36,6 +42,8 @@ describe("normalizeAppSettings", () => {
       addHeadingToNewNotes: true,
       hidePropertiesByDefault: true,
       showLineNumbers: true,
+      editorFontFamily: "arimo",
+      editorFontSize: 12,
     });
   });
 
@@ -95,5 +103,33 @@ describe("normalizeAppSettings", () => {
   it("accepts both boolean showLineNumbers values", () => {
     expect(normalizeAppSettings({ showLineNumbers: true }).showLineNumbers).toBe(true);
     expect(normalizeAppSettings({ showLineNumbers: false }).showLineNumbers).toBe(false);
+  });
+
+  it("falls back to the default for an invalid editorFontFamily value", () => {
+    expect(normalizeAppSettings({ editorFontFamily: "comic-sans" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ editorFontFamily: 1 })).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("accepts every valid editorFontFamily value", () => {
+    expect(normalizeAppSettings({ editorFontFamily: "system-ui" }).editorFontFamily).toBe("system-ui");
+    expect(normalizeAppSettings({ editorFontFamily: "roboto" }).editorFontFamily).toBe("roboto");
+    expect(normalizeAppSettings({ editorFontFamily: "arimo" }).editorFontFamily).toBe("arimo");
+    expect(normalizeAppSettings({ editorFontFamily: "monospace" }).editorFontFamily).toBe("monospace");
+  });
+
+  it("falls back to the default for a non-numeric editorFontSize", () => {
+    expect(normalizeAppSettings({ editorFontSize: "large" }).editorFontSize).toBe(
+      DEFAULT_APP_SETTINGS.editorFontSize
+    );
+    expect(normalizeAppSettings({ editorFontSize: NaN }).editorFontSize).toBe(DEFAULT_APP_SETTINGS.editorFontSize);
+  });
+
+  it("clamps editorFontSize to the allowed range", () => {
+    expect(normalizeAppSettings({ editorFontSize: 2 }).editorFontSize).toBe(10);
+    expect(normalizeAppSettings({ editorFontSize: 999 }).editorFontSize).toBe(28);
+  });
+
+  it("rounds a fractional editorFontSize", () => {
+    expect(normalizeAppSettings({ editorFontSize: 15.6 }).editorFontSize).toBe(16);
   });
 });

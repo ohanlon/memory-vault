@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import type { AppSettings, PluginManifest, PluginPermissionsFile, TabFolderDisplay, ThemeSetting } from "@shared/types";
+import type {
+  AppSettings,
+  EditorFontFamily,
+  PluginManifest,
+  PluginPermissionsFile,
+  TabFolderDisplay,
+  ThemeSetting,
+} from "@shared/types";
+import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "@shared/editorFonts";
 
 interface Props {
   settings: AppSettings;
@@ -128,6 +136,31 @@ export function SettingsView({ settings, onChange }: Props) {
             type="checkbox"
             checked={settings.showLineNumbers}
             onChange={(e) => onChange({ ...settings, showLineNumbers: e.target.checked })}
+          />
+        </div>
+        <div className="settings-row">
+          <label htmlFor="setting-editor-font-family">Font</label>
+          <select
+            id="setting-editor-font-family"
+            value={settings.editorFontFamily}
+            onChange={(e) => onChange({ ...settings, editorFontFamily: e.target.value as EditorFontFamily })}
+          >
+            {EDITOR_FONT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="settings-row">
+          <label htmlFor="setting-editor-font-size">Font size</label>
+          <input
+            id="setting-editor-font-size"
+            type="number"
+            min={MIN_EDITOR_FONT_SIZE}
+            max={MAX_EDITOR_FONT_SIZE}
+            value={settings.editorFontSize}
+            onChange={(e) => onChange({ ...settings, editorFontSize: Number(e.target.value) })}
           />
         </div>
       </section>

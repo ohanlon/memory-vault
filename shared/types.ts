@@ -153,6 +153,9 @@ export type TabFolderDisplay = "never" | "hover" | "always";
 /** "system" follows the OS light/dark preference. */
 export type ThemeSetting = "dark" | "light" | "system";
 
+/** Font choices for the editing pane — a curated set so every option renders consistently. */
+export type EditorFontFamily = "system-ui" | "roboto" | "arimo" | "monospace";
+
 export interface AppSettings {
   tabFolderDisplay: TabFolderDisplay;
   /** Stack-relative folder new daily notes are created in. */
@@ -164,6 +167,10 @@ export interface AppSettings {
   hidePropertiesByDefault: boolean;
   /** Whether the editor shows line numbers in the gutter. */
   showLineNumbers: boolean;
+  /** Font family used in the editing pane. */
+  editorFontFamily: EditorFontFamily;
+  /** Font size (px) used in the editing pane. */
+  editorFontSize: number;
 }
 
 export interface DailyNoteResult {
