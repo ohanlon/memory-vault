@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
 import { buildFileTree, isSameOrDescendant } from "@shared/fileTree";
 import type { TreeNode } from "@shared/fileTree";
@@ -11,6 +11,10 @@ interface Props {
   folders: FolderEntry[];
   activePath: string | null;
   renamingPath: string | null;
+  /** Relative paths of folders currently collapsed — persisted per stack by the caller. */
+  collapsedFolders: string[];
+  onToggleFolder: (relativePath: string) => void;
+  onExpandFolders: (relativePaths: string[]) => void;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
   onRename: (note: Note) => void;
@@ -101,6 +105,9 @@ export function FileTree({
   folders,
   activePath,
   renamingPath,
+  collapsedFolders,
+  onToggleFolder,
+  onExpandFolders,
   onSelect,
   onDelete,
   onRename,
@@ -114,7 +121,7 @@ export function FileTree({
   onMoveNote,
   onMoveFolder,
 }: Props) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const collapsed = useMemo(() => new Set(collapsedFolders), [collapsedFolders]);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const tree = buildFileTree(notes, folders, root);
@@ -129,20 +136,11 @@ export function FileTree({
     if (!relativePath) return;
     const ancestors = ancestorRelativePaths(relativePath.split(/[\\/]/).filter(Boolean));
     if (ancestors.length === 0) return;
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      for (const p of ancestors) next.delete(p);
-      return next;
-    });
-  }, [renamingPath, notes, folders]);
+    onExpandFolders(ancestors);
+  }, [renamingPath, notes, folders, onExpandFolders]);
 
   function toggle(relativePath: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(relativePath)) next.delete(relativePath);
-      else next.add(relativePath);
-      return next;
-    });
+    onToggleFolder(relativePath);
   }
 
   function handleDrop(e: DragEvent, destDir: string) {

@@ -13,6 +13,7 @@ import type {
   SearchOptions,
   StackEntry,
   StackIndex,
+  WorkspaceState,
 } from "../shared/types";
 
 const api = {
@@ -60,6 +61,10 @@ const api = {
     ipcRenderer.invoke("stack:readPropertySchema"),
   savePropertySchema: (properties: PropertyDef[]): Promise<PropertyDef[]> =>
     ipcRenderer.invoke("stack:savePropertySchema", properties),
+  readWorkspaceState: (): Promise<WorkspaceState> =>
+    ipcRenderer.invoke("stack:readWorkspaceState"),
+  saveWorkspaceState: (state: WorkspaceState): Promise<boolean> =>
+    ipcRenderer.invoke("stack:saveWorkspaceState", state),
   readLayoutPrefs: (): Promise<LayoutPrefs> => ipcRenderer.invoke("layout:read"),
   saveLayoutPrefs: (prefs: LayoutPrefs): Promise<boolean> => ipcRenderer.invoke("layout:save", prefs),
   readAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke("settings:read"),

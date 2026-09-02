@@ -12,6 +12,7 @@ import type {
   SearchOptions,
   StackEntry,
   StackIndex,
+  WorkspaceState,
 } from "@shared/types";
 
 export interface MemoryStackAPI {
@@ -39,6 +40,8 @@ export interface MemoryStackAPI {
   saveNoteProperties(absPath: string, properties: Record<string, unknown>): Promise<boolean>;
   readPropertySchema(): Promise<PropertyDef[]>;
   savePropertySchema(properties: PropertyDef[]): Promise<PropertyDef[]>;
+  readWorkspaceState(): Promise<WorkspaceState>;
+  saveWorkspaceState(state: WorkspaceState): Promise<boolean>;
   readLayoutPrefs(): Promise<LayoutPrefs>;
   saveLayoutPrefs(prefs: LayoutPrefs): Promise<boolean>;
   readAppSettings(): Promise<AppSettings>;

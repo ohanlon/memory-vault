@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { GRAPH_TAB_ID, SETTINGS_TAB_ID, addTab, reconcileTabs, removeTab, renameTab } from "./tabs";
+import {
+  GRAPH_TAB_ID,
+  SETTINGS_TAB_ID,
+  addTab,
+  reconcileTabs,
+  relativePathToTabId,
+  removeTab,
+  renameTab,
+  tabIdToRelativePath,
+} from "./tabs";
 
 describe("addTab", () => {
   it("appends a new path", () => {
@@ -83,5 +92,42 @@ describe("reconcileTabs", () => {
   it("never drops the settings tab, even though it isn't a note path", () => {
     expect(reconcileTabs(["a", SETTINGS_TAB_ID], new Set(["a"]))).toEqual(["a", SETTINGS_TAB_ID]);
     expect(reconcileTabs([SETTINGS_TAB_ID], new Set())).toEqual([SETTINGS_TAB_ID]);
+  });
+});
+
+const notes = [
+  { path: "/vault/a.md", relativePath: "a.md" },
+  { path: "/vault/sub/b.md", relativePath: "sub\\b.md" },
+];
+
+describe("tabIdToRelativePath", () => {
+  it("resolves an absolute note path to its relative path", () => {
+    expect(tabIdToRelativePath("/vault/a.md", notes)).toBe("a.md");
+    expect(tabIdToRelativePath("/vault/sub/b.md", notes)).toBe("sub\\b.md");
+  });
+
+  it("passes sentinel tab ids through unchanged", () => {
+    expect(tabIdToRelativePath(GRAPH_TAB_ID, notes)).toBe(GRAPH_TAB_ID);
+    expect(tabIdToRelativePath(SETTINGS_TAB_ID, notes)).toBe(SETTINGS_TAB_ID);
+  });
+
+  it("returns null for a path with no matching note", () => {
+    expect(tabIdToRelativePath("/vault/missing.md", notes)).toBeNull();
+  });
+});
+
+describe("relativePathToTabId", () => {
+  it("resolves a relative path to its absolute note path", () => {
+    expect(relativePathToTabId("a.md", notes)).toBe("/vault/a.md");
+    expect(relativePathToTabId("sub\\b.md", notes)).toBe("/vault/sub/b.md");
+  });
+
+  it("passes sentinel tab ids through unchanged", () => {
+    expect(relativePathToTabId(GRAPH_TAB_ID, notes)).toBe(GRAPH_TAB_ID);
+    expect(relativePathToTabId(SETTINGS_TAB_ID, notes)).toBe(SETTINGS_TAB_ID);
+  });
+
+  it("returns null for a relative path with no matching note", () => {
+    expect(relativePathToTabId("missing.md", notes)).toBeNull();
   });
 });

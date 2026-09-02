@@ -123,6 +123,17 @@ export interface LayoutPrefs {
   rightPanelWidth: number;
 }
 
+// Persisted per-stack (under <stackRoot>/.cairn/workspace.json) so reopening
+// a vault restores which folders were expanded and which notes were open.
+export interface WorkspaceState {
+  /** Relative paths of folders the user has collapsed in the file tree. */
+  collapsedFolders: string[];
+  /** Relative paths (or tab sentinel ids, e.g. "@graph") of open tabs, in order. */
+  openTabs: string[];
+  /** Relative path (or tab sentinel id) of the active tab, if any. */
+  activeTab: string | null;
+}
+
 /** How a note's parent folder path is shown in its tab header. */
 export type TabFolderDisplay = "never" | "hover" | "always";
 

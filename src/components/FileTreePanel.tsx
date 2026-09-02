@@ -8,6 +8,9 @@ interface Props {
   folders: FolderEntry[];
   activePath: string | null;
   renamingPath: string | null;
+  collapsedFolders: string[];
+  onToggleFolder: (relativePath: string) => void;
+  onExpandFolders: (relativePaths: string[]) => void;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
   onRename: (note: Note) => void;
@@ -29,6 +32,9 @@ export function FileTreePanel({
   folders,
   activePath,
   renamingPath,
+  collapsedFolders,
+  onToggleFolder,
+  onExpandFolders,
   onSelect,
   onDelete,
   onRename,
@@ -51,6 +57,9 @@ export function FileTreePanel({
         folders={folders}
         activePath={activePath}
         renamingPath={renamingPath}
+        collapsedFolders={collapsedFolders}
+        onToggleFolder={onToggleFolder}
+        onExpandFolders={onExpandFolders}
         onSelect={onSelect}
         onDelete={onDelete}
         onRename={onRename}

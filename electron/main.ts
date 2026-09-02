@@ -10,6 +10,8 @@ import { titleFromPath } from "../shared/parseNote";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
+import { readWorkspaceState, writeWorkspaceState } from "./workspaceState";
+import { DEFAULT_WORKSPACE_STATE } from "../shared/workspaceState";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
 import { isAllowedExternalUrl } from "./domainPolicy";
@@ -22,7 +24,15 @@ import {
   revokePermission,
   writePluginPermissionsFile,
 } from "./pluginPermissions";
-import type { AppSettings, LayoutPrefs, PluginPermission, PropertyDef, SearchOptions, ThemeSetting } from "../shared/types";
+import type {
+  AppSettings,
+  LayoutPrefs,
+  PluginPermission,
+  PropertyDef,
+  SearchOptions,
+  ThemeSetting,
+  WorkspaceState,
+} from "../shared/types";
 
 // Kept in step with the --bg-base/--text-primary custom properties in
 // src/index.css for each theme, since the native titleBarOverlay buttons
@@ -244,6 +254,17 @@ ipcMain.handle("stack:savePropertySchema", async (_event, properties: PropertyDe
   if (!currentRoot) throw new Error("No stack loaded");
   writePropertySchema(currentRoot, properties);
   return properties;
+});
+
+ipcMain.handle("stack:readWorkspaceState", async () => {
+  if (!currentRoot) return DEFAULT_WORKSPACE_STATE;
+  return readWorkspaceState(currentRoot);
+});
+
+ipcMain.handle("stack:saveWorkspaceState", async (_event, state: WorkspaceState) => {
+  if (!currentRoot) throw new Error("No stack loaded");
+  writeWorkspaceState(currentRoot, state);
+  return true;
 });
 
 ipcMain.handle("layout:read", async () => {

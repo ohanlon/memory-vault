@@ -15,8 +15,10 @@ import {
   GRAPH_TAB_ID,
   SETTINGS_TAB_ID,
   reconcileTabs,
+  relativePathToTabId,
   removeTab,
   renameTab,
+  tabIdToRelativePath,
 } from "./stack/tabs";
 import { stripMdExtension } from "@shared/displayName";
 import { isSameOrDescendant } from "@shared/fileTree";
@@ -86,6 +88,15 @@ export default function App() {
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
+  // Which stack root a workspace-state restore has been kicked off for, so a
+  // refresh() of the same stack doesn't retrigger it — reset to null when the
+  // stack closes so reopening it (or a different one) restores again.
+  const restoreStartedRootRef = useRef<string | null>(null);
+  // Which stack root restored data has actually landed for — gates saving so
+  // the debounced save effect can't write back stale pre-restore state.
+  const restoredReadyRootRef = useRef<string | null>(null);
+  const workspaceSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [stackContextMenu, setStackContextMenu] = useState<StackContextMenuState | null>(null);
   const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
@@ -191,6 +202,76 @@ export default function App() {
     setOpenPaths((paths) => reconcileTabs(paths, existing));
     setActivePath((path) => (path === null || path === GRAPH_TAB_ID || existing.has(path) ? path : null));
   }, [notes]);
+
+  // Drop collapsed-folder entries for folders that no longer exist. Returns
+  // the same array reference when nothing changed (folders reloads on every
+  // refresh()) so this doesn't retrigger the debounced save effect below.
+  useEffect(() => {
+    const existing = new Set(folders.map((f) => f.relativePath));
+    setCollapsedFolders((paths) => {
+      const filtered = paths.filter((p) => existing.has(p));
+      return filtered.length === paths.length ? paths : filtered;
+    });
+  }, [folders]);
+
+  // Restores open tabs/collapsed folders from <stack>/.cairn/workspace.json
+  // whenever a (newly opened or reopened) stack finishes loading. Guarded by
+  // restoreStartedRootRef so a refresh() of the same stack — triggered on
+  // every note create/save/delete — doesn't stomp on the current session's tabs.
+  useEffect(() => {
+    if (!root || restoreStartedRootRef.current === root) return;
+    restoreStartedRootRef.current = root;
+    window.memoryStack.readWorkspaceState().then((state) => {
+      const restoredTabs = state.openTabs
+        .map((rel) => relativePathToTabId(rel, notes))
+        .filter((id): id is string => id !== null);
+      setOpenPaths(restoredTabs);
+      const restoredActive = state.activeTab ? relativePathToTabId(state.activeTab, notes) : null;
+      setActivePath(restoredActive && restoredTabs.includes(restoredActive) ? restoredActive : restoredTabs[0] ?? null);
+      const folderRelPaths = new Set(folders.map((f) => f.relativePath));
+      setCollapsedFolders(state.collapsedFolders.filter((p) => folderRelPaths.has(p)));
+      restoredReadyRootRef.current = root;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [root]);
+
+  // A stack was closed — clear both guards so reopening it (or a different
+  // stack) triggers a fresh restore instead of being skipped as a no-op.
+  useEffect(() => {
+    if (root === null) {
+      restoreStartedRootRef.current = null;
+      restoredReadyRootRef.current = null;
+    }
+  }, [root]);
+
+  // Persists open tabs/active tab/collapsed folders back to workspace.json,
+  // debounced so rapid tab switching doesn't spam disk writes. Gated on
+  // restoredReadyRootRef so this can't fire with stale state before the
+  // restore above has actually landed.
+  useEffect(() => {
+    if (!root || restoredReadyRootRef.current !== root) return;
+    if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
+    workspaceSaveTimer.current = setTimeout(() => {
+      const openTabs = openPaths
+        .map((id) => tabIdToRelativePath(id, notes))
+        .filter((p): p is string => p !== null);
+      const activeTab = activePath ? tabIdToRelativePath(activePath, notes) : null;
+      window.memoryStack.saveWorkspaceState({ collapsedFolders, openTabs, activeTab });
+    }, 300);
+    return () => {
+      if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
+    };
+  }, [root, openPaths, activePath, collapsedFolders, notes]);
+
+  const toggleFolder = useCallback((relativePath: string) => {
+    setCollapsedFolders((prev) =>
+      prev.includes(relativePath) ? prev.filter((p) => p !== relativePath) : [...prev, relativePath]
+    );
+  }, []);
+
+  const expandFolders = useCallback((relativePaths: string[]) => {
+    setCollapsedFolders((prev) => prev.filter((p) => !relativePaths.includes(p)));
+  }, []);
 
   const openTab = useCallback((path: string) => {
     setOpenPaths((paths) => addTabPath(paths, path));
@@ -541,6 +622,9 @@ export default function App() {
               folders,
               activePath,
               renamingPath,
+              collapsedFolders,
+              onToggleFolder: toggleFolder,
+              onExpandFolders: expandFolders,
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
               onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),

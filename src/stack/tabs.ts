@@ -39,3 +39,24 @@ export function reconcileTabs(paths: string[], existingPaths: ReadonlySet<string
   );
   return filtered.length === paths.length ? paths : filtered;
 }
+
+interface NoteLike {
+  path: string;
+  relativePath: string;
+}
+
+/**
+ * Converts an open-tab id (an absolute note path or a sentinel id) to the
+ * stack-relative form persisted in workspace state, so saved state stays
+ * valid if the vault is relocated. Returns null when the note can't be found.
+ */
+export function tabIdToRelativePath(tabId: string, notes: NoteLike[]): string | null {
+  if (tabId === GRAPH_TAB_ID || tabId === SETTINGS_TAB_ID) return tabId;
+  return notes.find((n) => n.path === tabId)?.relativePath ?? null;
+}
+
+/** The inverse of tabIdToRelativePath — resolves persisted relative state back to a usable tab id. */
+export function relativePathToTabId(relativePath: string, notes: NoteLike[]): string | null {
+  if (relativePath === GRAPH_TAB_ID || relativePath === SETTINGS_TAB_ID) return relativePath;
+  return notes.find((n) => n.relativePath === relativePath)?.path ?? null;
+}
