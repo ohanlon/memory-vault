@@ -5,6 +5,7 @@ import { EditorView } from "@codemirror/view";
 import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { livePreview, selectionLinkMenu, type LinkSelectionRequest } from "../editor/livePreview";
+import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -115,6 +116,8 @@ export function EditorPane({
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
       selectionLinkMenu(setLinkMenu),
+      loremIpsumExpand(),
+      noCurlyBraceAutoClose(),
     ],
     [onSelectTitle, onOpenExternal, noteTitles]
   );
