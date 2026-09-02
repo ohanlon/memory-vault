@@ -76,6 +76,7 @@ export default function App() {
     propertySchema,
     loading,
     error,
+    fullyLoaded,
     openStackByEntry,
     addStack,
     removeStack,
@@ -84,6 +85,7 @@ export default function App() {
     refresh,
     saveSchema,
     saveNoteProperties,
+    loadFolderChildren,
   } = useStack();
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -203,16 +205,20 @@ export default function App() {
     setActivePath((path) => (path === null || path === GRAPH_TAB_ID || existing.has(path) ? path : null));
   }, [notes]);
 
-  // Drop collapsed-folder entries for folders that no longer exist. Returns
-  // the same array reference when nothing changed (folders reloads on every
-  // refresh()) so this doesn't retrigger the debounced save effect below.
+  // Drop collapsed-folder entries for folders that no longer exist. Gated on
+  // fullyLoaded so this doesn't run against the still-partial folder list
+  // lazy loading produces right after opening a stack — pruning against an
+  // incomplete list would permanently forget the collapsed state of any
+  // folder that hasn't been discovered yet. Returns the same array reference
+  // when nothing changed so this doesn't retrigger the debounced save effect.
   useEffect(() => {
+    if (!fullyLoaded) return;
     const existing = new Set(folders.map((f) => f.relativePath));
     setCollapsedFolders((paths) => {
       const filtered = paths.filter((p) => existing.has(p));
       return filtered.length === paths.length ? paths : filtered;
     });
-  }, [folders]);
+  }, [folders, fullyLoaded]);
 
   // Restores open tabs/collapsed folders from <stack>/.cairn/workspace.json
   // whenever a (newly opened or reopened) stack finishes loading. Guarded by
@@ -228,8 +234,19 @@ export default function App() {
       setOpenPaths(restoredTabs);
       const restoredActive = state.activeTab ? relativePathToTabId(state.activeTab, notes) : null;
       setActivePath(restoredActive && restoredTabs.includes(restoredActive) ? restoredActive : restoredTabs[0] ?? null);
-      const folderRelPaths = new Set(folders.map((f) => f.relativePath));
-      setCollapsedFolders(state.collapsedFolders.filter((p) => folderRelPaths.has(p)));
+      // Trust the persisted list as-is rather than filtering against `folders`
+      // here — at this point only the root level has loaded, so anything
+      // nested would look nonexistent and be dropped before it ever gets a
+      // chance to load; the fullyLoaded-gated reconcile effect prunes
+      // genuinely-stale entries once the whole vault is known.
+      setCollapsedFolders(state.collapsedFolders);
+      // Proactively load children for folders restored as expanded, so far as
+      // is known this early (root level) — deeper ones catch up once the
+      // background full scan lands.
+      const restoredCollapsed = new Set(state.collapsedFolders);
+      for (const folder of folders) {
+        if (!restoredCollapsed.has(folder.relativePath)) loadFolderChildren(folder);
+      }
       restoredReadyRootRef.current = root;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -263,15 +280,30 @@ export default function App() {
     };
   }, [root, openPaths, activePath, collapsedFolders, notes]);
 
-  const toggleFolder = useCallback((relativePath: string) => {
-    setCollapsedFolders((prev) =>
-      prev.includes(relativePath) ? prev.filter((p) => p !== relativePath) : [...prev, relativePath]
-    );
-  }, []);
+  const toggleFolder = useCallback(
+    (relativePath: string) => {
+      const isExpanding = collapsedFolders.includes(relativePath);
+      if (isExpanding) {
+        const folder = folders.find((f) => f.relativePath === relativePath);
+        if (folder) loadFolderChildren(folder);
+      }
+      setCollapsedFolders((prev) =>
+        prev.includes(relativePath) ? prev.filter((p) => p !== relativePath) : [...prev, relativePath]
+      );
+    },
+    [collapsedFolders, folders, loadFolderChildren]
+  );
 
-  const expandFolders = useCallback((relativePaths: string[]) => {
-    setCollapsedFolders((prev) => prev.filter((p) => !relativePaths.includes(p)));
-  }, []);
+  const expandFolders = useCallback(
+    (relativePaths: string[]) => {
+      for (const relativePath of relativePaths) {
+        const folder = folders.find((f) => f.relativePath === relativePath);
+        if (folder) loadFolderChildren(folder);
+      }
+      setCollapsedFolders((prev) => prev.filter((p) => !relativePaths.includes(p)));
+    },
+    [folders, loadFolderChildren]
+  );
 
   const openTab = useCallback((path: string) => {
     setOpenPaths((paths) => addTabPath(paths, path));

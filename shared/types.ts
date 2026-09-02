@@ -60,6 +60,19 @@ export interface StackIndex {
   folders: FolderEntry[];
 }
 
+/** A directory's immediate children — its direct subfolders and the notes directly inside it. */
+export interface FolderChildren {
+  folders: FolderEntry[];
+  notes: Note[];
+}
+
+/** Sent once the full-vault background scan (kicked off by stack:load) completes. */
+export interface FullScanEvent {
+  root: string;
+  notes: Note[];
+  folders: FolderEntry[];
+}
+
 export interface StackEntry {
   /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
   name: string;

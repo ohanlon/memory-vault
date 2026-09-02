@@ -42,6 +42,35 @@ export async function listMarkdownFiles(root: string): Promise<string[]> {
   return out;
 }
 
+/**
+ * Lists just the immediate children of one directory (its direct subfolders
+ * and the notes directly inside it, parsed) — not a recursive walk. Backs
+ * the file tree's expand-on-demand loading, so opening a large vault only
+ * pays the cost of reading/parsing notes in folders the user actually opens.
+ */
+export async function listDirChildren(
+  root: string,
+  dir: string
+): Promise<{ folders: FolderEntry[]; notes: Note[] }> {
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+  const folders: FolderEntry[] = [];
+  const notes: Note[] = [];
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      folders.push({ path: full, relativePath: path.relative(root, full) });
+    } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+      try {
+        notes.push(await readNote(root, full));
+      } catch {
+        // skip unreadable/unparseable file rather than failing the whole listing
+      }
+    }
+  }
+  return { folders, notes };
+}
+
 export async function readNote(root: string, absPath: string): Promise<Note> {
   const [raw, stat] = await Promise.all([
     fs.promises.readFile(absPath, "utf-8"),

@@ -3,6 +3,8 @@ import type {
   AppSettings,
   DailyNoteResult,
   FileChangeEvent,
+  FolderChildren,
+  FullScanEvent,
   LayoutPrefs,
   Note,
   PluginManifest,
@@ -20,6 +22,14 @@ const api = {
   pickStack: (): Promise<string | null> => ipcRenderer.invoke("stack:pick"),
   loadStack: (root: string): Promise<StackIndex> =>
     ipcRenderer.invoke("stack:load", root),
+  reloadStack: (): Promise<FolderChildren> => ipcRenderer.invoke("stack:reload"),
+  listFolderChildren: (dir: string): Promise<FolderChildren> =>
+    ipcRenderer.invoke("stack:listFolderChildren", dir),
+  onFullScan: (cb: (event: FullScanEvent) => void): (() => void) => {
+    const listener = (_e: unknown, event: FullScanEvent) => cb(event);
+    ipcRenderer.on("stack:full-scan", listener);
+    return () => ipcRenderer.removeListener("stack:full-scan", listener);
+  },
   listStacks: (): Promise<StackEntry[]> => ipcRenderer.invoke("stacks:list"),
   addStack: (name: string, root: string): Promise<StackEntry[]> =>
     ipcRenderer.invoke("stacks:add", name, root),

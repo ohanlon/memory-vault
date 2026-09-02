@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
-import { listFolders, loadStack, readNote, watchStack } from "./stack";
+import { listDirChildren, listFolders, loadStack, readNote, watchStack } from "./stack";
 import { runSearch } from "./search";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import { titleFromPath } from "../shared/parseNote";
@@ -174,7 +174,10 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
   stopPluginWindows();
   cancelAllSearches();
   currentRoot = root;
-  const [notes, folders] = await Promise.all([loadStack(root), listFolders(root)]);
+  // Only the root level is read up front so opening a large vault is fast;
+  // the file tree fetches each folder's children on demand as it's expanded
+  // (see stack:listFolderChildren) via listDirChildren, a non-recursive listing.
+  const { folders, notes } = await listDirChildren(root, root);
 
   currentWatcher = watchStack(root, (change) => {
     win?.webContents.send("stack:file-changed", change);
@@ -182,7 +185,27 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
 
   pluginWindows = discoverPlugins(root).map((plugin) => createPluginWindow(plugin, pluginPermissionsFilePath()));
 
+  // Graph/search/backlinks need the whole vault, not just what's been
+  // expanded, so a full recursive scan still runs — just in the background,
+  // without blocking the fast open above.
+  Promise.all([loadStack(root), listFolders(root)]).then(([allNotes, allFolders]) => {
+    if (currentRoot === root) {
+      win?.webContents.send("stack:full-scan", { root, notes: allNotes, folders: allFolders });
+    }
+  });
+
   return { root, notes, folders };
+});
+
+ipcMain.handle("stack:listFolderChildren", async (_event, dir: string) => {
+  if (!currentRoot) throw new Error("No stack loaded");
+  return listDirChildren(currentRoot, dir);
+});
+
+ipcMain.handle("stack:reload", async () => {
+  if (!currentRoot) throw new Error("No stack loaded");
+  const [notes, folders] = await Promise.all([loadStack(currentRoot), listFolders(currentRoot)]);
+  return { notes, folders };
 });
 
 ipcMain.handle("search:start", async (_event, options: SearchOptions) => {

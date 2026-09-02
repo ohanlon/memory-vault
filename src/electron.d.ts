@@ -2,6 +2,8 @@ import type {
   AppSettings,
   DailyNoteResult,
   FileChangeEvent,
+  FolderChildren,
+  FullScanEvent,
   LayoutPrefs,
   Note,
   PluginManifest,
@@ -18,6 +20,9 @@ import type {
 export interface MemoryStackAPI {
   pickStack(): Promise<string | null>;
   loadStack(root: string): Promise<StackIndex>;
+  reloadStack(): Promise<FolderChildren>;
+  listFolderChildren(dir: string): Promise<FolderChildren>;
+  onFullScan(cb: (event: FullScanEvent) => void): () => void;
   listStacks(): Promise<StackEntry[]>;
   addStack(name: string, root: string): Promise<StackEntry[]>;
   removeStack(name: string): Promise<StackEntry[]>;
