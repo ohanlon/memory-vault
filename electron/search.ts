@@ -16,7 +16,7 @@ export async function runSearch(
   onResult: (result: SearchFileResult) => void,
   isCancelled: () => boolean
 ): Promise<void> {
-  const files = listMarkdownFiles(root);
+  const files = await listMarkdownFiles(root);
 
   for (const file of files) {
     if (isCancelled()) return;

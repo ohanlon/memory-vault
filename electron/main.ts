@@ -164,8 +164,7 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
   stopPluginWindows();
   cancelAllSearches();
   currentRoot = root;
-  const notes = loadStack(root);
-  const folders = listFolders(root);
+  const [notes, folders] = await Promise.all([loadStack(root), listFolders(root)]);
 
   currentWatcher = watchStack(root, (change) => {
     win?.webContents.send("stack:file-changed", change);
@@ -384,16 +383,16 @@ ipcMain.handle(
     fs.renameSync(absPath, newPath);
 
     // Rewrite [[oldTitle]] references (and aliased/headered variants) across the stack.
-    const notes = loadStack(currentRoot);
+    const notes = await loadStack(currentRoot);
     const linkRe = new RegExp(
       `\\[\\[${escapeRegExp(oldTitle)}((?:#[^\\]|]+)?(?:\\|[^\\]]+)?)\\]\\]`,
       "g"
     );
     for (const note of notes) {
       if (!note.content.includes(`[[${oldTitle}`)) continue;
-      const raw = fs.readFileSync(note.path, "utf-8");
+      const raw = await fs.promises.readFile(note.path, "utf-8");
       const updated = raw.replace(linkRe, (_m, suffix) => `[[${newTitle}${suffix}]]`);
-      if (updated !== raw) fs.writeFileSync(note.path, updated, "utf-8");
+      if (updated !== raw) await fs.promises.writeFile(note.path, updated, "utf-8");
     }
 
     return newPath;

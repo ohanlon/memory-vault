@@ -4,47 +4,49 @@ import chokidar, { type FSWatcher } from "chokidar";
 import { parseNote } from "../shared/parseNote";
 import type { FileChangeEvent, FolderEntry, Note } from "../shared/types";
 
-function walkDir(root: string, dir: string, out: string[]): void {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+async function walkDir(root: string, dir: string, out: string[]): Promise<void> {
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.name.startsWith(".")) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      walkDir(root, full, out);
+      await walkDir(root, full, out);
     } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
       out.push(full);
     }
   }
 }
 
-function walkDirs(root: string, dir: string, out: FolderEntry[]): void {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+async function walkDirs(root: string, dir: string, out: FolderEntry[]): Promise<void> {
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.name.startsWith(".")) continue;
     if (entry.isDirectory()) {
       const full = path.join(dir, entry.name);
       out.push({ path: full, relativePath: path.relative(root, full) });
-      walkDirs(root, full, out);
+      await walkDirs(root, full, out);
     }
   }
 }
 
-export function listFolders(root: string): FolderEntry[] {
+export async function listFolders(root: string): Promise<FolderEntry[]> {
   const out: FolderEntry[] = [];
-  walkDirs(root, root, out);
+  await walkDirs(root, root, out);
   return out;
 }
 
 /** All markdown files under root, excluding dotfolders (e.g. .cairn) and dotfiles. */
-export function listMarkdownFiles(root: string): string[] {
+export async function listMarkdownFiles(root: string): Promise<string[]> {
   const out: string[] = [];
-  walkDir(root, root, out);
+  await walkDir(root, root, out);
   return out;
 }
 
-export function readNote(root: string, absPath: string): Note {
-  const raw = fs.readFileSync(absPath, "utf-8");
-  const stat = fs.statSync(absPath);
+export async function readNote(root: string, absPath: string): Promise<Note> {
+  const [raw, stat] = await Promise.all([
+    fs.promises.readFile(absPath, "utf-8"),
+    fs.promises.stat(absPath),
+  ]);
   return parseNote({
     path: absPath,
     relativePath: path.relative(root, absPath),
@@ -53,12 +55,15 @@ export function readNote(root: string, absPath: string): Note {
   });
 }
 
-export function loadStack(root: string): Note[] {
-  const files = listMarkdownFiles(root);
+// Reads and parses every note asynchronously (fs.promises I/O runs off the
+// main thread) so loading a large vault doesn't block the main process —
+// and with it every window's IPC and rendering — for the whole walk.
+export async function loadStack(root: string): Promise<Note[]> {
+  const files = await listMarkdownFiles(root);
   const notes: Note[] = [];
   for (const file of files) {
     try {
-      notes.push(readNote(root, file));
+      notes.push(await readNote(root, file));
     } catch {
       // skip unreadable/unparseable file rather than failing the whole stack load
     }
