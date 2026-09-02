@@ -498,6 +498,9 @@ export default function App() {
           onToggleRightPanel={() => pluginRegistry.runCommand("view.toggleRightPanel")}
           showRightPanelToggle={isRegionPresent("right-sidebar")}
           regionId={regionId("title-bar")}
+          activeName={activeName}
+          root={root}
+          onSwitchStack={() => pluginRegistry.runCommand("stack.switchStack")}
         />
       )}
       <div
@@ -533,7 +536,6 @@ export default function App() {
             views={pluginRegistry.getViews("left-sidebar")}
             viewProps={{
               root,
-              activeName,
               loading,
               notes,
               folders,
@@ -553,7 +555,6 @@ export default function App() {
                 pluginRegistry.runCommand("stack.moveNote", notePath, destDir),
               onMoveFolder: (folderPath: string, destDir: string) =>
                 pluginRegistry.runCommand("stack.moveFolder", folderPath, destDir),
-              onSwitchStack: () => pluginRegistry.runCommand("stack.switchStack"),
             }}
           />
         )}

@@ -163,12 +163,42 @@ body {
   border-bottom: 1px solid var(--border-divider);
   display: flex;
   align-items: stretch;
-  justify-content: flex-end;
+  justify-content: space-between;
+  padding-left: 12px;
   /* Reserves space for the native minimize/maximize/close buttons the OS
      draws via titleBarOverlay (electron/main.ts) — their width isn't
      queryable from CSS, so this is a fixed approximation of the default
      Windows 3-button control cluster; keep in step with that config. */
   padding-right: 138px;
+}
+
+.titlebar-stack {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.titlebar-stack-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.titlebar-switch-btn {
+  -webkit-app-region: no-drag;
+  background: none;
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.titlebar-switch-btn:hover {
+  background: var(--bg-control-hover);
 }
 
 .titlebar-collapse-btn {
@@ -195,8 +225,7 @@ body {
   gap: 12px;
 }
 
-.empty-state button:not(.context-menu-item),
-.sidebar-header button {
+.empty-state button:not(.context-menu-item) {
   background: var(--bg-control);
   color: var(--text-primary);
   border: 1px solid var(--border-control);
@@ -205,8 +234,7 @@ body {
   cursor: pointer;
 }
 
-.empty-state button:not(.context-menu-item):hover,
-.sidebar-header button:hover {
+.empty-state button:not(.context-menu-item):hover {
   background: var(--bg-control-hover);
 }
 
@@ -346,16 +374,6 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  font-weight: 600;
-  border-top: 1px solid var(--border-divider);
-  margin-top: auto;
 }
 
 .loading {
