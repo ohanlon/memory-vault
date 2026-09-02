@@ -8,6 +8,8 @@ import type {
   PluginPermission,
   PluginPermissionsFile,
   PropertyDef,
+  SearchFileResult,
+  SearchOptions,
   StackEntry,
   StackIndex,
 } from "@shared/types";
@@ -46,6 +48,10 @@ export interface MemoryStackAPI {
   listPlugins(): Promise<PluginManifest[]>;
   getPluginPermissions(): Promise<PluginPermissionsFile>;
   revokePluginPermission(pluginId: string, permission: PluginPermission): Promise<boolean>;
+  startSearch(options: SearchOptions): Promise<string>;
+  cancelSearch(searchId: string): Promise<boolean>;
+  onSearchResult(cb: (event: { searchId: string; result: SearchFileResult }) => void): () => void;
+  onSearchDone(cb: (event: { searchId: string }) => void): () => void;
 }
 
 declare global {

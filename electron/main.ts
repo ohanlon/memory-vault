@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
 import { listFolders, loadStack, readNote, watchStack } from "./stack";
+import { runSearch } from "./search";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import { titleFromPath } from "../shared/parseNote";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
@@ -21,7 +22,7 @@ import {
   revokePermission,
   writePluginPermissionsFile,
 } from "./pluginPermissions";
-import type { AppSettings, LayoutPrefs, PluginPermission, PropertyDef, ThemeSetting } from "../shared/types";
+import type { AppSettings, LayoutPrefs, PluginPermission, PropertyDef, SearchOptions, ThemeSetting } from "../shared/types";
 
 // Kept in step with the --bg-base/--text-primary custom properties in
 // src/index.css for each theme, since the native titleBarOverlay buttons
@@ -46,6 +47,9 @@ let win: BrowserWindow | null = null;
 let currentWatcher: FSWatcher | null = null;
 let currentRoot: string | null = null;
 let pluginWindows: BrowserWindow[] = [];
+let searchCounter = 0;
+const activeSearchIds = new Set<string>();
+const cancelledSearchIds = new Set<string>();
 
 function stacksFilePath(): string {
   return path.join(app.getPath("userData"), "stacks.json");
@@ -104,6 +108,10 @@ function stopWatching() {
   }
 }
 
+function cancelAllSearches() {
+  for (const id of activeSearchIds) cancelledSearchIds.add(id);
+}
+
 function stopPluginWindows() {
   for (const pluginWindow of pluginWindows) pluginWindow.destroy();
   pluginWindows = [];
@@ -154,6 +162,7 @@ ipcMain.handle("stacks:rename", async (_event, oldName: string, newName: string)
 ipcMain.handle("stack:load", async (_event, root: string) => {
   stopWatching();
   stopPluginWindows();
+  cancelAllSearches();
   currentRoot = root;
   const notes = loadStack(root);
   const folders = listFolders(root);
@@ -165,6 +174,31 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
   pluginWindows = discoverPlugins(root).map((plugin) => createPluginWindow(plugin, pluginPermissionsFilePath()));
 
   return { root, notes, folders };
+});
+
+ipcMain.handle("search:start", async (_event, options: SearchOptions) => {
+  if (!currentRoot) throw new Error("No stack loaded");
+  const root = currentRoot;
+  const searchId = `search-${++searchCounter}`;
+  activeSearchIds.add(searchId);
+
+  runSearch(
+    root,
+    options,
+    (result) => win?.webContents.send("search:result", { searchId, result }),
+    () => cancelledSearchIds.has(searchId)
+  ).finally(() => {
+    activeSearchIds.delete(searchId);
+    cancelledSearchIds.delete(searchId);
+    win?.webContents.send("search:done", { searchId });
+  });
+
+  return searchId;
+});
+
+ipcMain.handle("search:cancel", async (_event, searchId: string) => {
+  cancelledSearchIds.add(searchId);
+  return true;
 });
 
 ipcMain.handle("plugin:list", async () => {

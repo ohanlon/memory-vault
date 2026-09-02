@@ -35,6 +35,13 @@ export function listFolders(root: string): FolderEntry[] {
   return out;
 }
 
+/** All markdown files under root, excluding dotfolders (e.g. .cairn) and dotfiles. */
+export function listMarkdownFiles(root: string): string[] {
+  const out: string[] = [];
+  walkDir(root, root, out);
+  return out;
+}
+
 export function readNote(root: string, absPath: string): Note {
   const raw = fs.readFileSync(absPath, "utf-8");
   const stat = fs.statSync(absPath);
@@ -47,8 +54,7 @@ export function readNote(root: string, absPath: string): Note {
 }
 
 export function loadStack(root: string): Note[] {
-  const files: string[] = [];
-  walkDir(root, root, files);
+  const files = listMarkdownFiles(root);
   const notes: Note[] = [];
   for (const file of files) {
     try {

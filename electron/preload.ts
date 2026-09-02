@@ -9,6 +9,8 @@ import type {
   PluginPermission,
   PluginPermissionsFile,
   PropertyDef,
+  SearchFileResult,
+  SearchOptions,
   StackEntry,
   StackIndex,
 } from "../shared/types";
@@ -75,6 +77,23 @@ const api = {
     const listener = (_e: unknown, change: FileChangeEvent) => cb(change);
     ipcRenderer.on("stack:file-changed", listener);
     return () => ipcRenderer.removeListener("stack:file-changed", listener);
+  },
+  startSearch: (options: SearchOptions): Promise<string> =>
+    ipcRenderer.invoke("search:start", options),
+  cancelSearch: (searchId: string): Promise<boolean> =>
+    ipcRenderer.invoke("search:cancel", searchId),
+  onSearchResult: (
+    cb: (event: { searchId: string; result: SearchFileResult }) => void
+  ): (() => void) => {
+    const listener = (_e: unknown, payload: { searchId: string; result: SearchFileResult }) =>
+      cb(payload);
+    ipcRenderer.on("search:result", listener);
+    return () => ipcRenderer.removeListener("search:result", listener);
+  },
+  onSearchDone: (cb: (event: { searchId: string }) => void): (() => void) => {
+    const listener = (_e: unknown, payload: { searchId: string }) => cb(payload);
+    ipcRenderer.on("search:done", listener);
+    return () => ipcRenderer.removeListener("search:done", listener);
   },
 };
 

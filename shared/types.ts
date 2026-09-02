@@ -171,3 +171,29 @@ export interface PluginPermissionState {
 }
 
 export type PluginPermissionsFile = Record<string, PluginPermissionState>;
+
+export type SearchMode = "plain" | "regex";
+
+export interface SearchOptions {
+  query: string;
+  mode: SearchMode;
+  /** Only applies when mode is "plain" — regex mode expects users to write their own \b. */
+  wholeWord: boolean;
+}
+
+export interface SearchMatch {
+  /** 1-based line number within the note's content. */
+  line: number;
+  lineText: string;
+  /** Character offsets of the match within lineText. */
+  start: number;
+  end: number;
+}
+
+export interface SearchFileResult {
+  /** Absolute path on disk */
+  path: string;
+  relativePath: string;
+  title: string;
+  matches: SearchMatch[];
+}

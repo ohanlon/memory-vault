@@ -2,6 +2,7 @@ import { pluginRegistry } from "./registry";
 import { ActivityBar } from "../components/ActivityBar";
 import { TitleBarChrome } from "../components/TitleBarChrome";
 import { FileTreePanel } from "../components/FileTreePanel";
+import { SearchPanel } from "../components/SearchPanel";
 import { EditorPane } from "../components/EditorPane";
 import { GraphPanel } from "../components/GraphPanel";
 import { LinksPanel } from "../components/LinksPanel";
@@ -18,6 +19,7 @@ export function registerCorePlugin(): void {
   pluginRegistry.registerRegion("left-ribbon", ActivityBar);
 
   pluginRegistry.registerView({ id: "files", region: "left-sidebar", title: "Files", component: FileTreePanel });
+  pluginRegistry.registerView({ id: "search", region: "left-sidebar", title: "Search", component: SearchPanel });
 
   pluginRegistry.registerView({ id: "links", region: "right-sidebar", title: "Links", component: LinksPanel });
   pluginRegistry.registerView({ id: "tags", region: "right-sidebar", title: "Tags", component: TagsPanel });
