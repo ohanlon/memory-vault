@@ -828,6 +828,18 @@ body {
   color: var(--text-quote);
 }
 
+/* GFM task list items ("- [ ] ...") — marked renders a bare <input type="checkbox">
+   with no wrapping class, so the checkbox otherwise shows up alongside the
+   <li>'s regular bullet marker instead of replacing it. */
+.markdown-preview li:has(input[type="checkbox"]) {
+  list-style: none;
+}
+
+.markdown-preview li:has(input[type="checkbox"]) input[type="checkbox"] {
+  margin-left: -1.4em;
+  margin-right: 0.4em;
+}
+
 .markdown-preview a {
   color: var(--accent-blue);
 }
