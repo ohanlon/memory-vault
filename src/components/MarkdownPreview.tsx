@@ -84,6 +84,30 @@ function createMarked(noteTitles: Set<string>) {
           return `<mark class="md-highlight">${escapeHtml(token.text as string)}</mark>`;
         },
       },
+      {
+        // marked's built-in GFM "del" rule already accepts a single "~" as an
+        // alternate strikethrough delimiter (`~~?`), so this has to run first
+        // and claim single-tilde spans — which it does naturally, since its
+        // regex requires a non-"~" character right after the opening "~" and
+        // therefore never matches at the start of a genuine "~~...~~" span.
+        name: "subscript",
+        level: "inline",
+        start(src: string) {
+          return src.indexOf("~");
+        },
+        tokenizer(src: string) {
+          const match = /^~([^~]+)~/.exec(src);
+          if (!match) return undefined;
+          return {
+            type: "subscript",
+            raw: match[0],
+            text: match[1],
+          };
+        },
+        renderer(token: Tokens.Generic) {
+          return `<sub>${escapeHtml(token.text as string)}</sub>`;
+        },
+      },
     ],
   });
 }

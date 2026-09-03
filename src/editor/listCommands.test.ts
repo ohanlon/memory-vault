@@ -7,6 +7,7 @@ import {
   linkCommandSpec,
   orderedListSpec,
   strikethroughSpec,
+  subscriptSpec,
   taskListSpec,
   unorderedListSpec,
 } from "./listCommands";
@@ -87,6 +88,20 @@ describe("highlightSpec", () => {
     const state = apply("", 0, 0, highlightSpec);
     expect(state.doc.toString()).toBe("====");
     expect(state.selection.main.head).toBe(2);
+  });
+});
+
+describe("subscriptSpec", () => {
+  it("wraps a selection in ~...~", () => {
+    const state = apply("H2O", 1, 2, subscriptSpec);
+    expect(state.doc.toString()).toBe("H~2~O");
+    expect(state.selection.main.head).toBe(4);
+  });
+
+  it("inserts an empty ~~ with the cursor inside when nothing is selected", () => {
+    const state = apply("", 0, 0, subscriptSpec);
+    expect(state.doc.toString()).toBe("~~");
+    expect(state.selection.main.head).toBe(1);
   });
 });
 

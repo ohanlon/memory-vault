@@ -33,6 +33,10 @@ export function highlightSpec(state: EditorState): TransactionSpec {
   return wrapSelectionSpec(state, "==");
 }
 
+export function subscriptSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "~");
+}
+
 // Checked in this order — a task item's "- [ ] " would also match the plain
 // bullet pattern, so the more specific task pattern has to be tried first.
 const TASK_MARKER_RE = /^(\s*)[-*+]\s+\[[ xX]\]\s+/;

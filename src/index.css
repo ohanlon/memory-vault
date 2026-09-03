@@ -759,6 +759,15 @@ body {
   background: var(--bg-highlight);
 }
 
+.cm-strikethrough {
+  text-decoration: line-through;
+}
+
+.cm-subscript {
+  vertical-align: sub;
+  font-size: smaller;
+}
+
 .cm-inline-code {
   font-family: "SFMono-Regular", Consolas, monospace;
   background: var(--bg-surface);
