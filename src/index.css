@@ -768,6 +768,11 @@ body {
   font-size: smaller;
 }
 
+.cm-superscript {
+  vertical-align: super;
+  font-size: smaller;
+}
+
 .cm-inline-code {
   font-family: "SFMono-Regular", Consolas, monospace;
   background: var(--bg-surface);

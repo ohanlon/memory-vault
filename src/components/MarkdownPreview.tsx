@@ -108,6 +108,25 @@ function createMarked(noteTitles: Set<string>) {
           return `<sub>${escapeHtml(token.text as string)}</sub>`;
         },
       },
+      {
+        name: "superscript",
+        level: "inline",
+        start(src: string) {
+          return src.indexOf("^");
+        },
+        tokenizer(src: string) {
+          const match = /^\^([^^]+)\^/.exec(src);
+          if (!match) return undefined;
+          return {
+            type: "superscript",
+            raw: match[0],
+            text: match[1],
+          };
+        },
+        renderer(token: Tokens.Generic) {
+          return `<sup>${escapeHtml(token.text as string)}</sup>`;
+        },
+      },
     ],
   });
 }

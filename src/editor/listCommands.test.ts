@@ -8,6 +8,7 @@ import {
   orderedListSpec,
   strikethroughSpec,
   subscriptSpec,
+  superscriptSpec,
   taskListSpec,
   unorderedListSpec,
 } from "./listCommands";
@@ -88,6 +89,20 @@ describe("highlightSpec", () => {
     const state = apply("", 0, 0, highlightSpec);
     expect(state.doc.toString()).toBe("====");
     expect(state.selection.main.head).toBe(2);
+  });
+});
+
+describe("superscriptSpec", () => {
+  it("wraps a selection in ^...^", () => {
+    const state = apply("x2", 1, 2, superscriptSpec);
+    expect(state.doc.toString()).toBe("x^2^");
+    expect(state.selection.main.head).toBe(4);
+  });
+
+  it("inserts an empty ^^ with the cursor inside when nothing is selected", () => {
+    const state = apply("", 0, 0, superscriptSpec);
+    expect(state.doc.toString()).toBe("^^");
+    expect(state.selection.main.head).toBe(1);
   });
 });
 

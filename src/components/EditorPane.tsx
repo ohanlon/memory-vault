@@ -211,6 +211,7 @@ export function EditorPane({
                 { label: "Bold", onClick: contextMenuRequest.makeBold },
                 { label: "Italic", onClick: contextMenuRequest.makeItalic },
                 { label: "Strikethrough", onClick: contextMenuRequest.makeStrikethrough },
+                { label: "Superscript", onClick: contextMenuRequest.makeSuperscript },
                 { label: "Subscript", onClick: contextMenuRequest.makeSubscript },
                 { label: "Highlight", onClick: contextMenuRequest.makeHighlight },
               ],

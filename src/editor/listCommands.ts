@@ -33,6 +33,10 @@ export function highlightSpec(state: EditorState): TransactionSpec {
   return wrapSelectionSpec(state, "==");
 }
 
+export function superscriptSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "^");
+}
+
 export function subscriptSpec(state: EditorState): TransactionSpec {
   return wrapSelectionSpec(state, "~");
 }

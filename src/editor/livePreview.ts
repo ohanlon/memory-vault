@@ -29,6 +29,7 @@ const HIGHLIGHT_RE = /==([^=]+)==/g;
 // consumed first (see the isFree/markConsumed pass below).
 const STRIKETHROUGH_RE = /~~([^~]+)~~/g;
 const SUBSCRIPT_RE = /~([^~]+)~/g;
+const SUPERSCRIPT_RE = /\^([^^]+)\^/g;
 const TAG_RE = /(?<![\w#/])#([a-zA-Z][\w-]*(?:\/[a-zA-Z][\w-]*)*)/g;
 
 export function titleFromHref(href: string): string {
@@ -233,6 +234,20 @@ function processLine(
       items.push(HIDE.range(lineFrom + e - 1, lineFrom + e));
     }
     items.push(Decoration.mark({ class: "cm-subscript" }).range(lineFrom + s + 1, lineFrom + e - 1));
+  }
+
+  // Superscript
+  for (const m of lineText.matchAll(SUPERSCRIPT_RE)) {
+    const s = m.index!;
+    const e = s + m[0].length;
+    if (!isFree(s, e)) continue;
+    markConsumed(s, e);
+    const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
+    if (!cursorHere) {
+      items.push(HIDE.range(lineFrom + s, lineFrom + s + 1));
+      items.push(HIDE.range(lineFrom + e - 1, lineFrom + e));
+    }
+    items.push(Decoration.mark({ class: "cm-superscript" }).range(lineFrom + s + 1, lineFrom + e - 1));
   }
 
   // Tags — always shown as a pill, nothing to hide/reveal.
