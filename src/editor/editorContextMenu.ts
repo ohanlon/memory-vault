@@ -1,5 +1,14 @@
 import { EditorView } from "@codemirror/view";
-import { linkCommandSpec, orderedListSpec, taskListSpec, unorderedListSpec } from "./listCommands";
+import {
+  boldSpec,
+  highlightSpec,
+  italicSpec,
+  linkCommandSpec,
+  orderedListSpec,
+  strikethroughSpec,
+  taskListSpec,
+  unorderedListSpec,
+} from "./listCommands";
 
 export interface EditorContextMenuRequest {
   x: number;
@@ -8,6 +17,10 @@ export interface EditorContextMenuRequest {
   makeOrderedList: () => void;
   makeUnorderedList: () => void;
   makeTaskList: () => void;
+  makeBold: () => void;
+  makeItalic: () => void;
+  makeStrikethrough: () => void;
+  makeHighlight: () => void;
 }
 
 /**
@@ -30,6 +43,10 @@ export function editorContextMenu(onRequest: (req: EditorContextMenuRequest) => 
         makeOrderedList: () => apply(orderedListSpec(view.state)),
         makeUnorderedList: () => apply(unorderedListSpec(view.state)),
         makeTaskList: () => apply(taskListSpec(view.state)),
+        makeBold: () => apply(boldSpec(view.state)),
+        makeItalic: () => apply(italicSpec(view.state)),
+        makeStrikethrough: () => apply(strikethroughSpec(view.state)),
+        makeHighlight: () => apply(highlightSpec(view.state)),
       });
       return true;
     },

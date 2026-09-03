@@ -1,16 +1,36 @@
 import type { EditorState, TransactionSpec } from "@codemirror/state";
 
-/** Wraps the selection in [[...]], or inserts an empty [[]] with the cursor placed inside if nothing's selected. */
-export function linkCommandSpec(state: EditorState): TransactionSpec {
+/** Wraps the selection in open/close markers, or inserts an empty pair with the cursor placed inside if nothing's selected. */
+function wrapSelectionSpec(state: EditorState, open: string, close: string = open): TransactionSpec {
   const sel = state.selection.main;
   if (sel.empty) {
-    return { changes: { from: sel.from, insert: "[[]]" }, selection: { anchor: sel.from + 2 } };
+    return { changes: { from: sel.from, insert: open + close }, selection: { anchor: sel.from + open.length } };
   }
   const text = state.sliceDoc(sel.from, sel.to);
   return {
-    changes: { from: sel.from, to: sel.to, insert: `[[${text}]]` },
-    selection: { anchor: sel.to + 4 },
+    changes: { from: sel.from, to: sel.to, insert: `${open}${text}${close}` },
+    selection: { anchor: sel.to + open.length + close.length },
   };
+}
+
+export function linkCommandSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "[[", "]]");
+}
+
+export function boldSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "**");
+}
+
+export function italicSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "*");
+}
+
+export function strikethroughSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "~~");
+}
+
+export function highlightSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "==");
 }
 
 // Checked in this order — a task item's "- [ ] " would also match the plain

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
-import { linkCommandSpec, orderedListSpec, taskListSpec, unorderedListSpec } from "./listCommands";
+import {
+  boldSpec,
+  highlightSpec,
+  italicSpec,
+  linkCommandSpec,
+  orderedListSpec,
+  strikethroughSpec,
+  taskListSpec,
+  unorderedListSpec,
+} from "./listCommands";
 
 function apply(doc: string, anchor: number, head: number, spec: (state: EditorState) => ReturnType<typeof linkCommandSpec>) {
   const state = EditorState.create({ doc, selection: { anchor, head } });
@@ -22,6 +31,62 @@ describe("linkCommandSpec", () => {
     const state = apply("hello ", 6, 6, linkCommandSpec);
     expect(state.doc.toString()).toBe("hello [[]]");
     expect(state.selection.main.head).toBe(8); // between the two "[["/"]]"pairs
+  });
+});
+
+describe("boldSpec", () => {
+  it("wraps a selection in **...**", () => {
+    const state = apply("hello world", 6, 11, boldSpec);
+    expect(state.doc.toString()).toBe("hello **world**");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts an empty **** with the cursor inside when nothing is selected", () => {
+    const state = apply("", 0, 0, boldSpec);
+    expect(state.doc.toString()).toBe("****");
+    expect(state.selection.main.head).toBe(2);
+  });
+});
+
+describe("italicSpec", () => {
+  it("wraps a selection in *...*", () => {
+    const state = apply("hello world", 6, 11, italicSpec);
+    expect(state.doc.toString()).toBe("hello *world*");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts an empty ** with the cursor inside when nothing is selected", () => {
+    const state = apply("", 0, 0, italicSpec);
+    expect(state.doc.toString()).toBe("**");
+    expect(state.selection.main.head).toBe(1);
+  });
+});
+
+describe("strikethroughSpec", () => {
+  it("wraps a selection in ~~...~~", () => {
+    const state = apply("hello world", 6, 11, strikethroughSpec);
+    expect(state.doc.toString()).toBe("hello ~~world~~");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts an empty ~~~~ with the cursor inside when nothing is selected", () => {
+    const state = apply("", 0, 0, strikethroughSpec);
+    expect(state.doc.toString()).toBe("~~~~");
+    expect(state.selection.main.head).toBe(2);
+  });
+});
+
+describe("highlightSpec", () => {
+  it("wraps a selection in ==...==", () => {
+    const state = apply("hello world", 6, 11, highlightSpec);
+    expect(state.doc.toString()).toBe("hello ==world==");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts an empty ==== with the cursor inside when nothing is selected", () => {
+    const state = apply("", 0, 0, highlightSpec);
+    expect(state.doc.toString()).toBe("====");
+    expect(state.selection.main.head).toBe(2);
   });
 });
 

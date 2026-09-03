@@ -23,6 +23,7 @@ const WIKILINK_RE = /\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
 const MARKDOWN_LINK_RE = /(?<!!)\[([^\]]*)\]\(([^)]+)\)/g;
 const BOLD_RE = /\*\*([^*]+)\*\*|__([^_]+)__/g;
 const ITALIC_RE = /(?<!\*)\*([^*]+)\*(?!\*)|(?<!_)_([^_]+)_(?!_)/g;
+const HIGHLIGHT_RE = /==([^=]+)==/g;
 const TAG_RE = /(?<![\w#/])#([a-zA-Z][\w-]*(?:\/[a-zA-Z][\w-]*)*)/g;
 
 export function titleFromHref(href: string): string {
@@ -185,6 +186,20 @@ function processLine(
       items.push(HIDE.range(lineFrom + e - 1, lineFrom + e));
     }
     items.push(Decoration.mark({ class: "cm-italic" }).range(lineFrom + s + 1, lineFrom + e - 1));
+  }
+
+  // Highlight
+  for (const m of lineText.matchAll(HIGHLIGHT_RE)) {
+    const s = m.index!;
+    const e = s + m[0].length;
+    if (!isFree(s, e)) continue;
+    markConsumed(s, e);
+    const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
+    if (!cursorHere) {
+      items.push(HIDE.range(lineFrom + s, lineFrom + s + 2));
+      items.push(HIDE.range(lineFrom + e - 2, lineFrom + e));
+    }
+    items.push(Decoration.mark({ class: "cm-highlight" }).range(lineFrom + s + 2, lineFrom + e - 2));
   }
 
   // Tags — always shown as a pill, nothing to hide/reveal.

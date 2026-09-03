@@ -205,6 +205,15 @@ export function EditorPane({
                 { label: "Task List", onClick: contextMenuRequest.makeTaskList },
               ],
             },
+            {
+              label: "Format",
+              children: [
+                { label: "Bold", onClick: contextMenuRequest.makeBold },
+                { label: "Italic", onClick: contextMenuRequest.makeItalic },
+                { label: "Strikethrough", onClick: contextMenuRequest.makeStrikethrough },
+                { label: "Highlight", onClick: contextMenuRequest.makeHighlight },
+              ],
+            },
           ]}
           onClose={() => setContextMenuRequest(null)}
         />

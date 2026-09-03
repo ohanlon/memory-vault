@@ -13,6 +13,7 @@
   --bg-tag: #3a2d4a;
   --bg-wikilink: #22304a;
   --bg-wikilink-orphan: #3a2323;
+  --bg-highlight: #6b5a1f;
 
   --scrollbar-thumb: #3a3d55;
   --scrollbar-thumb-hover: #4a4c68;
@@ -61,6 +62,7 @@
   --bg-tag: #f1e9fb;
   --bg-wikilink: #e3edfb;
   --bg-wikilink-orphan: #fbe4e4;
+  --bg-highlight: #fff3a3;
 
   --scrollbar-thumb: #c7cad1;
   --scrollbar-thumb-hover: #b3b7c1;
@@ -753,6 +755,10 @@ body {
   font-style: italic;
 }
 
+.cm-highlight {
+  background: var(--bg-highlight);
+}
+
 .cm-inline-code {
   font-family: "SFMono-Regular", Consolas, monospace;
   background: var(--bg-surface);
@@ -869,6 +875,13 @@ body {
   background: var(--bg-tag);
   border-radius: 999px;
   padding: 0 6px;
+}
+
+.markdown-preview .md-highlight {
+  background: var(--bg-highlight);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 2px;
 }
 
 .right-panel {

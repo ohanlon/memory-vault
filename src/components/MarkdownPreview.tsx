@@ -65,6 +65,25 @@ function createMarked(noteTitles: Set<string>) {
           return `<span class="md-tag">#${escapeHtml(token.tag as string)}</span>`;
         },
       },
+      {
+        name: "highlight",
+        level: "inline",
+        start(src: string) {
+          return src.indexOf("==");
+        },
+        tokenizer(src: string) {
+          const match = /^==([^=]+)==/.exec(src);
+          if (!match) return undefined;
+          return {
+            type: "highlight",
+            raw: match[0],
+            text: match[1],
+          };
+        },
+        renderer(token: Tokens.Generic) {
+          return `<mark class="md-highlight">${escapeHtml(token.text as string)}</mark>`;
+        },
+      },
     ],
   });
 }
