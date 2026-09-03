@@ -11,7 +11,6 @@ export const EDITOR_FONT_STACKS: Record<EditorFontFamily, string> = {
   monospace: '"SFMono-Regular", Consolas, monospace',
   "open-sans": '"Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   montserrat: '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  "google-sans": '"Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   "scoutie-sans": '"Scoutie Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   "valley-sans": '"Valley Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
@@ -23,7 +22,6 @@ export const EDITOR_FONT_OPTIONS: { value: EditorFontFamily; label: string }[] =
   { value: "monospace", label: "Monospace" },
   { value: "open-sans", label: "Open Sans" },
   { value: "montserrat", label: "Montserrat" },
-  { value: "google-sans", label: "Google Sans" },
   { value: "scoutie-sans", label: "Scoutie Sans" },
   { value: "valley-sans", label: "Valley Sans" },
 ];

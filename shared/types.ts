@@ -161,7 +161,6 @@ export type EditorFontFamily =
   | "monospace"
   | "open-sans"
   | "montserrat"
-  | "google-sans"
   | "scoutie-sans"
   | "valley-sans";
 
