@@ -1372,6 +1372,7 @@ body {
 }
 
 .context-menu-item {
+  width: 100%;
   background: none;
   border: none;
   color: var(--text-primary);
@@ -1392,4 +1393,19 @@ body {
 .context-menu-item-shortcut {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+.context-menu-item-caret {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.context-menu-item-wrapper {
+  position: relative;
+}
+
+.context-menu-submenu {
+  position: absolute;
+  top: -5px;
+  left: 100%;
 }

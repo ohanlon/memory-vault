@@ -5,9 +5,10 @@ import { EditorView } from "@codemirror/view";
 import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
-import { livePreview, selectionLinkMenu, type LinkSelectionRequest } from "../editor/livePreview";
+import { livePreview } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { listIndentKeymap } from "../editor/listIndent";
+import { editorContextMenu, type EditorContextMenuRequest } from "../editor/editorContextMenu";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -71,7 +72,7 @@ export function EditorPane({
 }: Props) {
   const [content, setContent] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
-  const [linkMenu, setLinkMenu] = useState<LinkSelectionRequest | null>(null);
+  const [contextMenuRequest, setContextMenuRequest] = useState<EditorContextMenuRequest | null>(null);
   const [propertiesVisible, setPropertiesVisible] = useState(!settings.hidePropertiesByDefault);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
@@ -126,7 +127,7 @@ export function EditorPane({
       markdown(),
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
-      selectionLinkMenu(setLinkMenu),
+      editorContextMenu(setContextMenuRequest),
       loremIpsumExpand(),
       noCurlyBraceAutoClose(),
       listIndentKeymap(),
@@ -190,12 +191,22 @@ export function EditorPane({
           basicSetup={{ lineNumbers: settings.showLineNumbers }}
         />
       )}
-      {linkMenu && (
+      {contextMenuRequest && (
         <ContextMenu
-          x={linkMenu.x}
-          y={linkMenu.y}
-          items={[{ label: `Link to "${linkMenu.text}"`, onClick: linkMenu.apply }]}
-          onClose={() => setLinkMenu(null)}
+          x={contextMenuRequest.x}
+          y={contextMenuRequest.y}
+          items={[
+            { label: "Link", onClick: contextMenuRequest.insertLink },
+            {
+              label: "List",
+              children: [
+                { label: "Ordered List", onClick: contextMenuRequest.makeOrderedList },
+                { label: "Unordered List", onClick: contextMenuRequest.makeUnorderedList },
+                { label: "Task List", onClick: contextMenuRequest.makeTaskList },
+              ],
+            },
+          ]}
+          onClose={() => setContextMenuRequest(null)}
         />
       )}
     </div>

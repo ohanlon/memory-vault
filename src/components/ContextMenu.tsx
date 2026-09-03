@@ -1,9 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface ContextMenuItem {
   label: string;
-  onClick: () => void;
+  /** Omit when the item is a submenu trigger (has children). */
+  onClick?: () => void;
   shortcut?: string;
+  /** When present, hovering the item opens a flyout with these items instead of running onClick. */
+  children?: ContextMenuItem[];
 }
 
 interface Props {
@@ -21,6 +24,7 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
   // this menu's lifetime, always invoking whichever onClose is current.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
   useEffect(() => {
     function handleDismiss(e: Event) {
@@ -47,17 +51,42 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
   return (
     <div className="context-menu" style={{ top: y, left: x }} onClick={(e) => e.stopPropagation()}>
       {items.map((item) => (
-        <button
+        <div
           key={item.label}
-          className="context-menu-item"
-          onClick={() => {
-            item.onClick();
-            onClose();
-          }}
+          className="context-menu-item-wrapper"
+          onMouseEnter={() => item.children && setOpenSubmenu(item.label)}
+          onMouseLeave={() => item.children && setOpenSubmenu((cur) => (cur === item.label ? null : cur))}
         >
-          <span className="context-menu-item-label">{item.label}</span>
-          {item.shortcut && <span className="context-menu-item-shortcut">{item.shortcut}</span>}
-        </button>
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              if (item.children) return;
+              item.onClick?.();
+              onClose();
+            }}
+          >
+            <span className="context-menu-item-label">{item.label}</span>
+            {item.shortcut && <span className="context-menu-item-shortcut">{item.shortcut}</span>}
+            {item.children && <span className="context-menu-item-caret">›</span>}
+          </button>
+          {item.children && openSubmenu === item.label && (
+            <div className="context-menu context-menu-submenu">
+              {item.children.map((child) => (
+                <button
+                  key={child.label}
+                  className="context-menu-item"
+                  onClick={() => {
+                    child.onClick?.();
+                    onClose();
+                  }}
+                >
+                  <span className="context-menu-item-label">{child.label}</span>
+                  {child.shortcut && <span className="context-menu-item-shortcut">{child.shortcut}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );

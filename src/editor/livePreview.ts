@@ -214,38 +214,6 @@ function buildDecorations(view: EditorView, handlers: LivePreviewHandlers): Deco
   return Decoration.set(items, true);
 }
 
-export interface LinkSelectionRequest {
-  x: number;
-  y: number;
-  text: string;
-  apply: () => void;
-}
-
-// Lets a right-click on a selection turn it into a [[wikilink]] in place.
-export function selectionLinkMenu(onRequest: (req: LinkSelectionRequest) => void) {
-  return EditorView.domEventHandlers({
-    contextmenu(event, view) {
-      const sel = view.state.selection.main;
-      if (sel.empty) return false;
-      const text = view.state.sliceDoc(sel.from, sel.to);
-      event.preventDefault();
-      onRequest({
-        x: event.clientX,
-        y: event.clientY,
-        text,
-        apply: () => {
-          view.dispatch({
-            changes: { from: sel.from, to: sel.to, insert: `[[${text}]]` },
-            selection: { anchor: sel.to + 4 },
-          });
-          view.focus();
-        },
-      });
-      return true;
-    },
-  });
-}
-
 export function livePreview(handlers: LivePreviewHandlers) {
   return ViewPlugin.fromClass(
     class {
