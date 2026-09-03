@@ -1,5 +1,5 @@
 import type { AppSettings, EditorFontFamily, TabFolderDisplay, ThemeSetting } from "./types";
-import { MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "./editorFonts";
+import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "./editorFonts";
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   tabFolderDisplay: "hover",
@@ -8,13 +8,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   addHeadingToNewNotes: true,
   hidePropertiesByDefault: true,
   showLineNumbers: true,
-  editorFontFamily: "roboto",
+  editorFontFamily: "system-ui",
   editorFontSize: 14,
 };
 
 const VALID_TAB_FOLDER_DISPLAY: TabFolderDisplay[] = ["never", "hover", "always"];
 const VALID_THEME: ThemeSetting[] = ["dark", "light", "system"];
-const VALID_EDITOR_FONT_FAMILY: EditorFontFamily[] = ["system-ui", "roboto", "arimo", "monospace"];
+const VALID_EDITOR_FONT_FAMILY: EditorFontFamily[] = EDITOR_FONT_OPTIONS.map((opt) => opt.value);
 
 function clampFontSize(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;

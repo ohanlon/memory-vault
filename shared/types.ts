@@ -154,7 +154,16 @@ export type TabFolderDisplay = "never" | "hover" | "always";
 export type ThemeSetting = "dark" | "light" | "system";
 
 /** Font choices for the editing pane — a curated set so every option renders consistently. */
-export type EditorFontFamily = "system-ui" | "roboto" | "arimo" | "monospace";
+export type EditorFontFamily =
+  | "system-ui"
+  | "roboto"
+  | "arimo"
+  | "monospace"
+  | "open-sans"
+  | "montserrat"
+  | "google-sans"
+  | "scoutie-sans"
+  | "valley-sans";
 
 export interface AppSettings {
   tabFolderDisplay: TabFolderDisplay;

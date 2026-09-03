@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_APP_SETTINGS, normalizeAppSettings } from "./appSettings";
+import { EDITOR_FONT_OPTIONS } from "./editorFonts";
 
 describe("normalizeAppSettings", () => {
   it("passes through valid values unchanged", () => {
@@ -111,10 +112,9 @@ describe("normalizeAppSettings", () => {
   });
 
   it("accepts every valid editorFontFamily value", () => {
-    expect(normalizeAppSettings({ editorFontFamily: "system-ui" }).editorFontFamily).toBe("system-ui");
-    expect(normalizeAppSettings({ editorFontFamily: "roboto" }).editorFontFamily).toBe("roboto");
-    expect(normalizeAppSettings({ editorFontFamily: "arimo" }).editorFontFamily).toBe("arimo");
-    expect(normalizeAppSettings({ editorFontFamily: "monospace" }).editorFontFamily).toBe("monospace");
+    for (const { value } of EDITOR_FONT_OPTIONS) {
+      expect(normalizeAppSettings({ editorFontFamily: value }).editorFontFamily).toBe(value);
+    }
   });
 
   it("falls back to the default for a non-numeric editorFontSize", () => {
