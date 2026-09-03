@@ -18,10 +18,19 @@ function prefixLines(state: EditorState, marker: (lineIndex: number) => string):
   const sel = state.selection.main;
   const fromLine = state.doc.lineAt(sel.from).number;
   const toLine = state.doc.lineAt(sel.to).number;
-  const changes = [];
+  const changes: { from: number; insert: string }[] = [];
   for (let n = fromLine; n <= toLine; n++) {
     changes.push({ from: state.doc.line(n).from, insert: marker(n - fromLine) });
   }
+
+  // A single empty line has nothing to preserve a cursor position relative
+  // to, so land right after the inserted marker, ready to type — rather
+  // than wherever the mapped (empty) old selection happens to end up.
+  if (fromLine === toLine && state.doc.line(fromLine).length === 0) {
+    const inserted = changes[0].insert;
+    return { changes, selection: { anchor: state.doc.line(fromLine).from + inserted.length } };
+  }
+
   return { changes };
 }
 

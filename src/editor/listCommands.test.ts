@@ -36,6 +36,12 @@ describe("unorderedListSpec", () => {
     const state = apply(doc, 0, doc.length, unorderedListSpec);
     expect(state.doc.toString()).toBe("- one\n- two\n- three");
   });
+
+  it("places the cursor right after the marker when the line is empty", () => {
+    const state = apply("", 0, 0, unorderedListSpec);
+    expect(state.doc.toString()).toBe("- ");
+    expect(state.selection.main.head).toBe(2);
+  });
 });
 
 describe("orderedListSpec", () => {
@@ -49,6 +55,19 @@ describe("orderedListSpec", () => {
     const state = apply(doc, 0, doc.length, orderedListSpec);
     expect(state.doc.toString()).toBe("1. one\n2. two\n3. three");
   });
+
+  it("places the cursor right after the marker when the line is empty", () => {
+    const state = apply("", 0, 0, orderedListSpec);
+    expect(state.doc.toString()).toBe("1. ");
+    expect(state.selection.main.head).toBe(3);
+  });
+
+  it("places the cursor right after the marker on an empty line within a document", () => {
+    const doc = "before\n\nafter";
+    const state = apply(doc, 7, 7, orderedListSpec); // cursor on the blank middle line
+    expect(state.doc.toString()).toBe("before\n1. \nafter");
+    expect(state.selection.main.head).toBe(10);
+  });
 });
 
 describe("taskListSpec", () => {
@@ -61,5 +80,11 @@ describe("taskListSpec", () => {
     const doc = "one\ntwo";
     const state = apply(doc, 0, doc.length, taskListSpec);
     expect(state.doc.toString()).toBe("- [ ] one\n- [ ] two");
+  });
+
+  it("places the cursor right after the marker when the line is empty", () => {
+    const state = apply("", 0, 0, taskListSpec);
+    expect(state.doc.toString()).toBe("- [ ] ");
+    expect(state.selection.main.head).toBe(6);
   });
 });
