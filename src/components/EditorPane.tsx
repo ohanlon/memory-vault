@@ -7,6 +7,7 @@ import { stripMdExtension } from "@shared/displayName";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
 import { livePreview, selectionLinkMenu, type LinkSelectionRequest } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
+import { listIndentKeymap } from "../editor/listIndent";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -128,6 +129,7 @@ export function EditorPane({
       selectionLinkMenu(setLinkMenu),
       loremIpsumExpand(),
       noCurlyBraceAutoClose(),
+      listIndentKeymap(),
       fontTheme,
     ],
     [onSelectTitle, onOpenExternal, noteTitles, fontTheme]
