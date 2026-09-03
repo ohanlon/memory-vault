@@ -42,6 +42,37 @@ describe("unorderedListSpec", () => {
     expect(state.doc.toString()).toBe("- ");
     expect(state.selection.main.head).toBe(2);
   });
+
+  it("converts an ordered list line to unordered instead of stacking markers", () => {
+    const state = apply("1. item", 0, 0, unorderedListSpec);
+    expect(state.doc.toString()).toBe("- item");
+  });
+
+  it("converts a task list line to unordered instead of stacking markers", () => {
+    const state = apply("- [ ] item", 0, 0, unorderedListSpec);
+    expect(state.doc.toString()).toBe("- item");
+  });
+
+  it("converts a * or + bullet line to the standard - marker", () => {
+    expect(apply("* item", 0, 0, unorderedListSpec).doc.toString()).toBe("- item");
+    expect(apply("+ item", 0, 0, unorderedListSpec).doc.toString()).toBe("- item");
+  });
+
+  it("preserves indentation when converting an indented (nested) list item", () => {
+    const state = apply("  1. item", 0, 0, unorderedListSpec);
+    expect(state.doc.toString()).toBe("  - item");
+  });
+
+  it("converts every line of a mixed-type multi-line selection", () => {
+    const doc = "1. one\n- [ ] two\n- three";
+    const state = apply(doc, 0, doc.length, unorderedListSpec);
+    expect(state.doc.toString()).toBe("- one\n- two\n- three");
+  });
+
+  it("is idempotent when applied to an already-unordered line", () => {
+    const state = apply("- item", 0, 0, unorderedListSpec);
+    expect(state.doc.toString()).toBe("- item");
+  });
 });
 
 describe("orderedListSpec", () => {
@@ -68,6 +99,22 @@ describe("orderedListSpec", () => {
     expect(state.doc.toString()).toBe("before\n1. \nafter");
     expect(state.selection.main.head).toBe(10);
   });
+
+  it("converts an unordered list line to ordered instead of stacking markers", () => {
+    const state = apply("- item", 0, 0, orderedListSpec);
+    expect(state.doc.toString()).toBe("1. item");
+  });
+
+  it("converts a task list line to ordered instead of stacking markers", () => {
+    const state = apply("- [ ] item", 0, 0, orderedListSpec);
+    expect(state.doc.toString()).toBe("1. item");
+  });
+
+  it("re-numbers an already-ordered list rather than doubling the number", () => {
+    const doc = "1. one\n1. two\n1. three";
+    const state = apply(doc, 0, doc.length, orderedListSpec);
+    expect(state.doc.toString()).toBe("1. one\n2. two\n3. three");
+  });
 });
 
 describe("taskListSpec", () => {
@@ -86,5 +133,20 @@ describe("taskListSpec", () => {
     const state = apply("", 0, 0, taskListSpec);
     expect(state.doc.toString()).toBe("- [ ] ");
     expect(state.selection.main.head).toBe(6);
+  });
+
+  it("converts an ordered list line to a task instead of stacking markers", () => {
+    const state = apply("1. item", 0, 0, taskListSpec);
+    expect(state.doc.toString()).toBe("- [ ] item");
+  });
+
+  it("converts an unordered list line to a task instead of stacking markers", () => {
+    const state = apply("- item", 0, 0, taskListSpec);
+    expect(state.doc.toString()).toBe("- [ ] item");
+  });
+
+  it("treats an already-checked task item the same as an unchecked one when converting", () => {
+    const state = apply("- [x] item", 0, 0, taskListSpec);
+    expect(state.doc.toString()).toBe("- [ ] item");
   });
 });
