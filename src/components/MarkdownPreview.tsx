@@ -3,6 +3,7 @@ import { Marked, type Tokens } from "marked";
 import DOMPurify from "dompurify";
 import { EXTERNAL_SCHEME_RE, titleFromHref } from "../editor/livePreview";
 import { ensureLanguagesLoaded, extractNeededLanguageIds, highlightCode } from "../editor/codeHighlight";
+import { MATH_BLOCK_START_RE, renderMathToString } from "../editor/mathRender";
 
 interface Props {
   content: string;
@@ -138,6 +139,26 @@ function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<s
         },
         renderer(token: Tokens.Generic) {
           return `<sup>${escapeHtml(token.text as string)}</sup>`;
+        },
+      },
+      {
+        name: "mathBlock",
+        level: "block",
+        start(src: string) {
+          const m = /^\$\$[ \t]*$/m.exec(src);
+          return m?.index;
+        },
+        tokenizer(src: string) {
+          const match = MATH_BLOCK_START_RE.exec(src);
+          if (!match) return undefined;
+          return {
+            type: "mathBlock",
+            raw: match[0],
+            text: match[1],
+          };
+        },
+        renderer(token: Tokens.Generic) {
+          return `<div class="md-math-block">${renderMathToString(token.text as string)}</div>\n`;
         },
       },
     ],

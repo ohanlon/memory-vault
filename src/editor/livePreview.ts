@@ -7,6 +7,7 @@ import {
   ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
+import { MATH_BLOCK_RE, renderMathInto } from "./mathRender";
 
 export interface LivePreviewHandlers {
   onSelectTitle: (title: string) => void;
@@ -72,6 +73,48 @@ class PillWidget extends WidgetType {
 }
 
 const HIDE = Decoration.replace({});
+
+class MathBlockWidget extends WidgetType {
+  constructor(private readonly latex: string) {
+    super();
+  }
+  eq(other: MathBlockWidget) {
+    return other.latex === this.latex;
+  }
+  toDOM() {
+    const div = document.createElement("div");
+    div.className = "cm-math-block";
+    renderMathInto(div, this.latex);
+    return div;
+  }
+  ignoreEvent() {
+    // Let the click through so it places the cursor in the underlying text,
+    // which reveals the raw source (see the cursorOverlaps check below).
+    return false;
+  }
+}
+
+/**
+ * Finds every $$...$$ block in the document and, for any the cursor isn't
+ * currently inside, replaces it with a rendered math widget. Returns the set
+ * of line-start positions covered by a widget, so the per-line pass below
+ * skips them (that range's text no longer appears in the document view at
+ * all, so there's nothing left for inline decorations to attach to).
+ */
+function collectMathBlocks(state: EditorState, items: Range<Decoration>[]): Set<number> {
+  const hiddenLines = new Set<number>();
+  const text = state.doc.toString();
+  for (const m of text.matchAll(MATH_BLOCK_RE)) {
+    const from = m.index!;
+    const to = from + m[0].length;
+    if (cursorOverlaps(state, from, to)) continue;
+    const firstLine = state.doc.lineAt(from).number;
+    const lastLine = state.doc.lineAt(to).number;
+    for (let n = firstLine; n <= lastLine; n++) hiddenLines.add(state.doc.line(n).from);
+    items.push(Decoration.replace({ widget: new MathBlockWidget(m[1]), block: true }).range(from, to));
+  }
+  return hiddenLines;
+}
 
 function processLine(
   state: EditorState,
@@ -262,12 +305,13 @@ function processLine(
 
 function buildDecorations(view: EditorView, handlers: LivePreviewHandlers): DecorationSet {
   const items: Range<Decoration>[] = [];
+  const hiddenLines = collectMathBlocks(view.state, items);
   const processedLines = new Set<number>();
   for (const { from, to } of view.visibleRanges) {
     let pos = from;
     while (pos <= to) {
       const line = view.state.doc.lineAt(pos);
-      if (!processedLines.has(line.from)) {
+      if (!processedLines.has(line.from) && !hiddenLines.has(line.from)) {
         processedLines.add(line.from);
         processLine(view.state, line.text, line.from, items, handlers);
       }

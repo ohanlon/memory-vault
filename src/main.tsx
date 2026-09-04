@@ -21,6 +21,7 @@ import "@fontsource/scoutie-sans/700.css";
 import "@fontsource/valley-sans/400.css";
 import "@fontsource/valley-sans/500.css";
 import "@fontsource/valley-sans/700.css";
+import "katex/dist/katex.min.css";
 import "./index.css";
 
 registerCorePlugin();

@@ -773,6 +773,12 @@ body {
   font-size: smaller;
 }
 
+.cm-math-block {
+  padding: 8px 0;
+  overflow-x: auto;
+  text-align: center;
+}
+
 .cm-inline-code {
   font-family: "SFMono-Regular", Consolas, monospace;
   background: var(--bg-surface);
@@ -829,6 +835,12 @@ body {
   border-radius: 4px;
   padding: 10px;
   overflow: auto;
+}
+
+.markdown-preview .md-math-block {
+  padding: 8px 0;
+  overflow-x: auto;
+  text-align: center;
 }
 
 .markdown-preview code {
