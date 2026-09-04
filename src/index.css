@@ -835,6 +835,69 @@ body {
   font-family: "SFMono-Regular", Consolas, monospace;
 }
 
+/* highlight.js token classes (see src/editor/codeHighlight.ts) — mapped onto
+   the app's own accent tokens rather than importing a fixed third-party theme,
+   so highlighted code adapts to the light/dark theme like everything else. */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-type {
+  color: var(--accent-purple);
+  font-weight: 600;
+}
+
+.hljs-string,
+.hljs-attr,
+.hljs-attribute,
+.hljs-addition {
+  color: var(--accent-green);
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.hljs-number {
+  color: var(--accent-blue);
+}
+
+.hljs-title,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--accent-violet);
+  font-weight: 600;
+}
+
+.hljs-built_in,
+.hljs-symbol,
+.hljs-regexp {
+  color: var(--accent-red-soft);
+}
+
+.hljs-deletion {
+  color: var(--accent-red);
+}
+
+.hljs-doctag,
+.hljs-meta {
+  color: var(--text-secondary);
+}
+
+.hljs-tag {
+  color: var(--accent-blue);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}
+
 .markdown-preview :not(pre) > code {
   background: var(--bg-surface);
   border-radius: 3px;

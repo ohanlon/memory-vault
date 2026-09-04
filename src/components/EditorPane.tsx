@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
+import { languages } from "@codemirror/language-data";
 import { EditorView } from "@codemirror/view";
 import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
@@ -124,7 +125,7 @@ export function EditorPane({
 
   const extensions = useMemo(
     () => [
-      markdown(),
+      markdown({ codeLanguages: languages }),
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
       editorContextMenu(setContextMenuRequest),

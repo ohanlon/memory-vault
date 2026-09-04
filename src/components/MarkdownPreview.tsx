@@ -2,6 +2,7 @@ import { useMemo, MouseEvent } from "react";
 import { Marked, type Tokens } from "marked";
 import DOMPurify from "dompurify";
 import { EXTERNAL_SCHEME_RE, titleFromHref } from "../editor/livePreview";
+import { highlightCode } from "../editor/codeHighlight";
 
 interface Props {
   content: string;
@@ -20,6 +21,17 @@ function escapeHtml(text: string): string {
 
 function createMarked(noteTitles: Set<string>) {
   return new Marked({
+    renderer: {
+      code({ text, lang }: Tokens.Code) {
+        const content = text.replace(/\n$/, "") + "\n";
+        const highlighted = highlightCode(content, lang);
+        if (highlighted) {
+          return `<pre><code class="hljs language-${escapeHtml(highlighted.language)}">${highlighted.html}</code></pre>\n`;
+        }
+        const langClass = lang?.trim() ? ` class="language-${escapeHtml(lang.trim().split(/\s+/)[0])}"` : "";
+        return `<pre><code${langClass}>${escapeHtml(content)}</code></pre>\n`;
+      },
+    },
     extensions: [
       {
         name: "wikilink",
