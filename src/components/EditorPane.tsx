@@ -255,6 +255,8 @@ export function EditorPane({
                 { label: "Superscript", onClick: contextMenuRequest.makeSuperscript },
                 { label: "Subscript", onClick: contextMenuRequest.makeSubscript },
                 { label: "Highlight", onClick: contextMenuRequest.makeHighlight },
+                { label: "Code", onClick: contextMenuRequest.makeInlineCode },
+                { label: "Maths", onClick: contextMenuRequest.makeInlineMath },
               ],
             },
             {

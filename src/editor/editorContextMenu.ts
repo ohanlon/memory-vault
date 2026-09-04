@@ -10,6 +10,8 @@ import {
   heading5Spec,
   heading6Spec,
   highlightSpec,
+  inlineCodeSpec,
+  inlineMathSpec,
   italicSpec,
   linkCommandSpec,
   mathBlockSpec,
@@ -46,6 +48,8 @@ export interface EditorContextMenuRequest {
   makeSuperscript: () => void;
   makeSubscript: () => void;
   makeHighlight: () => void;
+  makeInlineCode: () => void;
+  makeInlineMath: () => void;
 }
 
 /**
@@ -84,6 +88,8 @@ export function editorContextMenu(onRequest: (req: EditorContextMenuRequest) => 
         makeSuperscript: () => apply(superscriptSpec(view.state)),
         makeSubscript: () => apply(subscriptSpec(view.state)),
         makeHighlight: () => apply(highlightSpec(view.state)),
+        makeInlineCode: () => apply(inlineCodeSpec(view.state)),
+        makeInlineMath: () => apply(inlineMathSpec(view.state)),
       });
       return true;
     },
