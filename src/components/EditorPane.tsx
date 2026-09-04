@@ -258,13 +258,19 @@ export function EditorPane({
               ],
             },
             {
-              label: "Code",
+              label: "Block",
               children: [
-                { label: "Text", onClick: () => contextMenuRequest.makeCodeBlock() },
-                ...codeLanguageMenuItems.map((lang) => ({
-                  label: lang.name,
-                  onClick: () => contextMenuRequest.makeCodeBlock(lang.id),
-                })),
+                {
+                  label: "Code",
+                  children: [
+                    { label: "Text", onClick: () => contextMenuRequest.makeCodeBlock() },
+                    ...codeLanguageMenuItems.map((lang) => ({
+                      label: lang.name,
+                      onClick: () => contextMenuRequest.makeCodeBlock(lang.id),
+                    })),
+                  ],
+                },
+                { label: "Maths", onClick: contextMenuRequest.makeMathBlock },
               ],
             },
           ]}

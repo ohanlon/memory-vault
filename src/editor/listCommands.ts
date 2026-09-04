@@ -109,30 +109,40 @@ export function bodySpec(state: EditorState): TransactionSpec {
 
 /**
  * Wraps every line the selection touches (or just the current line, if
- * nothing's selected) in a fenced code block — verbatim, unlike the other
- * paragraph types, since markdown syntax inside a code fence is just literal
- * text (e.g. a line that reads "# foo" should keep its "#" as-is). Pass a
- * `language` (a highlight.js id, e.g. "javascript") to open the fence with
- * that info string so it's highlighted as that language; omit it for a
- * plain, language-less block.
+ * nothing's selected) between an opening and closing fence line — verbatim,
+ * since the content of a fenced block (code or math) is literal, not parsed
+ * as markdown (e.g. a line that reads "# foo" should keep its "#" as-is).
  */
-export function codeBlockSpec(state: EditorState, language?: string): TransactionSpec {
-  const openFence = language ? "```" + language : "```";
+function wrapBlockSpec(state: EditorState, openFence: string, closeFence: string): TransactionSpec {
   const sel = state.selection.main;
   const startLine = state.doc.lineAt(sel.from);
   const endLine = state.doc.lineAt(sel.to);
 
   if (startLine.number === endLine.number && startLine.length === 0) {
-    const insert = `${openFence}\n\n\`\`\``;
+    const insert = `${openFence}\n\n${closeFence}`;
     return { changes: { from: startLine.from, insert }, selection: { anchor: startLine.from + openFence.length + 1 } };
   }
 
   const content = state.sliceDoc(startLine.from, endLine.to);
-  const wrapped = `${openFence}\n${content}\n\`\`\``;
+  const wrapped = `${openFence}\n${content}\n${closeFence}`;
   return {
     changes: { from: startLine.from, to: endLine.to, insert: wrapped },
     selection: { anchor: startLine.from + wrapped.length },
   };
+}
+
+/**
+ * Pass a `language` (a highlight.js id, e.g. "javascript") to open the fence
+ * with that info string so it's highlighted as that language; omit it for a
+ * plain, language-less block.
+ */
+export function codeBlockSpec(state: EditorState, language?: string): TransactionSpec {
+  return wrapBlockSpec(state, language ? "```" + language : "```", "```");
+}
+
+/** Wraps the selected line(s) in a $$...$$ block-math delimiter. */
+export function mathBlockSpec(state: EditorState): TransactionSpec {
+  return wrapBlockSpec(state, "$$", "$$");
 }
 
 export function quoteSpec(state: EditorState): TransactionSpec {

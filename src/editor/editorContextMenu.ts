@@ -12,6 +12,7 @@ import {
   highlightSpec,
   italicSpec,
   linkCommandSpec,
+  mathBlockSpec,
   orderedListSpec,
   quoteSpec,
   strikethroughSpec,
@@ -34,6 +35,7 @@ export interface EditorContextMenuRequest {
   makeBody: () => void;
   /** Omit `language` for a plain, language-less block. */
   makeCodeBlock: (language?: string) => void;
+  makeMathBlock: () => void;
   makeQuote: () => void;
   makeOrderedList: () => void;
   makeUnorderedList: () => void;
@@ -71,6 +73,7 @@ export function editorContextMenu(onRequest: (req: EditorContextMenuRequest) => 
         makeHeading6: () => apply(heading6Spec(view.state)),
         makeBody: () => apply(bodySpec(view.state)),
         makeCodeBlock: (language?: string) => apply(codeBlockSpec(view.state, language)),
+        makeMathBlock: () => apply(mathBlockSpec(view.state)),
         makeQuote: () => apply(quoteSpec(view.state)),
         makeOrderedList: () => apply(orderedListSpec(view.state)),
         makeUnorderedList: () => apply(unorderedListSpec(view.state)),

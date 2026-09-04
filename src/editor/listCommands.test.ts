@@ -10,6 +10,7 @@ import {
   highlightSpec,
   italicSpec,
   linkCommandSpec,
+  mathBlockSpec,
   orderedListSpec,
   quoteSpec,
   strikethroughSpec,
@@ -233,6 +234,30 @@ describe("codeBlockSpec", () => {
     const state = apply("", 0, 0, (s) => codeBlockSpec(s, "python"));
     expect(state.doc.toString()).toBe("```python\n\n```");
     expect(state.selection.main.head).toBe(10); // right after "```python\n"
+  });
+});
+
+describe("mathBlockSpec", () => {
+  it("wraps the current line in $$...$$", () => {
+    const state = apply("E = mc^2", 0, 0, mathBlockSpec);
+    expect(state.doc.toString()).toBe("$$\nE = mc^2\n$$");
+  });
+
+  it("places the cursor after the closing delimiter when wrapping a line", () => {
+    const state = apply("E = mc^2", 0, 0, mathBlockSpec);
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("wraps every line touched by a multi-line selection in one block", () => {
+    const doc = "one\ntwo";
+    const state = apply(doc, 0, doc.length, mathBlockSpec);
+    expect(state.doc.toString()).toBe("$$\none\ntwo\n$$");
+  });
+
+  it("inserts an empty block with the cursor on the blank line when nothing is selected", () => {
+    const state = apply("", 0, 0, mathBlockSpec);
+    expect(state.doc.toString()).toBe("$$\n\n$$");
+    expect(state.selection.main.head).toBe(3);
   });
 });
 
