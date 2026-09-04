@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
 
 export interface ContextMenuItem {
   label: string;
@@ -33,7 +32,6 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
   // this menu's lifetime, always invoking whichever onClose is current.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   // Starts at the raw click position; corrected before paint (see below) so
   // the menu never visibly renders off-screen and then jumps into place.
@@ -79,40 +77,55 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [x, y]);
 
-  function renderEntries(entries: ContextMenuEntry[]) {
-    return entries.map((entry, i) => {
-      if ("separator" in entry) {
-        return <div key={`separator-${i}`} className="context-menu-separator" />;
-      }
-      return (
-        <div
-          key={entry.label}
-          className="context-menu-item-wrapper"
-          onMouseEnter={() => entry.children && setOpenSubmenu(entry.label)}
-          onMouseLeave={() => entry.children && setOpenSubmenu((cur) => (cur === entry.label ? null : cur))}
-        >
-          <button
-            className="context-menu-item"
-            onClick={() => {
-              if (entry.children) return;
-              entry.onClick?.();
-              onClose();
-            }}
-          >
-            <span className="context-menu-item-label">{entry.label}</span>
-            {entry.shortcut && <span className="context-menu-item-shortcut">{entry.shortcut}</span>}
-            {entry.children && <span className="context-menu-item-caret">›</span>}
-          </button>
-          {entry.children && openSubmenu === entry.label && <Submenu entries={entry.children} render={renderEntries} />}
-        </div>
-      );
-    });
-  }
-
   return (
     <div ref={menuRef} className="context-menu" style={{ top: pos.top, left: pos.left }} onClick={(e) => e.stopPropagation()}>
-      {renderEntries(items)}
+      <MenuEntries entries={items} onItemClick={onClose} />
     </div>
+  );
+}
+
+/**
+ * One "level" of menu entries. Owns which of its own children's submenu (if
+ * any) is currently open as local state, independent of any parent or
+ * sibling level — each level of nesting gets its own instance of this
+ * component and therefore its own state, so opening a submenu two levels
+ * deep can't clobber the level above it.
+ */
+function MenuEntries({ entries, onItemClick }: { entries: ContextMenuEntry[]; onItemClick: () => void }) {
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+
+  return (
+    <>
+      {entries.map((entry, i) => {
+        if ("separator" in entry) {
+          return <div key={`separator-${i}`} className="context-menu-separator" />;
+        }
+        return (
+          <div
+            key={entry.label}
+            className="context-menu-item-wrapper"
+            onMouseEnter={() => entry.children && setOpenSubmenu(entry.label)}
+            onMouseLeave={() => entry.children && setOpenSubmenu((cur) => (cur === entry.label ? null : cur))}
+          >
+            <button
+              className="context-menu-item"
+              onClick={() => {
+                if (entry.children) return;
+                entry.onClick?.();
+                onItemClick();
+              }}
+            >
+              <span className="context-menu-item-label">{entry.label}</span>
+              {entry.shortcut && <span className="context-menu-item-shortcut">{entry.shortcut}</span>}
+              {entry.children && <span className="context-menu-item-caret">›</span>}
+            </button>
+            {entry.children && openSubmenu === entry.label && (
+              <Submenu entries={entry.children} onItemClick={onItemClick} />
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 
@@ -120,13 +133,7 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
  * A submenu flyout, self-correcting if it would otherwise overflow the
  * viewport — flips to open upward/leftward instead of down/right.
  */
-function Submenu({
-  entries,
-  render,
-}: {
-  entries: ContextMenuEntry[];
-  render: (entries: ContextMenuEntry[]) => ReactNode;
-}) {
+function Submenu({ entries, onItemClick }: { entries: ContextMenuEntry[]; onItemClick: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [flip, setFlip] = useState({ up: false, left: false });
 
@@ -151,7 +158,7 @@ function Submenu({
 
   return (
     <div ref={ref} className={className}>
-      {render(entries)}
+      <MenuEntries entries={entries} onItemClick={onItemClick} />
     </div>
   );
 }
