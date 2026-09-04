@@ -107,6 +107,29 @@ export function bodySpec(state: EditorState): TransactionSpec {
   return setParagraphType(state, "");
 }
 
+/**
+ * Wraps every line the selection touches (or just the current line, if
+ * nothing's selected) in a fenced code block — verbatim, unlike the other
+ * paragraph types, since markdown syntax inside a code fence is just literal
+ * text (e.g. a line that reads "# foo" should keep its "#" as-is).
+ */
+export function codeBlockSpec(state: EditorState): TransactionSpec {
+  const sel = state.selection.main;
+  const startLine = state.doc.lineAt(sel.from);
+  const endLine = state.doc.lineAt(sel.to);
+
+  if (startLine.number === endLine.number && startLine.length === 0) {
+    return { changes: { from: startLine.from, insert: "```\n\n```" }, selection: { anchor: startLine.from + 4 } };
+  }
+
+  const content = state.sliceDoc(startLine.from, endLine.to);
+  const wrapped = `\`\`\`\n${content}\n\`\`\``;
+  return {
+    changes: { from: startLine.from, to: endLine.to, insert: wrapped },
+    selection: { anchor: startLine.from + wrapped.length },
+  };
+}
+
 export function quoteSpec(state: EditorState): TransactionSpec {
   return setParagraphType(state, "> ");
 }

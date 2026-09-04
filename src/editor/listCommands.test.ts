@@ -3,6 +3,7 @@ import { EditorState } from "@codemirror/state";
 import {
   bodySpec,
   boldSpec,
+  codeBlockSpec,
   heading1Spec,
   heading2Spec,
   heading3Spec,
@@ -187,6 +188,35 @@ describe("bodySpec", () => {
     const doc = "# one\n> two";
     const state = apply(doc, 0, doc.length, bodySpec);
     expect(state.doc.toString()).toBe("one\ntwo");
+  });
+});
+
+describe("codeBlockSpec", () => {
+  it("wraps the current line in a fenced code block", () => {
+    const state = apply("const x = 1;", 0, 0, codeBlockSpec);
+    expect(state.doc.toString()).toBe("```\nconst x = 1;\n```");
+  });
+
+  it("places the cursor after the closing fence when wrapping a line", () => {
+    const state = apply("const x = 1;", 0, 0, codeBlockSpec);
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("wraps every line touched by a multi-line selection in one fence", () => {
+    const doc = "one\ntwo\nthree";
+    const state = apply(doc, 0, doc.length, codeBlockSpec);
+    expect(state.doc.toString()).toBe("```\none\ntwo\nthree\n```");
+  });
+
+  it("inserts an empty fence with the cursor on the blank line when nothing is selected", () => {
+    const state = apply("", 0, 0, codeBlockSpec);
+    expect(state.doc.toString()).toBe("```\n\n```");
+    expect(state.selection.main.head).toBe(4);
+  });
+
+  it("does not strip markdown syntax — it's treated as literal code content", () => {
+    const state = apply("# not a heading here", 0, 0, codeBlockSpec);
+    expect(state.doc.toString()).toBe("```\n# not a heading here\n```");
   });
 });
 

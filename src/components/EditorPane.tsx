@@ -207,6 +207,7 @@ export function EditorPane({
                 { label: "Heading 5", onClick: contextMenuRequest.makeHeading5 },
                 { label: "Heading 6", onClick: contextMenuRequest.makeHeading6 },
                 { label: "Body", onClick: contextMenuRequest.makeBody },
+                { label: "Code", onClick: contextMenuRequest.makeCode },
                 { separator: true },
                 { label: "Quote", onClick: contextMenuRequest.makeQuote },
               ],

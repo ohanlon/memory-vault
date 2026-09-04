@@ -2,6 +2,7 @@ import { EditorView } from "@codemirror/view";
 import {
   bodySpec,
   boldSpec,
+  codeBlockSpec,
   heading1Spec,
   heading2Spec,
   heading3Spec,
@@ -31,6 +32,7 @@ export interface EditorContextMenuRequest {
   makeHeading5: () => void;
   makeHeading6: () => void;
   makeBody: () => void;
+  makeCode: () => void;
   makeQuote: () => void;
   makeOrderedList: () => void;
   makeUnorderedList: () => void;
@@ -67,6 +69,7 @@ export function editorContextMenu(onRequest: (req: EditorContextMenuRequest) => 
         makeHeading5: () => apply(heading5Spec(view.state)),
         makeHeading6: () => apply(heading6Spec(view.state)),
         makeBody: () => apply(bodySpec(view.state)),
+        makeCode: () => apply(codeBlockSpec(view.state)),
         makeQuote: () => apply(quoteSpec(view.state)),
         makeOrderedList: () => apply(orderedListSpec(view.state)),
         makeUnorderedList: () => apply(unorderedListSpec(view.state)),
