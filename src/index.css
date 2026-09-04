@@ -1449,6 +1449,16 @@ body {
   left: 100%;
 }
 
+.context-menu-submenu-flip-up {
+  top: auto;
+  bottom: -5px;
+}
+
+.context-menu-submenu-flip-left {
+  left: auto;
+  right: 100%;
+}
+
 .context-menu-separator {
   height: 1px;
   margin: 4px 6px;
