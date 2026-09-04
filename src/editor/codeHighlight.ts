@@ -8,17 +8,28 @@ const loadingPromises = new Map<string, Promise<void>>();
 // Each language's grammar is its own small module, imported on demand rather
 // than all ~190 being bundled up front — this keeps the app fast to load
 // regardless of how many languages the user enables in Settings > Code.
+// A template-literal dynamic import (`import(`.../${id}`)`) can't be
+// statically analyzed by Vite, so it's left as an unresolvable bare
+// specifier at runtime and always fails — import.meta.glob is Vite's
+// mechanism for exactly this "dynamic import from a known set of files" case.
+const languageModules = import.meta.glob<{ default?: LanguageFn } | LanguageFn>(
+  "../../node_modules/highlight.js/es/languages/*.js"
+);
+
 function loadLanguage(id: string): Promise<void> {
   let promise = loadingPromises.get(id);
   if (promise) return promise;
-  promise = import(`highlight.js/lib/languages/${id}`)
-    .then((mod: { default?: LanguageFn } | LanguageFn) => {
-      const def = typeof mod === "function" ? mod : mod.default;
-      if (def) hljs.registerLanguage(id, def);
-    })
-    .catch(() => {
-      // Unknown/failed language id — leave unregistered; callers fall back to plain rendering.
-    });
+  const load = languageModules[`../../node_modules/highlight.js/es/languages/${id}.js`];
+  promise = load
+    ? load()
+        .then((mod) => {
+          const def = typeof mod === "function" ? mod : mod.default;
+          if (def) hljs.registerLanguage(id, def);
+        })
+        .catch(() => {
+          // Unknown/failed language id — leave unregistered; callers fall back to plain rendering.
+        })
+    : Promise.resolve();
   loadingPromises.set(id, promise);
   return promise;
 }
