@@ -32,7 +32,8 @@ export interface EditorContextMenuRequest {
   makeHeading5: () => void;
   makeHeading6: () => void;
   makeBody: () => void;
-  makeCode: () => void;
+  /** Omit `language` for a plain, language-less block. */
+  makeCodeBlock: (language?: string) => void;
   makeQuote: () => void;
   makeOrderedList: () => void;
   makeUnorderedList: () => void;
@@ -69,7 +70,7 @@ export function editorContextMenu(onRequest: (req: EditorContextMenuRequest) => 
         makeHeading5: () => apply(heading5Spec(view.state)),
         makeHeading6: () => apply(heading6Spec(view.state)),
         makeBody: () => apply(bodySpec(view.state)),
-        makeCode: () => apply(codeBlockSpec(view.state)),
+        makeCodeBlock: (language?: string) => apply(codeBlockSpec(view.state, language)),
         makeQuote: () => apply(quoteSpec(view.state)),
         makeOrderedList: () => apply(orderedListSpec(view.state)),
         makeUnorderedList: () => apply(unorderedListSpec(view.state)),

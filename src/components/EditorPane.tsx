@@ -6,7 +6,7 @@ import { EditorView } from "@codemirror/view";
 import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
-import { CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
+import { CODE_LANGUAGES, CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
 import { livePreview } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { listIndentKeymap } from "../editor/listIndent";
@@ -138,6 +138,16 @@ export function EditorPane({
     });
   }, [settings.enabledCodeLanguages]);
 
+  // The languages offered under the "Code" context-menu entry, sorted to
+  // match how Settings > Code presents them.
+  const codeLanguageMenuItems = useMemo(() => {
+    const byId = new Map(CODE_LANGUAGES.map((l) => [l.id, l.name]));
+    return settings.enabledCodeLanguages
+      .map((id) => ({ id, name: byId.get(id) }))
+      .filter((lang): lang is { id: string; name: string } => lang.name !== undefined)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [settings.enabledCodeLanguages]);
+
   const extensions = useMemo(
     () => [
       markdown({ codeLanguages: enabledCmLanguages }),
@@ -224,7 +234,6 @@ export function EditorPane({
                 { label: "Heading 5", onClick: contextMenuRequest.makeHeading5 },
                 { label: "Heading 6", onClick: contextMenuRequest.makeHeading6 },
                 { label: "Body", onClick: contextMenuRequest.makeBody },
-                { label: "Code", onClick: contextMenuRequest.makeCode },
                 { separator: true },
                 { label: "Quote", onClick: contextMenuRequest.makeQuote },
               ],
@@ -246,6 +255,16 @@ export function EditorPane({
                 { label: "Superscript", onClick: contextMenuRequest.makeSuperscript },
                 { label: "Subscript", onClick: contextMenuRequest.makeSubscript },
                 { label: "Highlight", onClick: contextMenuRequest.makeHighlight },
+              ],
+            },
+            {
+              label: "Code",
+              children: [
+                { label: "Text", onClick: () => contextMenuRequest.makeCodeBlock() },
+                ...codeLanguageMenuItems.map((lang) => ({
+                  label: lang.name,
+                  onClick: () => contextMenuRequest.makeCodeBlock(lang.id),
+                })),
               ],
             },
           ]}

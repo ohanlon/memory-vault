@@ -218,6 +218,22 @@ describe("codeBlockSpec", () => {
     const state = apply("# not a heading here", 0, 0, codeBlockSpec);
     expect(state.doc.toString()).toBe("```\n# not a heading here\n```");
   });
+
+  it("opens the fence with the given language as its info string", () => {
+    const state = apply("const x = 1;", 0, 0, (s) => codeBlockSpec(s, "javascript"));
+    expect(state.doc.toString()).toBe("```javascript\nconst x = 1;\n```");
+  });
+
+  it("places the cursor after the closing fence when wrapping a line with a language", () => {
+    const state = apply("const x = 1;", 0, 0, (s) => codeBlockSpec(s, "javascript"));
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts an empty fence with a language, cursor on the blank line", () => {
+    const state = apply("", 0, 0, (s) => codeBlockSpec(s, "python"));
+    expect(state.doc.toString()).toBe("```python\n\n```");
+    expect(state.selection.main.head).toBe(10); // right after "```python\n"
+  });
 });
 
 describe("unorderedListSpec", () => {
