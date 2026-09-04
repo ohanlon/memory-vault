@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
 import {
+  bodySpec,
   boldSpec,
+  heading1Spec,
+  heading2Spec,
+  heading3Spec,
   highlightSpec,
   italicSpec,
   linkCommandSpec,
   orderedListSpec,
+  quoteSpec,
   strikethroughSpec,
   subscriptSpec,
   superscriptSpec,
@@ -117,6 +122,71 @@ describe("subscriptSpec", () => {
     const state = apply("", 0, 0, subscriptSpec);
     expect(state.doc.toString()).toBe("~~");
     expect(state.selection.main.head).toBe(1);
+  });
+});
+
+describe("heading specs", () => {
+  it("prefixes the current line with the right number of #s", () => {
+    expect(apply("Title", 0, 0, heading1Spec).doc.toString()).toBe("# Title");
+    expect(apply("Title", 0, 0, heading2Spec).doc.toString()).toBe("## Title");
+    expect(apply("Title", 0, 0, heading3Spec).doc.toString()).toBe("### Title");
+  });
+
+  it("places the cursor right after the marker when the line is empty", () => {
+    const state = apply("", 0, 0, heading2Spec);
+    expect(state.doc.toString()).toBe("## ");
+    expect(state.selection.main.head).toBe(3);
+  });
+
+  it("converts an existing heading level instead of stacking markers", () => {
+    expect(apply("# Title", 0, 0, heading3Spec).doc.toString()).toBe("### Title");
+  });
+
+  it("converts an existing blockquote to a heading", () => {
+    expect(apply("> Title", 0, 0, heading1Spec).doc.toString()).toBe("# Title");
+  });
+
+  it("prefixes every line touched by a multi-line selection", () => {
+    const doc = "one\ntwo";
+    const state = apply(doc, 0, doc.length, heading1Spec);
+    expect(state.doc.toString()).toBe("# one\n# two");
+  });
+});
+
+describe("quoteSpec", () => {
+  it("prefixes the current line with >", () => {
+    const state = apply("Title", 0, 0, quoteSpec);
+    expect(state.doc.toString()).toBe("> Title");
+  });
+
+  it("converts an existing heading to a blockquote", () => {
+    expect(apply("### Title", 0, 0, quoteSpec).doc.toString()).toBe("> Title");
+  });
+
+  it("places the cursor right after the marker when the line is empty", () => {
+    const state = apply("", 0, 0, quoteSpec);
+    expect(state.doc.toString()).toBe("> ");
+    expect(state.selection.main.head).toBe(2);
+  });
+});
+
+describe("bodySpec", () => {
+  it("strips an existing heading marker", () => {
+    expect(apply("## Title", 0, 0, bodySpec).doc.toString()).toBe("Title");
+  });
+
+  it("strips an existing blockquote marker", () => {
+    expect(apply("> Title", 0, 0, bodySpec).doc.toString()).toBe("Title");
+  });
+
+  it("is a no-op on a line with no marker", () => {
+    expect(apply("Title", 0, 0, bodySpec).doc.toString()).toBe("Title");
+  });
+
+  it("strips markers from every line touched by a multi-line selection", () => {
+    const doc = "# one\n> two";
+    const state = apply(doc, 0, doc.length, bodySpec);
+    expect(state.doc.toString()).toBe("one\ntwo");
   });
 });
 

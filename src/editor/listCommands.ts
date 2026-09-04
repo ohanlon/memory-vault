@@ -41,6 +41,76 @@ export function subscriptSpec(state: EditorState): TransactionSpec {
   return wrapSelectionSpec(state, "~");
 }
 
+const HEADING_MARKER_RE = /^#{1,6}\s+/;
+const QUOTE_MARKER_RE = /^>\s?/;
+
+/** The existing heading or blockquote marker (if any) at the start of a line, so it can be replaced rather than doubled up. */
+function existingParagraphMarker(lineText: string): number {
+  const heading = HEADING_MARKER_RE.exec(lineText);
+  if (heading) return heading[0].length;
+  const quote = QUOTE_MARKER_RE.exec(lineText);
+  if (quote) return quote[0].length;
+  return 0;
+}
+
+/**
+ * Sets every line the selection touches (or just the current line, if
+ * nothing's selected) to a paragraph-level type — a heading, blockquote, or
+ * plain body text (empty marker) — replacing any existing heading/blockquote
+ * marker rather than stacking a new one in front of it.
+ */
+function setParagraphType(state: EditorState, marker: string): TransactionSpec {
+  const sel = state.selection.main;
+  const fromLine = state.doc.lineAt(sel.from).number;
+  const toLine = state.doc.lineAt(sel.to).number;
+  const changes: { from: number; to: number; insert: string }[] = [];
+  for (let n = fromLine; n <= toLine; n++) {
+    const line = state.doc.line(n);
+    const existingLength = existingParagraphMarker(line.text);
+    changes.push({ from: line.from, to: line.from + existingLength, insert: marker });
+  }
+
+  // Same rationale as prefixLines below: land the cursor right after the
+  // marker on a single empty line, rather than wherever it maps to by default.
+  if (marker && fromLine === toLine && state.doc.line(fromLine).length === 0) {
+    return { changes, selection: { anchor: state.doc.line(fromLine).from + marker.length } };
+  }
+
+  return { changes };
+}
+
+export function heading1Spec(state: EditorState): TransactionSpec {
+  return setParagraphType(state, "# ");
+}
+
+export function heading2Spec(state: EditorState): TransactionSpec {
+  return setParagraphType(state, "## ");
+}
+
+export function heading3Spec(state: EditorState): TransactionSpec {
+  return setParagraphType(state, "### ");
+}
+
+export function heading4Spec(state: EditorState): TransactionSpec {
+  return setParagraphType(state, "#### ");
+}
+
+export function heading5Spec(state: EditorState): TransactionSpec {
+  return setParagraphType(state, "##### ");
+}
+
+export function heading6Spec(state: EditorState): TransactionSpec {
+  return setParagraphType(state, "###### ");
+}
+
+export function bodySpec(state: EditorState): TransactionSpec {
+  return setParagraphType(state, "");
+}
+
+export function quoteSpec(state: EditorState): TransactionSpec {
+  return setParagraphType(state, "> ");
+}
+
 // Checked in this order — a task item's "- [ ] " would also match the plain
 // bullet pattern, so the more specific task pattern has to be tried first.
 const TASK_MARKER_RE = /^(\s*)[-*+]\s+\[[ xX]\]\s+/;

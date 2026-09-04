@@ -5,14 +5,20 @@ export interface ContextMenuItem {
   /** Omit when the item is a submenu trigger (has children). */
   onClick?: () => void;
   shortcut?: string;
-  /** When present, hovering the item opens a flyout with these items instead of running onClick. */
-  children?: ContextMenuItem[];
+  /** When present, hovering the item opens a flyout with these entries instead of running onClick. */
+  children?: ContextMenuEntry[];
 }
+
+export interface ContextMenuSeparator {
+  separator: true;
+}
+
+export type ContextMenuEntry = ContextMenuItem | ContextMenuSeparator;
 
 interface Props {
   x: number;
   y: number;
-  items: ContextMenuItem[];
+  items: ContextMenuEntry[];
   onClose: () => void;
 }
 
@@ -48,46 +54,41 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
     };
   }, []);
 
-  return (
-    <div className="context-menu" style={{ top: y, left: x }} onClick={(e) => e.stopPropagation()}>
-      {items.map((item) => (
+  function renderEntries(entries: ContextMenuEntry[]) {
+    return entries.map((entry, i) => {
+      if ("separator" in entry) {
+        return <div key={`separator-${i}`} className="context-menu-separator" />;
+      }
+      return (
         <div
-          key={item.label}
+          key={entry.label}
           className="context-menu-item-wrapper"
-          onMouseEnter={() => item.children && setOpenSubmenu(item.label)}
-          onMouseLeave={() => item.children && setOpenSubmenu((cur) => (cur === item.label ? null : cur))}
+          onMouseEnter={() => entry.children && setOpenSubmenu(entry.label)}
+          onMouseLeave={() => entry.children && setOpenSubmenu((cur) => (cur === entry.label ? null : cur))}
         >
           <button
             className="context-menu-item"
             onClick={() => {
-              if (item.children) return;
-              item.onClick?.();
+              if (entry.children) return;
+              entry.onClick?.();
               onClose();
             }}
           >
-            <span className="context-menu-item-label">{item.label}</span>
-            {item.shortcut && <span className="context-menu-item-shortcut">{item.shortcut}</span>}
-            {item.children && <span className="context-menu-item-caret">›</span>}
+            <span className="context-menu-item-label">{entry.label}</span>
+            {entry.shortcut && <span className="context-menu-item-shortcut">{entry.shortcut}</span>}
+            {entry.children && <span className="context-menu-item-caret">›</span>}
           </button>
-          {item.children && openSubmenu === item.label && (
-            <div className="context-menu context-menu-submenu">
-              {item.children.map((child) => (
-                <button
-                  key={child.label}
-                  className="context-menu-item"
-                  onClick={() => {
-                    child.onClick?.();
-                    onClose();
-                  }}
-                >
-                  <span className="context-menu-item-label">{child.label}</span>
-                  {child.shortcut && <span className="context-menu-item-shortcut">{child.shortcut}</span>}
-                </button>
-              ))}
-            </div>
+          {entry.children && openSubmenu === entry.label && (
+            <div className="context-menu context-menu-submenu">{renderEntries(entry.children)}</div>
           )}
         </div>
-      ))}
+      );
+    });
+  }
+
+  return (
+    <div className="context-menu" style={{ top: y, left: x }} onClick={(e) => e.stopPropagation()}>
+      {renderEntries(items)}
     </div>
   );
 }

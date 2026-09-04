@@ -198,6 +198,20 @@ export function EditorPane({
           items={[
             { label: "Link", onClick: contextMenuRequest.insertLink },
             {
+              label: "Paragraph",
+              children: [
+                { label: "Heading 1", onClick: contextMenuRequest.makeHeading1 },
+                { label: "Heading 2", onClick: contextMenuRequest.makeHeading2 },
+                { label: "Heading 3", onClick: contextMenuRequest.makeHeading3 },
+                { label: "Heading 4", onClick: contextMenuRequest.makeHeading4 },
+                { label: "Heading 5", onClick: contextMenuRequest.makeHeading5 },
+                { label: "Heading 6", onClick: contextMenuRequest.makeHeading6 },
+                { label: "Body", onClick: contextMenuRequest.makeBody },
+                { separator: true },
+                { label: "Quote", onClick: contextMenuRequest.makeQuote },
+              ],
+            },
+            {
               label: "List",
               children: [
                 { label: "Ordered List", onClick: contextMenuRequest.makeOrderedList },
