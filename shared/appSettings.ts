@@ -1,5 +1,6 @@
 import type { AppSettings, EditorFontFamily, TabFolderDisplay, ThemeSetting } from "./types";
 import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "./editorFonts";
+import { CODE_LANGUAGES, DEFAULT_ENABLED_CODE_LANGUAGES } from "./codeLanguages";
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   tabFolderDisplay: "hover",
@@ -10,11 +11,23 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   showLineNumbers: true,
   editorFontFamily: "system-ui",
   editorFontSize: 14,
+  enabledCodeLanguages: DEFAULT_ENABLED_CODE_LANGUAGES,
 };
 
 const VALID_TAB_FOLDER_DISPLAY: TabFolderDisplay[] = ["never", "hover", "always"];
 const VALID_THEME: ThemeSetting[] = ["dark", "light", "system"];
 const VALID_EDITOR_FONT_FAMILY: EditorFontFamily[] = EDITOR_FONT_OPTIONS.map((opt) => opt.value);
+const VALID_CODE_LANGUAGE_IDS = new Set(CODE_LANGUAGES.map((l) => l.id));
+
+/**
+ * Keeps only recognized, deduplicated language ids. Falls back to the
+ * default set only when the value is missing/malformed entirely — a valid
+ * but empty array (the user deselected every language) is left as-is.
+ */
+function normalizeEnabledCodeLanguages(value: unknown): string[] {
+  if (!Array.isArray(value)) return DEFAULT_APP_SETTINGS.enabledCodeLanguages;
+  return Array.from(new Set(value.filter((v): v is string => typeof v === "string" && VALID_CODE_LANGUAGE_IDS.has(v))));
+}
 
 function clampFontSize(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
@@ -47,5 +60,6 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       ? (raw.editorFontFamily as EditorFontFamily)
       : DEFAULT_APP_SETTINGS.editorFontFamily,
     editorFontSize: clampFontSize(raw.editorFontSize, DEFAULT_APP_SETTINGS.editorFontSize),
+    enabledCodeLanguages: normalizeEnabledCodeLanguages(raw.enabledCodeLanguages),
   };
 }

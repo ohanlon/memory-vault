@@ -1106,6 +1106,38 @@ body {
   font-size: 13px;
 }
 
+.settings-hint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.settings-language-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  /* ~10 rows visible (28px each) before scrolling. */
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  background: var(--bg-base);
+}
+
+.settings-language-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-language-item:hover {
+  background: var(--bg-control-hover);
+}
+
 .backlinks-section h4 {
   margin: 8px 0 4px;
   font-size: 12px;

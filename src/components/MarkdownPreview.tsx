@@ -1,14 +1,15 @@
-import { useMemo, MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, MouseEvent } from "react";
 import { Marked, type Tokens } from "marked";
 import DOMPurify from "dompurify";
 import { EXTERNAL_SCHEME_RE, titleFromHref } from "../editor/livePreview";
-import { highlightCode } from "../editor/codeHighlight";
+import { ensureLanguagesLoaded, extractNeededLanguageIds, highlightCode } from "../editor/codeHighlight";
 
 interface Props {
   content: string;
   noteTitles: Set<string>;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
+  enabledCodeLanguages: string[];
 }
 
 function escapeHtml(text: string): string {
@@ -19,12 +20,12 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function createMarked(noteTitles: Set<string>) {
+function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<string>) {
   return new Marked({
     renderer: {
       code({ text, lang }: Tokens.Code) {
         const content = text.replace(/\n$/, "") + "\n";
-        const highlighted = highlightCode(content, lang);
+        const highlighted = highlightCode(content, lang, enabledLanguageIds);
         if (highlighted) {
           return `<pre><code class="hljs language-${escapeHtml(highlighted.language)}">${highlighted.html}</code></pre>\n`;
         }
@@ -143,12 +144,33 @@ function createMarked(noteTitles: Set<string>) {
   });
 }
 
-export function MarkdownPreview({ content, noteTitles, onSelectTitle, onOpenExternal }: Props) {
-  const html = useMemo(() => {
-    const marked = createMarked(noteTitles);
+export function MarkdownPreview({ content, noteTitles, onSelectTitle, onOpenExternal, enabledCodeLanguages }: Props) {
+  const enabledLanguageIds = useMemo(() => new Set(enabledCodeLanguages), [enabledCodeLanguages]);
+
+  const render = useCallback(() => {
+    const marked = createMarked(noteTitles, enabledLanguageIds);
     const rendered = marked.parse(content, { async: false }) as string;
     return DOMPurify.sanitize(rendered);
-  }, [content, noteTitles]);
+  }, [content, noteTitles, enabledLanguageIds]);
+
+  // Renders immediately with whatever language grammars are already loaded
+  // (never leaves the preview blank), then re-renders once any additional
+  // ones a fenced code block asks for have finished loading.
+  const [html, setHtml] = useState(render);
+
+  useEffect(() => {
+    setHtml(render());
+    const needed = extractNeededLanguageIds(content, enabledLanguageIds);
+    if (needed.length === 0) return;
+    let cancelled = false;
+    ensureLanguagesLoaded(needed).then(() => {
+      if (!cancelled) setHtml(render());
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, noteTitles, enabledLanguageIds]);
 
   function handleClick(e: MouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;

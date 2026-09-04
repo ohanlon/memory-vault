@@ -14,6 +14,7 @@ describe("normalizeAppSettings", () => {
         showLineNumbers: false,
         editorFontFamily: "monospace",
         editorFontSize: 18,
+        enabledCodeLanguages: ["python", "rust"],
       })
     ).toEqual({
       tabFolderDisplay: "always",
@@ -24,6 +25,7 @@ describe("normalizeAppSettings", () => {
       showLineNumbers: false,
       editorFontFamily: "monospace",
       editorFontSize: 18,
+      enabledCodeLanguages: ["python", "rust"],
     });
     expect(
       normalizeAppSettings({
@@ -35,6 +37,7 @@ describe("normalizeAppSettings", () => {
         showLineNumbers: true,
         editorFontFamily: "arimo",
         editorFontSize: 12,
+        enabledCodeLanguages: [],
       })
     ).toEqual({
       tabFolderDisplay: "never",
@@ -45,6 +48,7 @@ describe("normalizeAppSettings", () => {
       showLineNumbers: true,
       editorFontFamily: "arimo",
       editorFontSize: 12,
+      enabledCodeLanguages: [],
     });
   });
 
@@ -131,5 +135,26 @@ describe("normalizeAppSettings", () => {
 
   it("rounds a fractional editorFontSize", () => {
     expect(normalizeAppSettings({ editorFontSize: 15.6 }).editorFontSize).toBe(16);
+  });
+
+  it("falls back to the default enabledCodeLanguages when the value isn't an array", () => {
+    expect(normalizeAppSettings({ enabledCodeLanguages: "python" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ enabledCodeLanguages: undefined })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({})).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("drops unrecognized language ids and non-string entries", () => {
+    expect(normalizeAppSettings({ enabledCodeLanguages: ["python", "not-a-language", 5, null] }).enabledCodeLanguages).toEqual(["python"]);
+  });
+
+  it("deduplicates repeated language ids", () => {
+    expect(normalizeAppSettings({ enabledCodeLanguages: ["python", "python", "rust"] }).enabledCodeLanguages).toEqual([
+      "python",
+      "rust",
+    ]);
+  });
+
+  it("preserves a deliberately empty selection instead of falling back to defaults", () => {
+    expect(normalizeAppSettings({ enabledCodeLanguages: [] }).enabledCodeLanguages).toEqual([]);
   });
 });

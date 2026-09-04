@@ -179,6 +179,8 @@ export interface AppSettings {
   editorFontFamily: EditorFontFamily;
   /** Font size (px) used in the editing pane. */
   editorFontSize: number;
+  /** highlight.js language ids (see shared/codeLanguages.ts) enabled for code-block syntax highlighting. */
+  enabledCodeLanguages: string[];
 }
 
 export interface DailyNoteResult {

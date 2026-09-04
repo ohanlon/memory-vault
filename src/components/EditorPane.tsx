@@ -6,6 +6,7 @@ import { EditorView } from "@codemirror/view";
 import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
+import { CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
 import { livePreview } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { listIndentKeymap } from "../editor/listIndent";
@@ -123,9 +124,23 @@ export function EditorPane({
     [settings.editorFontFamily, settings.editorFontSize]
   );
 
+  // Only offer live syntax highlighting for languages enabled in Settings >
+  // Code — matched against @codemirror/language-data's own name/alias list
+  // via the same canonical-id mapping the preview's highlight.js side uses.
+  const enabledCmLanguages = useMemo(() => {
+    const enabled = new Set(settings.enabledCodeLanguages);
+    return languages.filter((desc) => {
+      const candidates = [desc.name.toLowerCase(), ...desc.alias.map((a) => a.toLowerCase())];
+      return candidates.some((c) => {
+        const id = CODE_LANGUAGE_ALIASES[c];
+        return id !== undefined && enabled.has(id);
+      });
+    });
+  }, [settings.enabledCodeLanguages]);
+
   const extensions = useMemo(
     () => [
-      markdown({ codeLanguages: languages }),
+      markdown({ codeLanguages: enabledCmLanguages }),
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
       editorContextMenu(setContextMenuRequest),
@@ -134,7 +149,7 @@ export function EditorPane({
       listIndentKeymap(),
       fontTheme,
     ],
-    [onSelectTitle, onOpenExternal, noteTitles, fontTheme]
+    [onSelectTitle, onOpenExternal, noteTitles, fontTheme, enabledCmLanguages]
   );
 
   if (!note) {
@@ -181,6 +196,7 @@ export function EditorPane({
           noteTitles={noteTitles}
           onSelectTitle={onSelectTitle}
           onOpenExternal={onOpenExternal}
+          enabledCodeLanguages={settings.enabledCodeLanguages}
         />
       ) : (
         <CodeMirror

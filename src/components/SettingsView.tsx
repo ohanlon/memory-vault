@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   AppSettings,
   EditorFontFamily,
@@ -8,6 +8,7 @@ import type {
   ThemeSetting,
 } from "@shared/types";
 import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "@shared/editorFonts";
+import { CODE_LANGUAGES } from "@shared/codeLanguages";
 
 interface Props {
   settings: AppSettings;
@@ -77,6 +78,44 @@ function PluginsSection() {
           })}
         </ul>
       )}
+    </section>
+  );
+}
+
+function CodeLanguagesSection({ settings, onChange }: Props) {
+  const enabled = useMemo(() => new Set(settings.enabledCodeLanguages), [settings.enabledCodeLanguages]);
+
+  // Selected languages first (alphabetical), then unselected (alphabetical).
+  const sorted = useMemo(() => {
+    return [...CODE_LANGUAGES].sort((a, b) => {
+      const aSelected = enabled.has(a.id);
+      const bSelected = enabled.has(b.id);
+      if (aSelected !== bSelected) return aSelected ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [enabled]);
+
+  function toggle(id: string) {
+    const next = enabled.has(id)
+      ? settings.enabledCodeLanguages.filter((x) => x !== id)
+      : [...settings.enabledCodeLanguages, id];
+    onChange({ ...settings, enabledCodeLanguages: next });
+  }
+
+  return (
+    <section className="settings-section">
+      <h2>Code</h2>
+      <p className="settings-hint">Languages available for code-block syntax highlighting.</p>
+      <ul className="settings-language-list">
+        {sorted.map((lang) => (
+          <li key={lang.id}>
+            <label className="settings-language-item">
+              <input type="checkbox" checked={enabled.has(lang.id)} onChange={() => toggle(lang.id)} />
+              {lang.name}
+            </label>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -186,6 +225,8 @@ export function SettingsView({ settings, onChange }: Props) {
           />
         </div>
       </section>
+
+      <CodeLanguagesSection settings={settings} onChange={onChange} />
 
       <PluginsSection />
     </div>

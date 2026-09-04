@@ -34,6 +34,7 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
       showLineNumbers: false,
       editorFontFamily: "monospace" as const,
       editorFontSize: 18,
+      enabledCodeLanguages: ["python", "rust"],
     };
     writeAppSettingsFile(tmpFile, settings);
     expect(readAppSettingsFile(tmpFile)).toEqual(settings);
