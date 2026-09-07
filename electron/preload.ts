@@ -15,6 +15,7 @@ import type {
   StackEntry,
   StackIndex,
   StackReconciledEvent,
+  StackReconcileStatusEvent,
   WorkspaceState,
 } from "../shared/types";
 
@@ -28,6 +29,11 @@ const api = {
     const listener = (_e: unknown, event: StackReconciledEvent) => cb(event);
     ipcRenderer.on("stack:reconciled", listener);
     return () => ipcRenderer.removeListener("stack:reconciled", listener);
+  },
+  onReconcileStatus: (cb: (event: StackReconcileStatusEvent) => void): (() => void) => {
+    const listener = (_e: unknown, event: StackReconcileStatusEvent) => cb(event);
+    ipcRenderer.on("stack:reconcile-status", listener);
+    return () => ipcRenderer.removeListener("stack:reconcile-status", listener);
   },
   listStacks: (): Promise<StackEntry[]> => ipcRenderer.invoke("stacks:list"),
   addStack: (name: string, root: string): Promise<StackEntry[]> =>

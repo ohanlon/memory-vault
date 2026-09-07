@@ -76,6 +76,7 @@ export default function App() {
     propertySchema,
     loading,
     error,
+    reconciling,
     openStackByEntry,
     addStack,
     removeStack,
@@ -714,6 +715,7 @@ export default function App() {
               onOpenExternal: openExternal,
               onSaveProperties: saveNoteProperties,
               onOpenSchemaManager: () => pluginRegistry.runCommand("properties.manageSchema"),
+              reconciling,
             }}
           />
         )}

@@ -6,10 +6,19 @@ interface Props {
   activeTitle: string | null;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
+  /** True while the vault's background reindexing pass is in progress. */
+  reconciling?: boolean;
 }
 
-export function LinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal }: Props) {
-  if (!activeTitle) return <p className="backlinks-empty">Select a note to see its links</p>;
+export function LinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal, reconciling }: Props) {
+  if (!activeTitle) {
+    return (
+      <>
+        {reconciling && <div className="reindexing-toast">Reindexing vault…</div>}
+        <p className="backlinks-empty">Select a note to see its links</p>
+      </>
+    );
+  }
 
   const backlinks = backlinkTitles(graph, activeTitle);
   const outgoing = graph.edges.filter((e) => e.source === activeTitle && e.target !== activeTitle);
@@ -20,6 +29,7 @@ export function LinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal }
 
   return (
     <>
+      {reconciling && <div className="reindexing-toast">Reindexing vault…</div>}
       <div className="backlinks-section">
         <h4>Links to here</h4>
         {backlinks.length === 0 && <p className="backlinks-empty">No backlinks</p>}

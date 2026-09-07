@@ -1156,6 +1156,36 @@ body {
   background: var(--bg-control-hover);
 }
 
+.reindexing-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-control);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.reindexing-toast::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--border-control);
+  border-top-color: var(--accent-blue);
+  animation: reindexing-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes reindexing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .backlinks-section h4 {
   margin: 8px 0 4px;
   font-size: 12px;

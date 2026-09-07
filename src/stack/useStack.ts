@@ -13,6 +13,9 @@ export interface StackState {
   propertySchema: PropertyDef[];
   loading: boolean;
   error: string | null;
+  /** True while the background reconciliation pass kicked off by openStack
+   *  is in progress (see the onReconcileStatus listener below). */
+  reconciling: boolean;
 }
 
 const EMPTY_GRAPH: GraphModel = { nodes: [], edges: [] };
@@ -28,6 +31,7 @@ export function useStack() {
     propertySchema: [],
     loading: false,
     error: null,
+    reconciling: false,
   });
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -59,6 +63,11 @@ export function useStack() {
         propertySchema,
         loading: false,
         error: null,
+        // stack:load always kicks off a background reconciliation pass right
+        // after it resolves (see main.ts) — reflect that here rather than
+        // waiting on a separate IPC "started" event, which could otherwise
+        // race this state update (arriving before root is set below).
+        reconciling: true,
       }));
       await loadThirdPartyPlugins();
     } catch (err) {
@@ -74,6 +83,19 @@ export function useStack() {
       setState((s) => {
         if (s.root !== eventRoot) return s; // stale event for a stack we've since left
         return { ...s, notes, folders, graph: buildGraph(notes) };
+      });
+    });
+    return unsubscribe;
+  }, []);
+
+  // The background reconciliation pass (started when openStack's state
+  // update set reconciling: true above) has finished, whether or not it
+  // found anything to change.
+  useEffect(() => {
+    const unsubscribe = window.memoryStack.onReconcileStatus(({ root: eventRoot, reconciling }) => {
+      setState((s) => {
+        if (s.root !== eventRoot) return s; // stale event for a stack we've since left
+        return { ...s, reconciling };
       });
     });
     return unsubscribe;
@@ -107,6 +129,7 @@ export function useStack() {
               folders: [],
               graph: EMPTY_GRAPH,
               propertySchema: [],
+              reconciling: false,
             }
           : {}),
       }));
@@ -135,6 +158,7 @@ export function useStack() {
       folders: [],
       graph: EMPTY_GRAPH,
       propertySchema: [],
+      reconciling: false,
     }));
   }, []);
 

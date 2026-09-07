@@ -14,6 +14,7 @@ import type {
   StackEntry,
   StackIndex,
   StackReconciledEvent,
+  StackReconcileStatusEvent,
   WorkspaceState,
 } from "@shared/types";
 
@@ -22,6 +23,7 @@ export interface MemoryStackAPI {
   loadStack(root: string): Promise<StackIndex>;
   reloadStack(): Promise<{ notes: Note[]; folders: FolderEntry[] }>;
   onReconciled(cb: (event: StackReconciledEvent) => void): () => void;
+  onReconcileStatus(cb: (event: StackReconcileStatusEvent) => void): () => void;
   listStacks(): Promise<StackEntry[]>;
   addStack(name: string, root: string): Promise<StackEntry[]>;
   removeStack(name: string): Promise<StackEntry[]>;

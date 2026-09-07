@@ -226,12 +226,19 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
   // Reconcile the cache against disk in the background — re-parses only
   // files whose mtime changed since the cache was written, and pushes the
   // reconciled result only if something actually differs (e.g. the vault
-  // was edited outside the app while it was closed).
-  reconcileStackCache(root, notes, folders).then((result) => {
-    if (!result || currentRoot !== root) return;
-    currentNotes = result.notes;
-    win?.webContents.send("stack:reconciled", { root, notes: result.notes, folders: result.folders });
-  });
+  // was edited outside the app while it was closed). The renderer treats
+  // reconciliation as started the moment stack:load resolves (see
+  // openStack), so only the "done" transition needs to be pushed here.
+  reconcileStackCache(root, notes, folders)
+    .then((result) => {
+      if (!result || currentRoot !== root) return;
+      currentNotes = result.notes;
+      win?.webContents.send("stack:reconciled", { root, notes: result.notes, folders: result.folders });
+    })
+    .finally(() => {
+      if (currentRoot !== root) return;
+      win?.webContents.send("stack:reconcile-status", { root, reconciling: false });
+    });
 
   return { root, notes, folders };
 });

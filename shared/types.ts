@@ -68,6 +68,14 @@ export interface StackReconciledEvent {
   folders: FolderEntry[];
 }
 
+/** Brackets the background reconciliation pass (kicked off by stack:load)
+ *  regardless of whether it finds any changes, so the UI can show a
+ *  reindexing indicator for its duration. */
+export interface StackReconcileStatusEvent {
+  root: string;
+  reconciling: boolean;
+}
+
 export interface StackEntry {
   /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
   name: string;
