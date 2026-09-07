@@ -13,7 +13,10 @@ interface Props {
   renamingPath: string | null;
   /** Relative paths of folders currently collapsed — persisted per stack by the caller. */
   collapsedFolders: string[];
+  /** Relative paths of folders excluded from the graph — persisted per stack by the caller. */
+  excludedFolders: string[];
   onToggleFolder: (relativePath: string) => void;
+  onToggleExcludeFolder: (folder: FolderEntry) => void;
   onExpandFolders: (relativePaths: string[]) => void;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
@@ -106,7 +109,9 @@ export function FileTree({
   activePath,
   renamingPath,
   collapsedFolders,
+  excludedFolders,
   onToggleFolder,
+  onToggleExcludeFolder,
   onExpandFolders,
   onSelect,
   onDelete,
@@ -122,6 +127,7 @@ export function FileTree({
   onMoveFolder,
 }: Props) {
   const collapsed = useMemo(() => new Set(collapsedFolders), [collapsedFolders]);
+  const excluded = useMemo(() => new Set(excludedFolders), [excludedFolders]);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const tree = buildFileTree(notes, folders, root);
@@ -208,12 +214,13 @@ export function FileTree({
 
     const isCollapsed = collapsed.has(node.relativePath);
     const isDragOver = dragOver === node.relativePath;
+    const isExcluded = excluded.has(node.relativePath);
     const folderEntry: FolderEntry = { path: node.path, relativePath: node.relativePath };
     const isRenamingFolder = node.path === renamingPath;
     return (
       <li key={node.relativePath} className="file-tree-folder">
         <div
-          className={`file-tree-folder-row${isDragOver ? " drag-over" : ""}`}
+          className={`file-tree-folder-row${isDragOver ? " drag-over" : ""}${isExcluded ? " file-tree-folder-row-excluded" : ""}`}
           style={{ paddingLeft: 4 + depth * 16 }}
           tabIndex={0}
           draggable={!isRenamingFolder}
@@ -327,9 +334,15 @@ export function FileTree({
                 })()
               : (() => {
                   const folder = contextMenu.target.folder;
+                  const isExcluded = excluded.has(folder.relativePath);
                   return [
                     { label: "Rename", shortcut: "F2", onClick: () => onRenameFolder(folder) },
                     { label: "Delete", shortcut: "Del", onClick: () => onDeleteFolder(folder) },
+                    { separator: true as const },
+                    {
+                      label: isExcluded ? "Include in Graph" : "Exclude from Graph",
+                      onClick: () => onToggleExcludeFolder(folder),
+                    },
                   ];
                 })()
           }

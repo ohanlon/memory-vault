@@ -56,4 +56,29 @@ describe("filterGraph", () => {
     expect(result.nodes.map((n) => n.id)).toContain("#work");
     expect(result.nodes.map((n) => n.id)).toContain("https://example.com");
   });
+
+  it("hides notes in excludedNoteIds and their dangling edges by default", () => {
+    const result = filterGraph(graph(), DEFAULT_GRAPH_FILTERS, new Set(["A"]));
+    expect(result.nodes.map((n) => n.id)).not.toContain("A");
+    expect(result.edges.some((e) => e.source === "A" || e.target === "A")).toBe(false);
+  });
+
+  it("shows notes in excludedNoteIds when excludedFolders filter is turned on", () => {
+    const result = filterGraph(
+      graph(),
+      { ...DEFAULT_GRAPH_FILTERS, excludedFolders: true },
+      new Set(["A"])
+    );
+    expect(result.nodes.map((n) => n.id)).toContain("A");
+  });
+
+  it("never excludes tag hubs or external nodes via excludedNoteIds", () => {
+    const result = filterGraph(
+      graph(),
+      DEFAULT_GRAPH_FILTERS,
+      new Set(["#work", "https://example.com"])
+    );
+    expect(result.nodes.map((n) => n.id)).toContain("#work");
+    expect(result.nodes.map((n) => n.id)).toContain("https://example.com");
+  });
 });

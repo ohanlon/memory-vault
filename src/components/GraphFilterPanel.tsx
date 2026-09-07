@@ -13,6 +13,7 @@ const OPTIONS: { key: keyof GraphFilters; label: string }[] = [
   { key: "tags", label: "Tags" },
   { key: "attachments", label: "Attachments" },
   { key: "orphaned", label: "Orphaned notes" },
+  { key: "excludedFolders", label: "Excluded folders" },
 ];
 
 export function GraphFilterPanel({ filters, onChange, onClose }: Props) {

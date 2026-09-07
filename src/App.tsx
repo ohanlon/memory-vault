@@ -90,6 +90,7 @@ export default function App() {
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
+  const [excludedFolders, setExcludedFolders] = useState<string[]>([]);
   // Which stack root a workspace-state restore has been kicked off for, so a
   // refresh() of the same stack doesn't retrigger it — reset to null when the
   // stack closes so reopening it (or a different one) restores again.
@@ -173,6 +174,19 @@ export default function App() {
     [notes, activePath]
   );
 
+  // Titles of notes under an excluded folder (or a descendant of one), for
+  // the graph to hide by default — see the "Excluded folders" graph filter.
+  const excludedNoteIds = useMemo(() => {
+    if (excludedFolders.length === 0) return new Set<string>();
+    const ids = new Set<string>();
+    for (const note of notes) {
+      if (excludedFolders.some((f) => isSameOrDescendant(f, note.relativePath))) {
+        ids.add(note.title);
+      }
+    }
+    return ids;
+  }, [notes, excludedFolders]);
+
   const openTabItems = useMemo<TabItem[]>(
     () =>
       openPaths
@@ -217,6 +231,16 @@ export default function App() {
     });
   }, [folders]);
 
+  // Drop excluded-folder entries for folders that no longer exist, same as
+  // the collapsed-folder pruning above.
+  useEffect(() => {
+    const existing = new Set(folders.map((f) => f.relativePath));
+    setExcludedFolders((paths) => {
+      const filtered = paths.filter((p) => existing.has(p));
+      return filtered.length === paths.length ? paths : filtered;
+    });
+  }, [folders]);
+
   // Restores open tabs/collapsed folders from <stack>/.cairn/workspace.json
   // whenever a (newly opened or reopened) stack finishes loading. Guarded by
   // restoreStartedRootRef so a refresh() of the same stack — triggered on
@@ -235,6 +259,7 @@ export default function App() {
       // vault list by the time this runs, so the pruning effect above will
       // catch any genuinely-stale entries on the next render.
       setCollapsedFolders(state.collapsedFolders);
+      setExcludedFolders(state.excludedFolders);
       restoredReadyRootRef.current = root;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -261,12 +286,12 @@ export default function App() {
         .map((id) => tabIdToRelativePath(id, notes))
         .filter((p): p is string => p !== null);
       const activeTab = activePath ? tabIdToRelativePath(activePath, notes) : null;
-      window.memoryStack.saveWorkspaceState({ collapsedFolders, openTabs, activeTab });
+      window.memoryStack.saveWorkspaceState({ collapsedFolders, openTabs, activeTab, excludedFolders });
     }, 300);
     return () => {
       if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     };
-  }, [root, openPaths, activePath, collapsedFolders, notes]);
+  }, [root, openPaths, activePath, collapsedFolders, excludedFolders, notes]);
 
   const toggleFolder = useCallback((relativePath: string) => {
     setCollapsedFolders((prev) =>
@@ -276,6 +301,14 @@ export default function App() {
 
   const expandFolders = useCallback((relativePaths: string[]) => {
     setCollapsedFolders((prev) => prev.filter((p) => !relativePaths.includes(p)));
+  }, []);
+
+  const toggleExcludeFolder = useCallback((folder: FolderEntry) => {
+    setExcludedFolders((prev) =>
+      prev.includes(folder.relativePath)
+        ? prev.filter((p) => p !== folder.relativePath)
+        : [...prev, folder.relativePath]
+    );
   }, []);
 
   const openTab = useCallback((path: string) => {
@@ -628,7 +661,9 @@ export default function App() {
               activePath,
               renamingPath,
               collapsedFolders,
+              excludedFolders,
               onToggleFolder: toggleFolder,
+              onToggleExcludeFolder: toggleExcludeFolder,
               onExpandFolders: expandFolders,
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
@@ -678,6 +713,7 @@ export default function App() {
               slotProps={{
                 note: activeNote,
                 graph,
+                excludedNoteIds,
                 activeTitle: activeNote?.title ?? null,
                 onSaved: refresh,
                 onSelectTitle: selectByTitle,

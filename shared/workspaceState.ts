@@ -4,6 +4,7 @@ export const DEFAULT_WORKSPACE_STATE: WorkspaceState = {
   collapsedFolders: [],
   openTabs: [],
   activeTab: null,
+  excludedFolders: [],
 };
 
 function stringArray(value: unknown): string[] {
@@ -17,5 +18,6 @@ export function normalizeWorkspaceState(value: unknown): WorkspaceState {
     collapsedFolders: stringArray(raw.collapsedFolders),
     openTabs: stringArray(raw.openTabs),
     activeTab: typeof raw.activeTab === "string" ? raw.activeTab : null,
+    excludedFolders: stringArray(raw.excludedFolders),
   };
 }

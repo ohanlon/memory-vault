@@ -8,6 +8,8 @@ export interface GraphFilters {
   orphaned: boolean;
   externalLinks: boolean;
   internalLinks: boolean;
+  /** Notes in a folder the user has marked excluded. Unlike the other filters, this defaults to off. */
+  excludedFolders: boolean;
 }
 
 export const DEFAULT_GRAPH_FILTERS: GraphFilters = {
@@ -16,10 +18,15 @@ export const DEFAULT_GRAPH_FILTERS: GraphFilters = {
   orphaned: true,
   externalLinks: true,
   internalLinks: true,
+  excludedFolders: false,
 };
 
 /** Applies the given visibility toggles to a graph, dropping edges left dangling by a dropped node. */
-export function filterGraph(graph: GraphModel, filters: GraphFilters): GraphModel {
+export function filterGraph(
+  graph: GraphModel,
+  filters: GraphFilters,
+  excludedNoteIds: Set<string> = new Set()
+): GraphModel {
   const connectedIds = new Set<string>();
   for (const edge of graph.edges) {
     connectedIds.add(edge.source);
@@ -29,6 +36,7 @@ export function filterGraph(graph: GraphModel, filters: GraphFilters): GraphMode
   const nodes = graph.nodes.filter((node) => {
     if (node.isTag) return filters.tags;
     if (node.external) return filters.externalLinks;
+    if (!filters.excludedFolders && excludedNoteIds.has(node.id)) return false;
     if (!filters.orphaned && !connectedIds.has(node.id)) return false;
     return true;
   });

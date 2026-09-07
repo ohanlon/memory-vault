@@ -17,11 +17,16 @@ describe("normalizeWorkspaceState", () => {
 
   it("drops non-string entries from array fields", () => {
     expect(
-      normalizeWorkspaceState({ collapsedFolders: ["a", 1, null, "b"], openTabs: [2, "c"] })
+      normalizeWorkspaceState({
+        collapsedFolders: ["a", 1, null, "b"],
+        openTabs: [2, "c"],
+        excludedFolders: ["d", 3],
+      })
     ).toEqual({
       collapsedFolders: ["a", "b"],
       openTabs: ["c"],
       activeTab: null,
+      excludedFolders: ["d"],
     });
   });
 
@@ -30,7 +35,12 @@ describe("normalizeWorkspaceState", () => {
   });
 
   it("round-trips a fully populated state", () => {
-    const state = { collapsedFolders: ["a/b"], openTabs: ["a/b/c.md", "@graph"], activeTab: "@graph" };
+    const state = {
+      collapsedFolders: ["a/b"],
+      openTabs: ["a/b/c.md", "@graph"],
+      activeTab: "@graph",
+      excludedFolders: ["archive"],
+    };
     expect(normalizeWorkspaceState(state)).toEqual(state);
   });
 });

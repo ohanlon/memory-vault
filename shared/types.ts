@@ -148,6 +148,8 @@ export interface WorkspaceState {
   openTabs: string[];
   /** Relative path (or tab sentinel id) of the active tab, if any. */
   activeTab: string | null;
+  /** Relative paths of folders excluded from the graph (descendants are excluded too). */
+  excludedFolders: string[];
 }
 
 /** How a note's parent folder path is shown in its tab header. */

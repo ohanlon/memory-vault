@@ -426,6 +426,11 @@ body {
   outline-offset: -1px;
 }
 
+.file-tree-folder-row-excluded .file-tree-folder-name {
+  opacity: 0.55;
+  font-style: italic;
+}
+
 .file-tree-folder-icon {
   flex-shrink: 0;
   margin-right: 6px;
