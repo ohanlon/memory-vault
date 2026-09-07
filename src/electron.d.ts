@@ -38,6 +38,8 @@ export interface MemoryStackAPI {
   deleteFolder(absPath: string): Promise<boolean>;
   moveNote(absPath: string, destDir: string): Promise<string>;
   moveFolder(absPath: string, destParentDir: string): Promise<string>;
+  copyNote(absPath: string, destDir: string): Promise<string>;
+  copyFolder(absPath: string, destParentDir: string): Promise<string>;
   renameFolder(absPath: string, newName: string): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;

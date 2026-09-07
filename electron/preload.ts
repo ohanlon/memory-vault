@@ -62,6 +62,10 @@ const api = {
     ipcRenderer.invoke("stack:moveNote", absPath, destDir),
   moveFolder: (absPath: string, destParentDir: string): Promise<string> =>
     ipcRenderer.invoke("stack:moveFolder", absPath, destParentDir),
+  copyNote: (absPath: string, destDir: string): Promise<string> =>
+    ipcRenderer.invoke("stack:copyNote", absPath, destDir),
+  copyFolder: (absPath: string, destParentDir: string): Promise<string> =>
+    ipcRenderer.invoke("stack:copyFolder", absPath, destParentDir),
   renameFolder: (absPath: string, newName: string): Promise<string> =>
     ipcRenderer.invoke("stack:renameFolder", absPath, newName),
   openExternal: (url: string): Promise<boolean> =>

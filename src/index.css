@@ -431,6 +431,11 @@ body {
   font-style: italic;
 }
 
+.file-tree-folder-row-cut .file-tree-folder-name,
+.file-tree-item-cut {
+  opacity: 0.5;
+}
+
 .file-tree-folder-icon {
   flex-shrink: 0;
   margin-right: 6px;

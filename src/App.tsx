@@ -23,6 +23,7 @@ import {
   renameTab,
   tabIdToRelativePath,
 } from "./stack/tabs";
+import type { NavClipboard } from "./components/FileTree";
 import { stripMdExtension } from "@shared/displayName";
 import { isSameOrDescendant } from "@shared/fileTree";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
@@ -94,6 +95,8 @@ export default function App() {
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
   const [excludedFolders, setExcludedFolders] = useState<string[]>([]);
+  // Cut/copy clipboard for the file tree — not persisted, cleared on app restart.
+  const [navClipboard, setNavClipboard] = useState<NavClipboard | null>(null);
   // Which stack root a workspace-state restore has been kicked off for, so a
   // refresh() of the same stack doesn't retrigger it — reset to null when the
   // stack closes so reopening it (or a different one) restores again.
@@ -314,6 +317,34 @@ export default function App() {
     );
   }, []);
 
+  const cutNote = useCallback((note: Note) => setNavClipboard({ type: "note", mode: "cut", path: note.path }), []);
+  const copyNoteToClipboard = useCallback(
+    (note: Note) => setNavClipboard({ type: "note", mode: "copy", path: note.path }),
+    []
+  );
+  const cutFolder = useCallback(
+    (folder: FolderEntry) => setNavClipboard({ type: "folder", mode: "cut", path: folder.path }),
+    []
+  );
+  const copyFolderToClipboard = useCallback(
+    (folder: FolderEntry) => setNavClipboard({ type: "folder", mode: "copy", path: folder.path }),
+    []
+  );
+
+  const pasteIntoFolder = useCallback(
+    (destDir: string) => {
+      if (!navClipboard) return;
+      const { type, mode, path: srcPath } = navClipboard;
+      if (mode === "cut") {
+        pluginRegistry.runCommand(type === "note" ? "stack.moveNote" : "stack.moveFolder", srcPath, destDir);
+        setNavClipboard(null);
+      } else {
+        pluginRegistry.runCommand(type === "note" ? "stack.copyNote" : "stack.copyFolder", srcPath, destDir);
+      }
+    },
+    [navClipboard]
+  );
+
   const openTab = useCallback((path: string) => {
     setOpenPaths((paths) => addTabPath(paths, path));
     setActivePath(path);
@@ -486,6 +517,24 @@ export default function App() {
     }
   }
 
+  async function handleCopyNote(notePath: string, destDir: string) {
+    try {
+      await window.memoryStack.copyNote(notePath, destDir);
+      await refresh();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleCopyFolder(folderPath: string, destDir: string) {
+    try {
+      await window.memoryStack.copyFolder(folderPath, destDir);
+      await refresh();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function handleCommitNoteRename(note: Note, newTitle: string) {
     setRenamingPath(null);
     if (!newTitle || newTitle === note.title) return;
@@ -534,6 +583,12 @@ export default function App() {
     );
     pluginRegistry.registerCommand("stack.moveFolder", (folderPath: string, destDir: string) =>
       handleMoveFolder(folderPath, destDir)
+    );
+    pluginRegistry.registerCommand("stack.copyNote", (notePath: string, destDir: string) =>
+      handleCopyNote(notePath, destDir)
+    );
+    pluginRegistry.registerCommand("stack.copyFolder", (folderPath: string, destDir: string) =>
+      handleCopyFolder(folderPath, destDir)
     );
     pluginRegistry.registerCommand("view.toggleSidebar", () => setSidebarCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.toggleRightPanel", () => setRightPanelCollapsed((v) => !v));
@@ -704,6 +759,12 @@ export default function App() {
               onToggleExcludeFolder: toggleExcludeFolder,
               onExpandFolders: expandFolders,
               onShowInExplorer: showInExplorer,
+              clipboard: navClipboard,
+              onCutNote: cutNote,
+              onCopyNote: copyNoteToClipboard,
+              onCutFolder: cutFolder,
+              onCopyFolder: copyFolderToClipboard,
+              onPasteInto: pasteIntoFolder,
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
               onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),

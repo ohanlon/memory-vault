@@ -11,6 +11,7 @@ import { livePreview } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest } from "../editor/editorContextMenu";
+import { shortcutLabel } from "../platform";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -223,6 +224,14 @@ export function EditorPane({
           x={contextMenuRequest.x}
           y={contextMenuRequest.y}
           items={[
+            ...(contextMenuRequest.hasSelection
+              ? [
+                  { label: "Cut", shortcut: shortcutLabel("X"), onClick: contextMenuRequest.cutSelection },
+                  { label: "Copy", shortcut: shortcutLabel("C"), onClick: contextMenuRequest.copySelection },
+                ]
+              : []),
+            { label: "Paste", shortcut: shortcutLabel("V"), onClick: contextMenuRequest.pasteClipboard },
+            { separator: true as const },
             { label: "Link", onClick: contextMenuRequest.insertLink },
             {
               label: "Paragraph",

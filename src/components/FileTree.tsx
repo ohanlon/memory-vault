@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent, ReactNode } from "react";
+import type { DragEvent, KeyboardEvent, ReactNode } from "react";
 import { buildFileTree, isSameOrDescendant } from "@shared/fileTree";
 import type { TreeNode } from "@shared/fileTree";
 import type { FolderEntry, Note } from "@shared/types";
-import { ContextMenu } from "./ContextMenu";
+import { matchesShortcut, shortcutLabel } from "../platform";
+import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
+
+export interface NavClipboard {
+  type: "note" | "folder";
+  mode: "cut" | "copy";
+  path: string;
+}
 
 interface Props {
   root: string;
@@ -31,13 +38,19 @@ interface Props {
   onMoveNote: (notePath: string, destDir: string) => void;
   onMoveFolder: (folderPath: string, destDir: string) => void;
   onShowInExplorer: (absPath: string) => void;
+  clipboard: NavClipboard | null;
+  onCutNote: (note: Note) => void;
+  onCopyNote: (note: Note) => void;
+  onCutFolder: (folder: FolderEntry) => void;
+  onCopyFolder: (folder: FolderEntry) => void;
+  onPasteInto: (destDir: string) => void;
 }
 
 const NOTE_DRAG_TYPE = "application/x-cairn-note";
 const FOLDER_DRAG_TYPE = "application/x-cairn-folder";
 
 type ContextMenuState = {
-  target: { type: "note"; note: Note } | { type: "folder"; folder: FolderEntry };
+  target: { type: "note"; note: Note } | { type: "folder"; folder: FolderEntry } | { type: "root" };
   x: number;
   y: number;
 };
@@ -127,6 +140,12 @@ export function FileTree({
   onMoveNote,
   onMoveFolder,
   onShowInExplorer,
+  clipboard,
+  onCutNote,
+  onCopyNote,
+  onCutFolder,
+  onCopyFolder,
+  onPasteInto,
 }: Props) {
   const collapsed = useMemo(() => new Set(collapsedFolders), [collapsedFolders]);
   const excluded = useMemo(() => new Set(excludedFolders), [excludedFolders]);
@@ -182,10 +201,11 @@ export function FileTree({
           </li>
         );
       }
+      const isCut = clipboard?.mode === "cut" && clipboard.type === "note" && clipboard.path === note.path;
       return (
         <li key={note.path} className={note.path === activePath ? "active" : ""}>
           <button
-            className="file-tree-item"
+            className={`file-tree-item${isCut ? " file-tree-item-cut" : ""}`}
             style={{ paddingLeft: 10 + depth * 16 }}
             draggable
             onDragStart={(e) => {
@@ -197,10 +217,20 @@ export function FileTree({
               e.preventDefault();
               setContextMenu({ target: { type: "note", note }, x: e.clientX, y: e.clientY });
             }}
-            onKeyDown={(e) => {
+            onKeyDown={(e: KeyboardEvent) => {
               if (e.key === "F2") {
                 e.preventDefault();
                 onRename(note);
+                return;
+              }
+              if (matchesShortcut(e, "x")) {
+                e.preventDefault();
+                onCutNote(note);
+                return;
+              }
+              if (matchesShortcut(e, "c")) {
+                e.preventDefault();
+                onCopyNote(note);
                 return;
               }
               if (e.key !== "Delete") return;
@@ -217,12 +247,13 @@ export function FileTree({
     const isCollapsed = collapsed.has(node.relativePath);
     const isDragOver = dragOver === node.relativePath;
     const isExcluded = excluded.has(node.relativePath);
+    const isCut = clipboard?.mode === "cut" && clipboard.type === "folder" && clipboard.path === node.path;
     const folderEntry: FolderEntry = { path: node.path, relativePath: node.relativePath };
     const isRenamingFolder = node.path === renamingPath;
     return (
       <li key={node.relativePath} className="file-tree-folder">
         <div
-          className={`file-tree-folder-row${isDragOver ? " drag-over" : ""}${isExcluded ? " file-tree-folder-row-excluded" : ""}`}
+          className={`file-tree-folder-row${isDragOver ? " drag-over" : ""}${isExcluded ? " file-tree-folder-row-excluded" : ""}${isCut ? " file-tree-folder-row-cut" : ""}`}
           style={{ paddingLeft: 4 + depth * 16 }}
           tabIndex={0}
           draggable={!isRenamingFolder}
@@ -247,10 +278,26 @@ export function FileTree({
             e.preventDefault();
             setContextMenu({ target: { type: "folder", folder: folderEntry }, x: e.clientX, y: e.clientY });
           }}
-          onKeyDown={(e) => {
+          onKeyDown={(e: KeyboardEvent) => {
             if (e.key === "F2") {
               e.preventDefault();
               onRenameFolder(folderEntry);
+              return;
+            }
+            if (matchesShortcut(e, "x")) {
+              e.preventDefault();
+              onCutFolder(folderEntry);
+              return;
+            }
+            if (matchesShortcut(e, "c")) {
+              e.preventDefault();
+              onCopyFolder(folderEntry);
+              return;
+            }
+            if (matchesShortcut(e, "v")) {
+              if (!clipboard) return;
+              e.preventDefault();
+              onPasteInto(node.path);
               return;
             }
             if (e.key !== "Delete") return;
@@ -303,6 +350,7 @@ export function FileTree({
     <>
       <ul
         className={`file-tree${dragOver === "" ? " drag-over-root" : ""}`}
+        tabIndex={0}
         onDragOver={(e) => {
           if (!acceptsDrag(e)) return;
           e.preventDefault();
@@ -317,6 +365,17 @@ export function FileTree({
           if (e.currentTarget === e.target) setDragOver((cur) => (cur === "" ? null : cur));
         }}
         onDrop={(e) => handleDrop(e, root)}
+        onContextMenu={(e) => {
+          if (e.target !== e.currentTarget || !clipboard) return;
+          e.preventDefault();
+          setContextMenu({ target: { type: "root" }, x: e.clientX, y: e.clientY });
+        }}
+        onKeyDown={(e: KeyboardEvent) => {
+          if (e.target !== e.currentTarget || !clipboard) return;
+          if (!matchesShortcut(e, "v")) return;
+          e.preventDefault();
+          onPasteInto(root);
+        }}
       >
         {tree.children.map((c) => renderNode(c, 0))}
         {tree.children.length === 0 && <li className="file-tree-empty">No notes yet</li>}
@@ -333,24 +392,42 @@ export function FileTree({
                     { label: "Rename", shortcut: "F2", onClick: () => onRename(note) },
                     { label: "Delete", shortcut: "Del", onClick: () => onDelete(note) },
                     { separator: true as const },
+                    { label: "Cut", shortcut: shortcutLabel("X"), onClick: () => onCutNote(note) },
+                    { label: "Copy", shortcut: shortcutLabel("C"), onClick: () => onCopyNote(note) },
+                    { separator: true as const },
                     { label: "Open in explorer", onClick: () => onShowInExplorer(note.path) },
                   ];
                 })()
-              : (() => {
+              : contextMenu.target.type === "folder"
+              ? (() => {
                   const folder = contextMenu.target.folder;
                   const isExcluded = excluded.has(folder.relativePath);
-                  return [
+                  const items: ContextMenuEntry[] = [
                     { label: "Rename", shortcut: "F2", onClick: () => onRenameFolder(folder) },
                     { label: "Delete", shortcut: "Del", onClick: () => onDeleteFolder(folder) },
+                    { separator: true as const },
+                    { label: "Cut", shortcut: shortcutLabel("X"), onClick: () => onCutFolder(folder) },
+                    { label: "Copy", shortcut: shortcutLabel("C"), onClick: () => onCopyFolder(folder) },
+                  ];
+                  if (clipboard) {
+                    items.push({
+                      label: "Paste",
+                      shortcut: shortcutLabel("V"),
+                      onClick: () => onPasteInto(folder.path),
+                    });
+                  }
+                  items.push(
                     { separator: true as const },
                     {
                       label: isExcluded ? "Include in Graph" : "Exclude from Graph",
                       onClick: () => onToggleExcludeFolder(folder),
                     },
                     { separator: true as const },
-                    { label: "Open in explorer", onClick: () => onShowInExplorer(folder.path) },
-                  ];
+                    { label: "Open in explorer", onClick: () => onShowInExplorer(folder.path) }
+                  );
+                  return items;
                 })()
+              : [{ label: "Paste", shortcut: shortcutLabel("V"), onClick: () => onPasteInto(root) }]
           }
           onClose={() => setContextMenu(null)}
         />

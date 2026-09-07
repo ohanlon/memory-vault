@@ -455,6 +455,57 @@ ipcMain.handle(
   }
 );
 
+// Shared by copyNote/copyFolder — picks the first non-colliding "name",
+// "name copy", "name copy 2", ... in destDir, mirroring the "New File",
+// "New File 1", ... dedupe pattern used by stack:createNote/createFolder.
+function dedupeCopyName(destDir: string, baseName: string, ext: string): string {
+  let name = `${baseName}${ext}`;
+  if (!fs.existsSync(path.join(destDir, name))) return name;
+  name = `${baseName} copy${ext}`;
+  let n = 1;
+  while (fs.existsSync(path.join(destDir, name))) {
+    n += 1;
+    name = `${baseName} copy ${n}${ext}`;
+  }
+  return name;
+}
+
+function copyFolderRecursive(src: string, dest: string): void {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) copyFolderRecursive(srcPath, destPath);
+    else fs.copyFileSync(srcPath, destPath);
+  }
+}
+
+ipcMain.handle(
+  "stack:copyNote",
+  async (_event, absPath: string, destDir: string) => {
+    const ext = path.extname(absPath);
+    const baseName = path.basename(absPath, ext);
+    const target = path.join(destDir, dedupeCopyName(destDir, baseName, ext));
+    fs.copyFileSync(absPath, target);
+    return target;
+  }
+);
+
+ipcMain.handle(
+  "stack:copyFolder",
+  async (_event, absPath: string, destParentDir: string) => {
+    const rel = path.relative(absPath, destParentDir);
+    const isSelfOrDescendant = rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+    if (isSelfOrDescendant) {
+      throw new Error("Can't copy a folder into itself or one of its own subfolders");
+    }
+    const folderName = path.basename(absPath);
+    const target = path.join(destParentDir, dedupeCopyName(destParentDir, folderName, ""));
+    copyFolderRecursive(absPath, target);
+    return target;
+  }
+);
+
 ipcMain.handle(
   "stack:renameFolder",
   async (_event, absPath: string, newName: string) => {

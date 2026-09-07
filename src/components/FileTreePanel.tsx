@@ -1,4 +1,4 @@
-import { FileTree } from "./FileTree";
+import { FileTree, type NavClipboard } from "./FileTree";
 import type { FolderEntry, Note } from "@shared/types";
 
 interface Props {
@@ -26,6 +26,12 @@ interface Props {
   onDeleteFolder: (folder: FolderEntry) => void;
   onMoveNote: (notePath: string, destDir: string) => void;
   onMoveFolder: (folderPath: string, destDir: string) => void;
+  clipboard: NavClipboard | null;
+  onCutNote: (note: Note) => void;
+  onCopyNote: (note: Note) => void;
+  onCutFolder: (folder: FolderEntry) => void;
+  onCopyFolder: (folder: FolderEntry) => void;
+  onPasteInto: (destDir: string) => void;
 }
 
 export function FileTreePanel({
@@ -53,6 +59,12 @@ export function FileTreePanel({
   onDeleteFolder,
   onMoveNote,
   onMoveFolder,
+  clipboard,
+  onCutNote,
+  onCopyNote,
+  onCutFolder,
+  onCopyFolder,
+  onPasteInto,
 }: Props) {
   return (
     <>
@@ -81,6 +93,12 @@ export function FileTreePanel({
         onDeleteFolder={onDeleteFolder}
         onMoveNote={onMoveNote}
         onMoveFolder={onMoveFolder}
+        clipboard={clipboard}
+        onCutNote={onCutNote}
+        onCopyNote={onCopyNote}
+        onCutFolder={onCutFolder}
+        onCopyFolder={onCopyFolder}
+        onPasteInto={onPasteInto}
       />
     </>
   );

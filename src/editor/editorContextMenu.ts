@@ -27,6 +27,11 @@ import {
 export interface EditorContextMenuRequest {
   x: number;
   y: number;
+  /** False when the selection is empty — Cut/Copy have nothing to act on. */
+  hasSelection: boolean;
+  cutSelection: () => void;
+  copySelection: () => void;
+  pasteClipboard: () => void;
   insertLink: () => void;
   makeHeading1: () => void;
   makeHeading2: () => void;
@@ -65,9 +70,30 @@ export function editorContextMenu(onRequest: (req: EditorContextMenuRequest) => 
         view.dispatch(spec);
         view.focus();
       };
+      const { from, to } = view.state.selection.main;
       onRequest({
         x: event.clientX,
         y: event.clientY,
+        hasSelection: from !== to,
+        cutSelection: () => {
+          const text = view.state.sliceDoc(from, to);
+          if (!text) return;
+          navigator.clipboard.writeText(text).then(() => {
+            view.dispatch({ changes: { from, to, insert: "" } });
+            view.focus();
+          });
+        },
+        copySelection: () => {
+          const text = view.state.sliceDoc(from, to);
+          if (!text) return;
+          navigator.clipboard.writeText(text).then(() => view.focus());
+        },
+        pasteClipboard: () => {
+          navigator.clipboard.readText().then((text) => {
+            view.dispatch(view.state.replaceSelection(text));
+            view.focus();
+          });
+        },
         insertLink: () => apply(linkCommandSpec(view.state)),
         makeHeading1: () => apply(heading1Spec(view.state)),
         makeHeading2: () => apply(heading2Spec(view.state)),
