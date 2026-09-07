@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type {
   CommandHandler,
+  RibbonItemContribution,
   SingleSlotRegion,
   StatusItemContribution,
   TabbedRegionName,
@@ -20,6 +21,7 @@ class PluginRegistry {
   private views: (ViewContribution & { pluginId?: string })[] = [];
   private tabKinds: (TabKindContribution & { pluginId?: string })[] = [];
   private statusItems: (StatusItemContribution & { pluginId?: string })[] = [];
+  private ribbonItems: (RibbonItemContribution & { pluginId?: string })[] = [];
   private commands = new Map<string, { handler: CommandHandler; pluginId?: string }>();
 
   registerRegion(region: SingleSlotRegion, component: ComponentType<any>, pluginId?: string): void {
@@ -56,6 +58,14 @@ class PluginRegistry {
     return this.statusItems;
   }
 
+  registerRibbonItem(item: RibbonItemContribution, pluginId?: string): void {
+    this.ribbonItems.push({ ...item, pluginId });
+  }
+
+  getRibbonItems(): RibbonItemContribution[] {
+    return this.ribbonItems;
+  }
+
   registerCommand(id: string, handler: CommandHandler, pluginId?: string): void {
     this.commands.set(id, { handler, pluginId });
   }
@@ -81,6 +91,7 @@ class PluginRegistry {
     this.views = this.views.filter((v) => v.pluginId !== pluginId);
     this.tabKinds = this.tabKinds.filter((k) => k.pluginId !== pluginId);
     this.statusItems = this.statusItems.filter((s) => s.pluginId !== pluginId);
+    this.ribbonItems = this.ribbonItems.filter((r) => r.pluginId !== pluginId);
     for (const [id, entry] of this.commands) {
       if (entry.pluginId === pluginId) this.commands.delete(id);
     }

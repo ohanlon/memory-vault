@@ -26,4 +26,13 @@ export interface StatusItemContribution {
   component: ComponentType<any>;
 }
 
+// A left-ribbon launcher button. `viewId` is the already-namespaced
+// ViewContribution id (e.g. "plugin:hello:main") it should reveal and focus.
+export interface RibbonItemContribution {
+  id: string;
+  title: string;
+  icon: string;
+  viewId: string;
+}
+
 export type CommandHandler = (...args: any[]) => void;

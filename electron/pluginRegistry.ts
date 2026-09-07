@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { PluginManifest, PluginPermission, PluginView } from "../shared/types";
+import type { PluginManifest, PluginPermission, PluginRibbonItem, PluginView } from "../shared/types";
 
 const VALID_PERMISSIONS: PluginPermission[] = ["network", "shell:openExternal"];
 const VALID_VIEW_REGIONS = ["left-sidebar", "right-sidebar"];
@@ -16,9 +16,27 @@ function isValidView(v: unknown): v is PluginView {
   );
 }
 
+// `opensView` must reference one of this same manifest's own declared views —
+// a dangling reference drops the whole manifest, same strictness as every
+// other malformed-manifest case here.
+function isValidRibbonItem(v: unknown, viewIds: Set<string>): v is PluginRibbonItem {
+  if (!v || typeof v !== "object") return false;
+  const item = v as Record<string, unknown>;
+  return (
+    typeof item.id === "string" &&
+    typeof item.title === "string" &&
+    typeof item.icon === "string" &&
+    typeof item.opensView === "string" &&
+    viewIds.has(item.opensView as string)
+  );
+}
+
 function isValidManifest(v: unknown): v is PluginManifest {
   if (!v || typeof v !== "object") return false;
   const m = v as Record<string, unknown>;
+  const viewIds = new Set(
+    Array.isArray(m.views) ? (m.views as PluginView[]).map((view) => view?.id).filter(Boolean) : []
+  );
   return (
     typeof m.id === "string" &&
     typeof m.name === "string" &&
@@ -26,7 +44,9 @@ function isValidManifest(v: unknown): v is PluginManifest {
     typeof m.main === "string" &&
     Array.isArray(m.permissions) &&
     m.permissions.every((p) => VALID_PERMISSIONS.includes(p as PluginPermission)) &&
-    (m.views === undefined || (Array.isArray(m.views) && m.views.every(isValidView)))
+    (m.views === undefined || (Array.isArray(m.views) && m.views.every(isValidView))) &&
+    (m.ribbonItems === undefined ||
+      (Array.isArray(m.ribbonItems) && m.ribbonItems.every((r) => isValidRibbonItem(r, viewIds))))
   );
 }
 

@@ -1,8 +1,11 @@
-import { useState } from "react";
-import type { ViewContribution } from "./types";
+import { useSyncExternalStore } from "react";
+import { focusView, getFocusedView, subscribeFocusedView } from "./focusedViewStore";
+import type { TabbedRegionName, ViewContribution } from "./types";
 
 interface Props {
   className: string;
+  /** Semantic region name (e.g. "left-sidebar") — the key used to look up/set the focused view, distinct from `regionId`'s display/layout id. */
+  region: TabbedRegionName;
   regionId?: string;
   views: ViewContribution[];
   viewProps: Record<string, unknown>;
@@ -12,11 +15,13 @@ interface Props {
 // it renders that view's content directly (no visible tab strip) so a
 // region with one contribution looks identical to a hardcoded one; with
 // more than one, it adds the tab strip + padded/scrollable content wrapper.
-export function TabbedRegion({ className, regionId, views, viewProps }: Props) {
-  const [activeId, setActiveId] = useState(views[0]?.id);
+// Which view is active lives in focusedViewStore (not local state) so a
+// left-ribbon launcher button elsewhere in the tree can focus a view here.
+export function TabbedRegion({ className, region, regionId, views, viewProps }: Props) {
+  const focusedId = useSyncExternalStore(subscribeFocusedView, () => getFocusedView(region));
 
   if (views.length === 0) return null;
-  const active = views.find((v) => v.id === activeId) ?? views[0];
+  const active = views.find((v) => v.id === focusedId) ?? views[0];
   const ActiveComponent = active.component;
 
   if (views.length === 1) {
@@ -35,7 +40,7 @@ export function TabbedRegion({ className, regionId, views, viewProps }: Props) {
             key={v.id}
             type="button"
             className={`region-tab-btn${v.id === active.id ? " active" : ""}`}
-            onClick={() => setActiveId(v.id)}
+            onClick={() => focusView(region, v.id)}
           >
             {v.title}
           </button>

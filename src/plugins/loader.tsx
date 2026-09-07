@@ -48,6 +48,17 @@ export async function loadThirdPartyPlugins(): Promise<void> {
         manifest.id
       );
     }
+    for (const item of manifest.ribbonItems ?? []) {
+      pluginRegistry.registerRibbonItem(
+        {
+          id: `plugin:${manifest.id}:${item.id}`,
+          title: item.title,
+          icon: item.icon,
+          viewId: `plugin:${manifest.id}:${item.opensView}`,
+        },
+        manifest.id
+      );
+    }
     registeredPluginIds.push(manifest.id);
   }
 }

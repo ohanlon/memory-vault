@@ -211,6 +211,16 @@ export interface PluginView {
   entry: string;
 }
 
+/** A left-ribbon launcher icon a plugin contributes — clicking it reveals and focuses one of the plugin's own declared views. */
+export interface PluginRibbonItem {
+  id: string;
+  title: string;
+  /** SVG path `d` data, rendered at 16x16 with stroke="currentColor". */
+  icon: string;
+  /** id of one of this plugin's declared `views` to reveal and focus when clicked. */
+  opensView: string;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -220,6 +230,8 @@ export interface PluginManifest {
   permissions: PluginPermission[];
   /** Sidebar views this plugin contributes, if any. */
   views?: PluginView[];
+  /** Left-ribbon launcher icons this plugin contributes, if any. */
+  ribbonItems?: PluginRibbonItem[];
 }
 
 export interface PluginPermissionState {

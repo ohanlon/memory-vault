@@ -120,4 +120,45 @@ describe("discoverPlugins", () => {
     });
     expect(discoverPlugins(tmpRoot)).toEqual([]);
   });
+
+  it("discovers a manifest declaring a ribbon item that opens a declared view", () => {
+    writeManifest("with-ribbon", {
+      id: "with-ribbon",
+      name: "With Ribbon",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      views: [{ id: "main", title: "My View", region: "left-sidebar", entry: "index.html" }],
+      ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensView: "main" }],
+    });
+    const result = discoverPlugins(tmpRoot);
+    expect(result[0].manifest.ribbonItems).toEqual([
+      { id: "launch", title: "Launch", icon: "M0 0L1 1", opensView: "main" },
+    ]);
+  });
+
+  it("skips a manifest whose ribbon item references a view that doesn't exist", () => {
+    writeManifest("dangling-ribbon", {
+      id: "dangling-ribbon",
+      name: "Dangling Ribbon",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      views: [{ id: "main", title: "My View", region: "left-sidebar", entry: "index.html" }],
+      ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensView: "missing" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
+
+  it("skips a manifest with a malformed ribbon item", () => {
+    writeManifest("malformed-ribbon", {
+      id: "malformed-ribbon",
+      name: "Malformed Ribbon",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      ribbonItems: [{ id: "launch" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
 });

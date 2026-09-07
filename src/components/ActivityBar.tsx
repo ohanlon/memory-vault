@@ -1,3 +1,5 @@
+import type { RibbonItemContribution } from "../plugins/types";
+
 interface Props {
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
@@ -7,6 +9,20 @@ interface Props {
   onGraphView: () => void;
   onOpenSettings: () => void;
   regionId?: string;
+  /** Left-ribbon launcher icons contributed by plugins, if any. */
+  ribbonItems?: RibbonItemContribution[];
+  onOpenRibbonItem?: (item: RibbonItemContribution) => void;
+}
+
+// Renders an arbitrary, plugin-supplied SVG path (icon.icon is untrusted
+// path data, not a fixed icon from src/components/icons.tsx) at the same
+// 16x16/stroke-based size as the app's own menu icons.
+function RibbonIcon({ d }: { d: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
 }
 
 export function ActivityBar({
@@ -18,6 +34,8 @@ export function ActivityBar({
   onGraphView,
   onOpenSettings,
   regionId,
+  ribbonItems = [],
+  onOpenRibbonItem,
 }: Props) {
   return (
     <nav className="activity-bar" data-region-id={regionId}>
@@ -42,6 +60,16 @@ export function ActivityBar({
       <button className="activity-bar-btn" onClick={onGraphView} title="Graph view">
         ◇
       </button>
+      {ribbonItems.map((item) => (
+        <button
+          key={item.id}
+          className="activity-bar-btn"
+          onClick={() => onOpenRibbonItem?.(item)}
+          title={item.title}
+        >
+          <RibbonIcon d={item.icon} />
+        </button>
+      ))}
       <button className="activity-bar-btn activity-bar-btn-bottom" onClick={onOpenSettings} title="Settings">
         ⚙
       </button>

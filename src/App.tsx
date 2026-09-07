@@ -11,6 +11,8 @@ import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
 import { TabKindSlot } from "./plugins/TabKindSlot";
+import { focusView } from "./plugins/focusedViewStore";
+import type { RibbonItemContribution } from "./plugins/types";
 import {
   addTab as addTabPath,
   GRAPH_TAB_ID,
@@ -415,6 +417,18 @@ export default function App() {
     window.memoryStack.showItemInFolder(absPath);
   }, []);
 
+  // A left-ribbon launcher button: reveal whichever sidebar the target view
+  // lives in (if collapsed) and focus that view within it.
+  const openRibbonItem = useCallback((item: RibbonItemContribution) => {
+    const view = [...pluginRegistry.getViews("left-sidebar"), ...pluginRegistry.getViews("right-sidebar")].find(
+      (v) => v.id === item.viewId
+    );
+    if (!view) return;
+    if (view.region === "left-sidebar") setSidebarCollapsed(false);
+    else setRightPanelCollapsed(false);
+    focusView(view.region, view.id);
+  }, []);
+
   async function handlePickFolder() {
     const root = await window.memoryStack.pickStack();
     if (root) setDialog({ kind: "name-stack", root });
@@ -741,12 +755,15 @@ export default function App() {
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
             onOpenSettings={() => pluginRegistry.runCommand("view.openSettings")}
             regionId={regionId("left-ribbon")}
+            ribbonItems={pluginRegistry.getRibbonItems()}
+            onOpenRibbonItem={openRibbonItem}
           />
         )}
 
         {isRegionPresent("left-sidebar") && !sidebarCollapsed && (
           <TabbedRegion
             className="sidebar"
+            region="left-sidebar"
             regionId={regionId("left-sidebar")}
             views={pluginRegistry.getViews("left-sidebar")}
             viewProps={{
@@ -847,6 +864,7 @@ export default function App() {
         {isRegionPresent("right-sidebar") && !rightPanelCollapsed && (
           <TabbedRegion
             className="right-panel"
+            region="right-sidebar"
             regionId={regionId("right-sidebar")}
             views={pluginRegistry.getViews("right-sidebar")}
             viewProps={{
