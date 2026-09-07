@@ -97,15 +97,22 @@ export function buildSdkScript(): string {
   return `(function () {
   var pending = new Map();
   var counter = 0;
+  var contextMenuListeners = [];
   window.addEventListener("message", function (event) {
     if (event.source !== window.parent) return;
     var data = event.data;
-    if (!data || data.channel !== "cairn-plugin-rpc" || data.kind !== "response") return;
-    var entry = pending.get(data.id);
-    if (!entry) return;
-    pending.delete(data.id);
-    if (data.error) entry.reject(new Error(data.error));
-    else entry.resolve(data.result);
+    if (!data || data.channel !== "cairn-plugin-rpc") return;
+    if (data.kind === "response") {
+      var entry = pending.get(data.id);
+      if (!entry) return;
+      pending.delete(data.id);
+      if (data.error) entry.reject(new Error(data.error));
+      else entry.resolve(data.result);
+      return;
+    }
+    if (data.kind === "push" && data.event === "contextMenuAction") {
+      contextMenuListeners.forEach(function (cb) { cb(data.itemId, data.targetPath); });
+    }
   });
   function call(method, args) {
     var id = ++counter;
@@ -123,6 +130,7 @@ export function buildSdkScript(): string {
     requestPermission: function (permission) { return call("requestPermission", [permission]); },
     openExternal: function (url) { return call("openExternal", [url]); },
     setStatus: function (text) { return call("setStatus", [text]); },
+    onContextMenuAction: function (cb) { contextMenuListeners.push(cb); },
   };
 })();
 `;

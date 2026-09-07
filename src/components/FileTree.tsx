@@ -4,6 +4,8 @@ import { buildFileTree, isSameOrDescendant } from "@shared/fileTree";
 import type { TreeNode } from "@shared/fileTree";
 import type { FolderEntry, Note } from "@shared/types";
 import { matchesShortcut, shortcutLabel } from "../platform";
+import { pluginRegistry } from "../plugins/registry";
+import { pushToPlugin } from "../plugins/pluginFrameRegistry";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 import {
   CopyIcon,
@@ -67,6 +69,28 @@ type ContextMenuState = {
   x: number;
   y: number;
 };
+
+// Plugin-contributed context-menu entries for a note/folder, hidden entirely
+// when the owning plugin has no live iframe mounted (see
+// pluginFrameRegistry.ts) — the item would otherwise silently do nothing.
+function pluginContextMenuEntries(target: "note" | "folder", targetPath: string): ContextMenuEntry[] {
+  const items = pluginRegistry.getContextMenuItems(target).filter((item) => pluginRegistry.hasLiveFrame(item.pluginId));
+  if (items.length === 0) return [];
+  return [
+    { separator: true as const },
+    ...items.map((item) => ({
+      label: item.label,
+      onClick: () =>
+        pushToPlugin(item.pluginId, {
+          channel: "cairn-plugin-rpc" as const,
+          kind: "push" as const,
+          event: "contextMenuAction" as const,
+          itemId: item.id,
+          targetPath,
+        }),
+    })),
+  ];
+}
 
 function acceptsDrag(e: DragEvent) {
   return e.dataTransfer.types.includes(NOTE_DRAG_TYPE) || e.dataTransfer.types.includes(FOLDER_DRAG_TYPE);
@@ -434,6 +458,7 @@ export function FileTree({
                       onClick: () => onPasteInto(parentDir),
                     });
                   }
+                  items.push(...pluginContextMenuEntries("note", note.relativePath));
                   items.push(
                     { separator: true as const },
                     {
@@ -484,7 +509,10 @@ export function FileTree({
                       label: isExcluded ? "Include in Graph" : "Exclude from Graph",
                       icon: isExcluded ? <IncludeInGraphIcon /> : <ExcludeFromGraphIcon />,
                       onClick: () => onToggleExcludeFolder(folder),
-                    },
+                    }
+                  );
+                  items.push(...pluginContextMenuEntries("folder", folder.relativePath));
+                  items.push(
                     { separator: true as const },
                     {
                       label: "Open in explorer",

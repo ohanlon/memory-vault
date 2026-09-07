@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type {
   CommandHandler,
+  ContextMenuItemContribution,
   RibbonItemContribution,
   SingleSlotRegion,
   StatusItemContribution,
@@ -8,6 +9,7 @@ import type {
   TabKindContribution,
   ViewContribution,
 } from "./types";
+import { hasLivePluginFrame } from "./pluginFrameRegistry";
 
 // Single process-wide registry. The core app registers through it as a
 // statically imported module (see plugins/core.tsx); third-party plugins
@@ -22,6 +24,7 @@ class PluginRegistry {
   private tabKinds: (TabKindContribution & { pluginId?: string })[] = [];
   private statusItems: (StatusItemContribution & { pluginId?: string })[] = [];
   private ribbonItems: (RibbonItemContribution & { pluginId?: string })[] = [];
+  private contextMenuItems: ContextMenuItemContribution[] = [];
   private commands = new Map<string, { handler: CommandHandler; pluginId?: string }>();
 
   registerRegion(region: SingleSlotRegion, component: ComponentType<any>, pluginId?: string): void {
@@ -66,6 +69,23 @@ class PluginRegistry {
     return this.ribbonItems;
   }
 
+  registerContextMenuItem(item: ContextMenuItemContribution): void {
+    this.contextMenuItems.push(item);
+  }
+
+  getContextMenuItems(target: "note" | "folder"): ContextMenuItemContribution[] {
+    return this.contextMenuItems.filter((i) => i.target === target);
+  }
+
+  // Whether the item's owning plugin currently has a live view mounted
+  // somewhere (sidebar or open tab) — see pluginFrameRegistry.ts. A plugin
+  // with no live frame can't receive the push message a click would send,
+  // so callers should use this to hide the item rather than show one that
+  // silently does nothing.
+  hasLiveFrame(pluginId: string): boolean {
+    return hasLivePluginFrame(pluginId);
+  }
+
   registerCommand(id: string, handler: CommandHandler, pluginId?: string): void {
     this.commands.set(id, { handler, pluginId });
   }
@@ -92,6 +112,7 @@ class PluginRegistry {
     this.tabKinds = this.tabKinds.filter((k) => k.pluginId !== pluginId);
     this.statusItems = this.statusItems.filter((s) => s.pluginId !== pluginId);
     this.ribbonItems = this.ribbonItems.filter((r) => r.pluginId !== pluginId);
+    this.contextMenuItems = this.contextMenuItems.filter((i) => i.pluginId !== pluginId);
     for (const [id, entry] of this.commands) {
       if (entry.pluginId === pluginId) this.commands.delete(id);
     }

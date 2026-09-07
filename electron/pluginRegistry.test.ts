@@ -241,4 +241,47 @@ describe("discoverPlugins", () => {
     });
     expect(discoverPlugins(tmpRoot)).toEqual([]);
   });
+
+  it("discovers a manifest declaring context menu items", () => {
+    writeManifest("with-menu", {
+      id: "with-menu",
+      name: "With Menu",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      contextMenuItems: [
+        { id: "note-action", label: "Do a note thing", target: "note" },
+        { id: "folder-action", label: "Do a folder thing", target: "folder" },
+      ],
+    });
+    const result = discoverPlugins(tmpRoot);
+    expect(result[0].manifest.contextMenuItems).toEqual([
+      { id: "note-action", label: "Do a note thing", target: "note" },
+      { id: "folder-action", label: "Do a folder thing", target: "folder" },
+    ]);
+  });
+
+  it("skips a manifest with a context menu item in an unknown target", () => {
+    writeManifest("bad-menu-target", {
+      id: "bad-menu-target",
+      name: "Bad Menu Target",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      contextMenuItems: [{ id: "action", label: "Do a thing", target: "editor" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
+
+  it("skips a manifest with a malformed context menu item", () => {
+    writeManifest("malformed-menu", {
+      id: "malformed-menu",
+      name: "Malformed Menu",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      contextMenuItems: [{ id: "action" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
 });

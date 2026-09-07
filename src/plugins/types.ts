@@ -40,4 +40,14 @@ export interface RibbonItemContribution {
   tabId?: string;
 }
 
+// A file-tree context-menu entry contributed by a plugin. Unlike the other
+// contribution types, `pluginId` is always present (not optional bookkeeping)
+// since it's needed to route the resulting push message to the right iframe.
+export interface ContextMenuItemContribution {
+  id: string;
+  label: string;
+  target: "note" | "folder";
+  pluginId: string;
+}
+
 export type CommandHandler = (...args: any[]) => void;

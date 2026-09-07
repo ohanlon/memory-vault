@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { pluginOrigin } from "@shared/pluginProtocol";
 import type { PluginPermission } from "@shared/types";
 import { setPluginStatus } from "./pluginStatusStore";
+import { registerPluginFrame, unregisterPluginFrame } from "./pluginFrameRegistry";
 
 interface Props {
   pluginId: string;
@@ -70,6 +71,17 @@ export function PluginViewFrame({ pluginId, pluginName, entry }: Props) {
     return () => window.removeEventListener("message", handleMessage);
   }, [pluginId, pluginName]);
 
+  // Tracks this iframe in pluginFrameRegistry while it's mounted, so a
+  // file-tree context-menu action (see FileTree.tsx) has a live window to
+  // push a "contextMenuAction" event into — only available once the iframe
+  // has actually loaded (contentWindow is null before that).
+  useEffect(() => {
+    return () => {
+      const win = iframeRef.current?.contentWindow;
+      if (win) unregisterPluginFrame(pluginId, win);
+    };
+  }, [pluginId]);
+
   const src = `${pluginOrigin(pluginId)}/${entry.replace(/^\/+/, "")}`;
 
   return (
@@ -79,6 +91,10 @@ export function PluginViewFrame({ pluginId, pluginName, entry }: Props) {
       title={pluginName}
       className="plugin-view-frame"
       sandbox="allow-scripts allow-same-origin"
+      onLoad={() => {
+        const win = iframeRef.current?.contentWindow;
+        if (win) registerPluginFrame(pluginId, win);
+      }}
     />
   );
 }

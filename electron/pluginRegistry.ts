@@ -1,9 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { PluginManifest, PluginPermission, PluginRibbonItem, PluginTab, PluginView } from "../shared/types";
+import type {
+  PluginContextMenuItem,
+  PluginManifest,
+  PluginPermission,
+  PluginRibbonItem,
+  PluginTab,
+  PluginView,
+} from "../shared/types";
 
 const VALID_PERMISSIONS: PluginPermission[] = ["network", "shell:openExternal"];
 const VALID_VIEW_REGIONS = ["left-sidebar", "right-sidebar"];
+const VALID_CONTEXT_MENU_TARGETS = ["note", "folder"];
 
 function isValidView(v: unknown): v is PluginView {
   if (!v || typeof v !== "object") return false;
@@ -38,6 +46,16 @@ function isValidRibbonItem(v: unknown, viewIds: Set<string>, tabIds: Set<string>
   return opensView !== undefined ? viewIds.has(opensView) : tabIds.has(opensTab as string);
 }
 
+function isValidContextMenuItem(v: unknown): v is PluginContextMenuItem {
+  if (!v || typeof v !== "object") return false;
+  const item = v as Record<string, unknown>;
+  return (
+    typeof item.id === "string" &&
+    typeof item.label === "string" &&
+    VALID_CONTEXT_MENU_TARGETS.includes(item.target as string)
+  );
+}
+
 function isValidManifest(v: unknown): v is PluginManifest {
   if (!v || typeof v !== "object") return false;
   const m = v as Record<string, unknown>;
@@ -57,7 +75,9 @@ function isValidManifest(v: unknown): v is PluginManifest {
     (m.views === undefined || (Array.isArray(m.views) && m.views.every(isValidView))) &&
     (m.tabs === undefined || (Array.isArray(m.tabs) && m.tabs.every(isValidTab))) &&
     (m.ribbonItems === undefined ||
-      (Array.isArray(m.ribbonItems) && m.ribbonItems.every((r) => isValidRibbonItem(r, viewIds, tabIds))))
+      (Array.isArray(m.ribbonItems) && m.ribbonItems.every((r) => isValidRibbonItem(r, viewIds, tabIds)))) &&
+    (m.contextMenuItems === undefined ||
+      (Array.isArray(m.contextMenuItems) && m.contextMenuItems.every(isValidContextMenuItem)))
   );
 }
 

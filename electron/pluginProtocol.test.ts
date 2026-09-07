@@ -74,6 +74,7 @@ describe("buildSdkScript", () => {
     expect(script).toContain("requestPermission");
     expect(script).toContain("openExternal");
     expect(script).toContain("setStatus");
+    expect(script).toContain("onContextMenuAction");
     expect(script).toContain("window.cairnPlugin");
   });
 });

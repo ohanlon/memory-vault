@@ -72,6 +72,14 @@ export async function loadThirdPartyPlugins(): Promise<void> {
         manifest.id
       );
     }
+    for (const item of manifest.contextMenuItems ?? []) {
+      pluginRegistry.registerContextMenuItem({
+        id: `plugin:${manifest.id}:${item.id}`,
+        label: item.label,
+        target: item.target,
+        pluginId: manifest.id,
+      });
+    }
     registeredPluginIds.push(manifest.id);
   }
 }

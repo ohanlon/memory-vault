@@ -231,6 +231,19 @@ export interface PluginRibbonItem {
   opensTab?: string;
 }
 
+/**
+ * A file-tree context-menu entry a plugin contributes. Clicking it pushes a
+ * "contextMenuAction" event (see shared/pluginProtocol.ts) into the
+ * plugin's iframe — which requires one of the plugin's views to currently
+ * be open (see src/plugins/pluginFrameRegistry.ts); the item is hidden from
+ * the menu otherwise rather than shown and silently doing nothing.
+ */
+export interface PluginContextMenuItem {
+  id: string;
+  label: string;
+  target: "note" | "folder";
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -244,6 +257,8 @@ export interface PluginManifest {
   tabs?: PluginTab[];
   /** Left-ribbon launcher icons this plugin contributes, if any. */
   ribbonItems?: PluginRibbonItem[];
+  /** File-tree context-menu entries this plugin contributes, if any. */
+  contextMenuItems?: PluginContextMenuItem[];
 }
 
 export interface PluginPermissionState {
