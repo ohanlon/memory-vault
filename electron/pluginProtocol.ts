@@ -122,6 +122,7 @@ export function buildSdkScript(): string {
     writeNote: function (relativePath, body) { return call("writeNote", [relativePath, body]); },
     requestPermission: function (permission) { return call("requestPermission", [permission]); },
     openExternal: function (url) { return call("openExternal", [url]); },
+    setStatus: function (text) { return call("setStatus", [text]); },
   };
 })();
 `;

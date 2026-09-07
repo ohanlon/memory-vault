@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { pluginOrigin } from "@shared/pluginProtocol";
 import type { PluginPermission } from "@shared/types";
+import { setPluginStatus } from "./pluginStatusStore";
 
 interface Props {
   pluginId: string;
@@ -12,7 +13,7 @@ interface RpcRequest {
   channel: "cairn-plugin-rpc";
   kind: "request";
   id: number;
-  method: "readNote" | "writeNote" | "requestPermission" | "openExternal";
+  method: "readNote" | "writeNote" | "requestPermission" | "openExternal" | "setStatus";
   args: unknown[];
 }
 
@@ -54,6 +55,9 @@ export function PluginViewFrame({ pluginId, pluginName, entry }: Props) {
               return window.memoryStack.pluginRequestPermission(pluginId, pluginName, args[0] as PluginPermission);
             case "openExternal":
               return window.memoryStack.pluginOpenExternal(pluginId, args[0] as string);
+            case "setStatus":
+              setPluginStatus(pluginId, args[0] as string);
+              return true;
             default:
               throw new Error(`Unknown plugin RPC method "${String(method)}"`);
           }

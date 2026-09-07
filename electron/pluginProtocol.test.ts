@@ -73,6 +73,7 @@ describe("buildSdkScript", () => {
     expect(script).toContain("writeNote");
     expect(script).toContain("requestPermission");
     expect(script).toContain("openExternal");
+    expect(script).toContain("setStatus");
     expect(script).toContain("window.cairnPlugin");
   });
 });

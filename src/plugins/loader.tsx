@@ -1,12 +1,18 @@
+import { useSyncExternalStore } from "react";
 import type { PluginManifest } from "@shared/types";
 import { pluginRegistry } from "./registry";
 import { makePluginViewComponent } from "./PluginViewFrame";
+import { clearPluginStatus, getPluginStatus, subscribePluginStatus } from "./pluginStatusStore";
 
 let registeredPluginIds: string[] = [];
 
 function makeStatusItemComponent(manifest: PluginManifest) {
   return function PluginStatusItem() {
-    return <span title={`${manifest.name} v${manifest.version}`}>🔌 {manifest.name}</span>;
+    const text = useSyncExternalStore(
+      subscribePluginStatus,
+      () => getPluginStatus(manifest.id) ?? `🔌 ${manifest.name}`
+    );
+    return <span title={`${manifest.name} v${manifest.version}`}>{text}</span>;
   };
 }
 
@@ -19,7 +25,10 @@ function makeStatusItemComponent(manifest: PluginManifest) {
 // same-process and far cheaper than the old BrowserWindow-per-plugin model,
 // while still giving the view real embedded UI instead of just a badge.
 export async function loadThirdPartyPlugins(): Promise<void> {
-  for (const id of registeredPluginIds) pluginRegistry.unregisterPlugin(id);
+  for (const id of registeredPluginIds) {
+    pluginRegistry.unregisterPlugin(id);
+    clearPluginStatus(id);
+  }
   registeredPluginIds = [];
 
   const manifests = await window.memoryStack.listPlugins();
