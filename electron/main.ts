@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
-import { listDirChildren, listFolders, loadStack, readNote, watchStack } from "./stack";
+import { listFolders, loadStack, reconcileStackCache, readNote, watchStack } from "./stack";
+import { readStackCache, writeStackCache } from "./stackCache";
 import { runSearch } from "./search";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import { titleFromPath } from "../shared/parseNote";
@@ -26,7 +27,9 @@ import {
 } from "./pluginPermissions";
 import type {
   AppSettings,
+  FolderEntry,
   LayoutPrefs,
+  Note,
   PluginPermission,
   PropertyDef,
   SearchOptions,
@@ -56,6 +59,10 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 let win: BrowserWindow | null = null;
 let currentWatcher: FSWatcher | null = null;
 let currentRoot: string | null = null;
+// Last notes handed back to the renderer for the current stack, used as the
+// "previous" baseline for incremental reloads (stack:reload) so unchanged
+// files aren't re-parsed.
+let currentNotes: Note[] = [];
 let searchCounter = 0;
 const activeSearchIds = new Set<string>();
 const cancelledSearchIds = new Set<string>();
@@ -196,35 +203,45 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
   stopWatching();
   cancelAllSearches();
   currentRoot = root;
-  // Only the root level is read up front so opening a large vault is fast;
-  // the file tree fetches each folder's children on demand as it's expanded
-  // (see stack:listFolderChildren) via listDirChildren, a non-recursive listing.
-  const { folders, notes } = await listDirChildren(root, root);
+
+  // A cached vault (from a previous open) loads instantly and shows the
+  // whole tree/graph right away; only a vault that's never been opened
+  // before pays for a full synchronous walk, which then seeds the cache.
+  const cached = readStackCache(root);
+  let notes: Note[];
+  let folders: FolderEntry[];
+  if (cached) {
+    notes = cached.notes;
+    folders = cached.folders;
+  } else {
+    [notes, folders] = await Promise.all([loadStack(root), listFolders(root)]);
+    writeStackCache(root, { notes, folders });
+  }
+  currentNotes = notes;
 
   currentWatcher = watchStack(root, (change) => {
     win?.webContents.send("stack:file-changed", change);
   });
 
-  // Graph/search/backlinks need the whole vault, not just what's been
-  // expanded, so a full recursive scan still runs — just in the background,
-  // without blocking the fast open above.
-  Promise.all([loadStack(root), listFolders(root)]).then(([allNotes, allFolders]) => {
-    if (currentRoot === root) {
-      win?.webContents.send("stack:full-scan", { root, notes: allNotes, folders: allFolders });
-    }
+  // Reconcile the cache against disk in the background — re-parses only
+  // files whose mtime changed since the cache was written, and pushes the
+  // reconciled result only if something actually differs (e.g. the vault
+  // was edited outside the app while it was closed).
+  reconcileStackCache(root, notes, folders).then((result) => {
+    if (!result || currentRoot !== root) return;
+    currentNotes = result.notes;
+    win?.webContents.send("stack:reconciled", { root, notes: result.notes, folders: result.folders });
   });
 
   return { root, notes, folders };
 });
 
-ipcMain.handle("stack:listFolderChildren", async (_event, dir: string) => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  return listDirChildren(currentRoot, dir);
-});
-
 ipcMain.handle("stack:reload", async () => {
   if (!currentRoot) throw new Error("No stack loaded");
-  const [notes, folders] = await Promise.all([loadStack(currentRoot), listFolders(currentRoot)]);
+  const previous = new Map(currentNotes.map((n) => [n.relativePath, n]));
+  const [notes, folders] = await Promise.all([loadStack(currentRoot, previous), listFolders(currentRoot)]);
+  currentNotes = notes;
+  writeStackCache(currentRoot, { notes, folders });
   return { notes, folders };
 });
 

@@ -60,14 +60,9 @@ export interface StackIndex {
   folders: FolderEntry[];
 }
 
-/** A directory's immediate children — its direct subfolders and the notes directly inside it. */
-export interface FolderChildren {
-  folders: FolderEntry[];
-  notes: Note[];
-}
-
-/** Sent once the full-vault background scan (kicked off by stack:load) completes. */
-export interface FullScanEvent {
+/** Sent when the background reconciliation pass (kicked off by stack:load)
+ *  finds the on-disk vault differs from the cached index. */
+export interface StackReconciledEvent {
   root: string;
   notes: Note[];
   folders: FolderEntry[];

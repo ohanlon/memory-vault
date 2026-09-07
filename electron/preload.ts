@@ -3,8 +3,7 @@ import type {
   AppSettings,
   DailyNoteResult,
   FileChangeEvent,
-  FolderChildren,
-  FullScanEvent,
+  FolderEntry,
   LayoutPrefs,
   Note,
   PluginManifest,
@@ -15,6 +14,7 @@ import type {
   SearchOptions,
   StackEntry,
   StackIndex,
+  StackReconciledEvent,
   WorkspaceState,
 } from "../shared/types";
 
@@ -22,13 +22,12 @@ const api = {
   pickStack: (): Promise<string | null> => ipcRenderer.invoke("stack:pick"),
   loadStack: (root: string): Promise<StackIndex> =>
     ipcRenderer.invoke("stack:load", root),
-  reloadStack: (): Promise<FolderChildren> => ipcRenderer.invoke("stack:reload"),
-  listFolderChildren: (dir: string): Promise<FolderChildren> =>
-    ipcRenderer.invoke("stack:listFolderChildren", dir),
-  onFullScan: (cb: (event: FullScanEvent) => void): (() => void) => {
-    const listener = (_e: unknown, event: FullScanEvent) => cb(event);
-    ipcRenderer.on("stack:full-scan", listener);
-    return () => ipcRenderer.removeListener("stack:full-scan", listener);
+  reloadStack: (): Promise<{ notes: Note[]; folders: FolderEntry[] }> =>
+    ipcRenderer.invoke("stack:reload"),
+  onReconciled: (cb: (event: StackReconciledEvent) => void): (() => void) => {
+    const listener = (_e: unknown, event: StackReconciledEvent) => cb(event);
+    ipcRenderer.on("stack:reconciled", listener);
+    return () => ipcRenderer.removeListener("stack:reconciled", listener);
   },
   listStacks: (): Promise<StackEntry[]> => ipcRenderer.invoke("stacks:list"),
   addStack: (name: string, root: string): Promise<StackEntry[]> =>

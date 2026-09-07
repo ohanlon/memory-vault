@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { parseNote } from "../shared/parseNote";
+import { writeStackCache } from "./stackCache";
 import type { FileChangeEvent, FolderEntry, Note } from "../shared/types";
 
 async function walkDir(root: string, dir: string, out: string[]): Promise<void> {
@@ -42,35 +43,6 @@ export async function listMarkdownFiles(root: string): Promise<string[]> {
   return out;
 }
 
-/**
- * Lists just the immediate children of one directory (its direct subfolders
- * and the notes directly inside it, parsed) — not a recursive walk. Backs
- * the file tree's expand-on-demand loading, so opening a large vault only
- * pays the cost of reading/parsing notes in folders the user actually opens.
- */
-export async function listDirChildren(
-  root: string,
-  dir: string
-): Promise<{ folders: FolderEntry[]; notes: Note[] }> {
-  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-  const folders: FolderEntry[] = [];
-  const notes: Note[] = [];
-  for (const entry of entries) {
-    if (entry.name.startsWith(".")) continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      folders.push({ path: full, relativePath: path.relative(root, full) });
-    } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
-      try {
-        notes.push(await readNote(root, full));
-      } catch {
-        // skip unreadable/unparseable file rather than failing the whole listing
-      }
-    }
-  }
-  return { folders, notes };
-}
-
 export async function readNote(root: string, absPath: string): Promise<Note> {
   const [raw, stat] = await Promise.all([
     fs.promises.readFile(absPath, "utf-8"),
@@ -86,18 +58,65 @@ export async function readNote(root: string, absPath: string): Promise<Note> {
 
 // Reads and parses every note asynchronously (fs.promises I/O runs off the
 // main thread) so loading a large vault doesn't block the main process —
-// and with it every window's IPC and rendering — for the whole walk.
-export async function loadStack(root: string): Promise<Note[]> {
+// and with it every window's IPC and rendering — for the whole walk. If
+// `previous` is given (keyed by relativePath), a file whose mtime matches its
+// previous entry is reused as-is instead of being re-read/re-parsed, so a
+// reload of a mostly-unchanged vault only pays for what actually changed.
+export async function loadStack(root: string, previous?: Map<string, Note>): Promise<Note[]> {
   const files = await listMarkdownFiles(root);
   const notes: Note[] = [];
   for (const file of files) {
     try {
+      const relativePath = path.relative(root, file);
+      const cached = previous?.get(relativePath);
+      if (cached) {
+        const stat = await fs.promises.stat(file);
+        if (stat.mtimeMs === cached.mtimeMs) {
+          notes.push(cached);
+          continue;
+        }
+      }
       notes.push(await readNote(root, file));
     } catch {
       // skip unreadable/unparseable file rather than failing the whole stack load
     }
   }
   return notes;
+}
+
+function notesChanged(previous: Note[], notes: Note[]): boolean {
+  const previousByPath = new Map(previous.map((n) => [n.relativePath, n.mtimeMs]));
+  if (previousByPath.size !== notes.length) return true;
+  for (const note of notes) {
+    if (previousByPath.get(note.relativePath) !== note.mtimeMs) return true;
+  }
+  return false;
+}
+
+function foldersChanged(previous: FolderEntry[], folders: FolderEntry[]): boolean {
+  const previousPaths = new Set(previous.map((f) => f.relativePath));
+  if (previousPaths.size !== folders.length) return true;
+  for (const folder of folders) {
+    if (!previousPaths.has(folder.relativePath)) return true;
+  }
+  return false;
+}
+
+// Re-walks the vault, reusing unchanged notes (see loadStack's `previous`
+// param), and returns the reconciled result only if something actually
+// differs from `previousNotes`/`previousFolders` — otherwise returns null so
+// callers can skip a wasted cache write/IPC push, which is the common case
+// on every reopen of a vault nothing was edited in since it was last cached.
+export async function reconcileStackCache(
+  root: string,
+  previousNotes: Note[],
+  previousFolders: FolderEntry[]
+): Promise<{ notes: Note[]; folders: FolderEntry[] } | null> {
+  const previousByRelPath = new Map(previousNotes.map((n) => [n.relativePath, n]));
+  const [notes, folders] = await Promise.all([loadStack(root, previousByRelPath), listFolders(root)]);
+  if (!notesChanged(previousNotes, notes) && !foldersChanged(previousFolders, folders)) return null;
+  writeStackCache(root, { notes, folders });
+  return { notes, folders };
 }
 
 export function watchStack(
