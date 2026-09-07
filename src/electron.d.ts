@@ -40,6 +40,7 @@ export interface MemoryStackAPI {
   moveFolder(absPath: string, destParentDir: string): Promise<string>;
   renameFolder(absPath: string, newName: string): Promise<string>;
   openExternal(url: string): Promise<boolean>;
+  showItemInFolder(absPath: string): Promise<boolean>;
   onFileChanged(cb: (event: FileChangeEvent) => void): () => void;
   readNoteBody(absPath: string): Promise<string>;
   readNoteProperties(absPath: string): Promise<Record<string, unknown>>;

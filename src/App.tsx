@@ -379,6 +379,10 @@ export default function App() {
     window.memoryStack.openExternal(url);
   }, []);
 
+  const showInExplorer = useCallback((absPath: string) => {
+    window.memoryStack.showItemInFolder(absPath);
+  }, []);
+
   async function handlePickFolder() {
     const root = await window.memoryStack.pickStack();
     if (root) setDialog({ kind: "name-stack", root });
@@ -699,6 +703,7 @@ export default function App() {
               onToggleFolder: toggleFolder,
               onToggleExcludeFolder: toggleExcludeFolder,
               onExpandFolders: expandFolders,
+              onShowInExplorer: showInExplorer,
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
               onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),

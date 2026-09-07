@@ -66,6 +66,8 @@ const api = {
     ipcRenderer.invoke("stack:renameFolder", absPath, newName),
   openExternal: (url: string): Promise<boolean> =>
     ipcRenderer.invoke("shell:openExternal", url),
+  showItemInFolder: (absPath: string): Promise<boolean> =>
+    ipcRenderer.invoke("shell:showItemInFolder", absPath),
   readNoteBody: (absPath: string): Promise<string> =>
     ipcRenderer.invoke("stack:readNoteBody", absPath),
   readNoteProperties: (absPath: string): Promise<Record<string, unknown>> =>

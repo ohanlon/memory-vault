@@ -165,6 +165,14 @@ ipcMain.handle("plugin:openExternal", async (_event, pluginId: string, url: stri
   return true;
 });
 
+// Reveals a note or folder in the OS file manager — Explorer on Windows,
+// Finder on macOS, the default file manager on Linux. shell.showItemInFolder
+// is cross-platform by design, unlike shelling out to `explorer`/`open`.
+ipcMain.handle("shell:showItemInFolder", (_event, absPath: string) => {
+  shell.showItemInFolder(absPath);
+  return true;
+});
+
 ipcMain.handle("stack:pick", async () => {
   if (!win) return null;
   const result = await dialog.showOpenDialog(win, {

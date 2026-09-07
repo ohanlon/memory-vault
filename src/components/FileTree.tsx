@@ -30,6 +30,7 @@ interface Props {
   onDeleteFolder: (folder: FolderEntry) => void;
   onMoveNote: (notePath: string, destDir: string) => void;
   onMoveFolder: (folderPath: string, destDir: string) => void;
+  onShowInExplorer: (absPath: string) => void;
 }
 
 const NOTE_DRAG_TYPE = "application/x-cairn-note";
@@ -125,6 +126,7 @@ export function FileTree({
   onDeleteFolder,
   onMoveNote,
   onMoveFolder,
+  onShowInExplorer,
 }: Props) {
   const collapsed = useMemo(() => new Set(collapsedFolders), [collapsedFolders]);
   const excluded = useMemo(() => new Set(excludedFolders), [excludedFolders]);
@@ -330,6 +332,8 @@ export function FileTree({
                   return [
                     { label: "Rename", shortcut: "F2", onClick: () => onRename(note) },
                     { label: "Delete", shortcut: "Del", onClick: () => onDelete(note) },
+                    { separator: true as const },
+                    { label: "Open in explorer", onClick: () => onShowInExplorer(note.path) },
                   ];
                 })()
               : (() => {
@@ -343,6 +347,8 @@ export function FileTree({
                       label: isExcluded ? "Include in Graph" : "Exclude from Graph",
                       onClick: () => onToggleExcludeFolder(folder),
                     },
+                    { separator: true as const },
+                    { label: "Open in explorer", onClick: () => onShowInExplorer(folder.path) },
                   ];
                 })()
           }
