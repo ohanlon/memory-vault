@@ -12,6 +12,28 @@ import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExp
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest } from "../editor/editorContextMenu";
 import { shortcutLabel } from "../platform";
+import {
+  BlockIcon,
+  BoldIcon,
+  CopyIcon,
+  CutIcon,
+  FormatIcon,
+  HighlightIcon,
+  InlineCodeIcon,
+  ItalicIcon,
+  LinkIcon,
+  ListIcon,
+  ListOrderedIcon,
+  ListTaskIcon,
+  ListUnorderedIcon,
+  MathIcon,
+  ParagraphIcon,
+  PasteIcon,
+  QuoteIcon,
+  StrikethroughIcon,
+  SubscriptIcon,
+  SuperscriptIcon,
+} from "./icons";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -226,15 +248,31 @@ export function EditorPane({
           items={[
             ...(contextMenuRequest.hasSelection
               ? [
-                  { label: "Cut", shortcut: shortcutLabel("X"), onClick: contextMenuRequest.cutSelection },
-                  { label: "Copy", shortcut: shortcutLabel("C"), onClick: contextMenuRequest.copySelection },
+                  {
+                    label: "Cut",
+                    shortcut: shortcutLabel("X"),
+                    icon: <CutIcon />,
+                    onClick: contextMenuRequest.cutSelection,
+                  },
+                  {
+                    label: "Copy",
+                    shortcut: shortcutLabel("C"),
+                    icon: <CopyIcon />,
+                    onClick: contextMenuRequest.copySelection,
+                  },
                 ]
               : []),
-            { label: "Paste", shortcut: shortcutLabel("V"), onClick: contextMenuRequest.pasteClipboard },
+            {
+              label: "Paste",
+              shortcut: shortcutLabel("V"),
+              icon: <PasteIcon />,
+              onClick: contextMenuRequest.pasteClipboard,
+            },
             { separator: true as const },
-            { label: "Link", onClick: contextMenuRequest.insertLink },
+            { label: "Link", icon: <LinkIcon />, onClick: contextMenuRequest.insertLink },
             {
               label: "Paragraph",
+              icon: <ParagraphIcon />,
               children: [
                 { label: "Heading 1", onClick: contextMenuRequest.makeHeading1 },
                 { label: "Heading 2", onClick: contextMenuRequest.makeHeading2 },
@@ -244,35 +282,47 @@ export function EditorPane({
                 { label: "Heading 6", onClick: contextMenuRequest.makeHeading6 },
                 { label: "Body", onClick: contextMenuRequest.makeBody },
                 { separator: true },
-                { label: "Quote", onClick: contextMenuRequest.makeQuote },
+                { label: "Quote", icon: <QuoteIcon />, onClick: contextMenuRequest.makeQuote },
               ],
             },
             {
               label: "List",
+              icon: <ListIcon />,
               children: [
-                { label: "Ordered List", onClick: contextMenuRequest.makeOrderedList },
-                { label: "Unordered List", onClick: contextMenuRequest.makeUnorderedList },
-                { label: "Task List", onClick: contextMenuRequest.makeTaskList },
+                { label: "Ordered List", icon: <ListOrderedIcon />, onClick: contextMenuRequest.makeOrderedList },
+                {
+                  label: "Unordered List",
+                  icon: <ListUnorderedIcon />,
+                  onClick: contextMenuRequest.makeUnorderedList,
+                },
+                { label: "Task List", icon: <ListTaskIcon />, onClick: contextMenuRequest.makeTaskList },
               ],
             },
             {
               label: "Format",
+              icon: <FormatIcon />,
               children: [
-                { label: "Bold", onClick: contextMenuRequest.makeBold },
-                { label: "Italic", onClick: contextMenuRequest.makeItalic },
-                { label: "Strikethrough", onClick: contextMenuRequest.makeStrikethrough },
-                { label: "Superscript", onClick: contextMenuRequest.makeSuperscript },
-                { label: "Subscript", onClick: contextMenuRequest.makeSubscript },
-                { label: "Highlight", onClick: contextMenuRequest.makeHighlight },
-                { label: "Code", onClick: contextMenuRequest.makeInlineCode },
-                { label: "Maths", onClick: contextMenuRequest.makeInlineMath },
+                { label: "Bold", icon: <BoldIcon />, onClick: contextMenuRequest.makeBold },
+                { label: "Italic", icon: <ItalicIcon />, onClick: contextMenuRequest.makeItalic },
+                {
+                  label: "Strikethrough",
+                  icon: <StrikethroughIcon />,
+                  onClick: contextMenuRequest.makeStrikethrough,
+                },
+                { label: "Superscript", icon: <SuperscriptIcon />, onClick: contextMenuRequest.makeSuperscript },
+                { label: "Subscript", icon: <SubscriptIcon />, onClick: contextMenuRequest.makeSubscript },
+                { label: "Highlight", icon: <HighlightIcon />, onClick: contextMenuRequest.makeHighlight },
+                { label: "Code", icon: <InlineCodeIcon />, onClick: contextMenuRequest.makeInlineCode },
+                { label: "Maths", icon: <MathIcon />, onClick: contextMenuRequest.makeInlineMath },
               ],
             },
             {
               label: "Block",
+              icon: <BlockIcon />,
               children: [
                 {
                   label: "Code",
+                  icon: <InlineCodeIcon />,
                   children: [
                     { label: "Text", onClick: () => contextMenuRequest.makeCodeBlock() },
                     ...codeLanguageMenuItems.map((lang) => ({
@@ -281,7 +331,7 @@ export function EditorPane({
                     })),
                   ],
                 },
-                { label: "Maths", onClick: contextMenuRequest.makeMathBlock },
+                { label: "Maths", icon: <MathIcon />, onClick: contextMenuRequest.makeMathBlock },
               ],
             },
           ]}

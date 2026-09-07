@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 export interface ContextMenuItem {
   label: string;
@@ -7,6 +8,8 @@ export interface ContextMenuItem {
   shortcut?: string;
   /** When present, hovering the item opens a flyout with these entries instead of running onClick. */
   children?: ContextMenuEntry[];
+  /** A 16x16 icon (see src/components/icons.tsx). Omit for items that don't warrant one (e.g. per-language leaves) — the icon column still reserves its space so labels stay aligned. */
+  icon?: ReactNode;
 }
 
 export interface ContextMenuSeparator {
@@ -115,7 +118,10 @@ function MenuEntries({ entries, onItemClick }: { entries: ContextMenuEntry[]; on
                 onItemClick();
               }}
             >
-              <span className="context-menu-item-label">{entry.label}</span>
+              <span className="context-menu-item-main">
+                <span className="context-menu-item-icon">{entry.icon}</span>
+                <span className="context-menu-item-label">{entry.label}</span>
+              </span>
               {entry.shortcut && <span className="context-menu-item-shortcut">{entry.shortcut}</span>}
               {entry.children && <span className="context-menu-item-caret">›</span>}
             </button>

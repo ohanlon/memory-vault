@@ -6,6 +6,7 @@ import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { ContextMenu } from "./components/ContextMenu";
+import { DeleteIcon, RenameIcon } from "./components/icons";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
@@ -686,11 +687,13 @@ export default function App() {
                 {
                   label: "Rename",
                   shortcut: "F2",
+                  icon: <RenameIcon />,
                   onClick: () => setDialog({ kind: "rename-stack", stack: stackContextMenu.stack }),
                 },
                 {
                   label: "Delete",
                   shortcut: "Del",
+                  icon: <DeleteIcon />,
                   onClick: () => handleRemoveStack(stackContextMenu.stack.name),
                 },
               ]}

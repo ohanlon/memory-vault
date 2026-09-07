@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ContextMenu } from "./ContextMenu";
+import { CloseAllIcon, CloseLeftIcon, CloseOthersIcon, CloseRightIcon, DeleteIcon, RenameIcon, TabIcon } from "./icons";
 
 export interface TabItem {
   id: string;
@@ -130,18 +131,19 @@ export function TabBar({
           items={[
             ...(isFileTab(contextMenu.id)
               ? [
-                  { label: "Rename", shortcut: "F2", onClick: () => onRename(contextMenu.id) },
-                  { label: "Delete", shortcut: "Del", onClick: () => onDelete(contextMenu.id) },
+                  { label: "Rename", shortcut: "F2", icon: <RenameIcon />, onClick: () => onRename(contextMenu.id) },
+                  { label: "Delete", shortcut: "Del", icon: <DeleteIcon />, onClick: () => onDelete(contextMenu.id) },
                   { separator: true as const },
                 ]
               : []),
             {
               label: "Tab",
+              icon: <TabIcon />,
               children: [
-                { label: "Close Left", onClick: () => onCloseLeft(contextMenu.id) },
-                { label: "Close Right", onClick: () => onCloseRight(contextMenu.id) },
-                { label: "Close All", onClick: onCloseAll },
-                { label: "Close Others", onClick: () => onCloseOthers(contextMenu.id) },
+                { label: "Close Left", icon: <CloseLeftIcon />, onClick: () => onCloseLeft(contextMenu.id) },
+                { label: "Close Right", icon: <CloseRightIcon />, onClick: () => onCloseRight(contextMenu.id) },
+                { label: "Close All", icon: <CloseAllIcon />, onClick: onCloseAll },
+                { label: "Close Others", icon: <CloseOthersIcon />, onClick: () => onCloseOthers(contextMenu.id) },
               ],
             },
           ]}

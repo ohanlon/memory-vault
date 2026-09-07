@@ -5,6 +5,16 @@ import type { TreeNode } from "@shared/fileTree";
 import type { FolderEntry, Note } from "@shared/types";
 import { matchesShortcut, shortcutLabel } from "../platform";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
+import {
+  CopyIcon,
+  CutIcon,
+  DeleteIcon,
+  ExcludeFromGraphIcon,
+  IncludeInGraphIcon,
+  OpenInExplorerIcon,
+  PasteIcon,
+  RenameIcon,
+} from "./icons";
 
 export interface NavClipboard {
   type: "note" | "folder";
@@ -400,22 +410,37 @@ export function FileTree({
               ? (() => {
                   const { note, parentDir } = contextMenu.target;
                   const items: ContextMenuEntry[] = [
-                    { label: "Rename", shortcut: "F2", onClick: () => onRename(note) },
-                    { label: "Delete", shortcut: "Del", onClick: () => onDelete(note) },
+                    { label: "Rename", shortcut: "F2", icon: <RenameIcon />, onClick: () => onRename(note) },
+                    { label: "Delete", shortcut: "Del", icon: <DeleteIcon />, onClick: () => onDelete(note) },
                     { separator: true as const },
-                    { label: "Cut", shortcut: shortcutLabel("X"), onClick: () => onCutNote(note) },
-                    { label: "Copy", shortcut: shortcutLabel("C"), onClick: () => onCopyNote(note) },
+                    {
+                      label: "Cut",
+                      shortcut: shortcutLabel("X"),
+                      icon: <CutIcon />,
+                      onClick: () => onCutNote(note),
+                    },
+                    {
+                      label: "Copy",
+                      shortcut: shortcutLabel("C"),
+                      icon: <CopyIcon />,
+                      onClick: () => onCopyNote(note),
+                    },
                   ];
                   if (clipboard) {
                     items.push({
                       label: "Paste",
                       shortcut: shortcutLabel("V"),
+                      icon: <PasteIcon />,
                       onClick: () => onPasteInto(parentDir),
                     });
                   }
                   items.push(
                     { separator: true as const },
-                    { label: "Open in explorer", onClick: () => onShowInExplorer(note.path) }
+                    {
+                      label: "Open in explorer",
+                      icon: <OpenInExplorerIcon />,
+                      onClick: () => onShowInExplorer(note.path),
+                    }
                   );
                   return items;
                 })()
@@ -424,16 +449,32 @@ export function FileTree({
                   const folder = contextMenu.target.folder;
                   const isExcluded = excluded.has(folder.relativePath);
                   const items: ContextMenuEntry[] = [
-                    { label: "Rename", shortcut: "F2", onClick: () => onRenameFolder(folder) },
-                    { label: "Delete", shortcut: "Del", onClick: () => onDeleteFolder(folder) },
+                    { label: "Rename", shortcut: "F2", icon: <RenameIcon />, onClick: () => onRenameFolder(folder) },
+                    {
+                      label: "Delete",
+                      shortcut: "Del",
+                      icon: <DeleteIcon />,
+                      onClick: () => onDeleteFolder(folder),
+                    },
                     { separator: true as const },
-                    { label: "Cut", shortcut: shortcutLabel("X"), onClick: () => onCutFolder(folder) },
-                    { label: "Copy", shortcut: shortcutLabel("C"), onClick: () => onCopyFolder(folder) },
+                    {
+                      label: "Cut",
+                      shortcut: shortcutLabel("X"),
+                      icon: <CutIcon />,
+                      onClick: () => onCutFolder(folder),
+                    },
+                    {
+                      label: "Copy",
+                      shortcut: shortcutLabel("C"),
+                      icon: <CopyIcon />,
+                      onClick: () => onCopyFolder(folder),
+                    },
                   ];
                   if (clipboard) {
                     items.push({
                       label: "Paste",
                       shortcut: shortcutLabel("V"),
+                      icon: <PasteIcon />,
                       onClick: () => onPasteInto(folder.path),
                     });
                   }
@@ -441,14 +482,26 @@ export function FileTree({
                     { separator: true as const },
                     {
                       label: isExcluded ? "Include in Graph" : "Exclude from Graph",
+                      icon: isExcluded ? <IncludeInGraphIcon /> : <ExcludeFromGraphIcon />,
                       onClick: () => onToggleExcludeFolder(folder),
                     },
                     { separator: true as const },
-                    { label: "Open in explorer", onClick: () => onShowInExplorer(folder.path) }
+                    {
+                      label: "Open in explorer",
+                      icon: <OpenInExplorerIcon />,
+                      onClick: () => onShowInExplorer(folder.path),
+                    }
                   );
                   return items;
                 })()
-              : [{ label: "Paste", shortcut: shortcutLabel("V"), onClick: () => onPasteInto(root) }]
+              : [
+                  {
+                    label: "Paste",
+                    shortcut: shortcutLabel("V"),
+                    icon: <PasteIcon />,
+                    onClick: () => onPasteInto(root),
+                  },
+                ]
           }
           onClose={() => setContextMenu(null)}
         />
