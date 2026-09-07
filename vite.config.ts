@@ -18,7 +18,6 @@ export default defineConfig({
       preload: {
         input: {
           preload: path.join(__dirname, "electron/preload.ts"),
-          pluginPreload: path.join(__dirname, "electron/pluginPreload.ts"),
         },
         vite: {
           build: {

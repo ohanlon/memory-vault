@@ -81,4 +81,43 @@ describe("discoverPlugins", () => {
     writeManifest("b", { id: "b", name: "B", version: "1.0.0", main: "index.js", permissions: [] });
     expect(discoverPlugins(tmpRoot)).toHaveLength(2);
   });
+
+  it("discovers a manifest declaring sidebar views", () => {
+    writeManifest("with-view", {
+      id: "with-view",
+      name: "With View",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      views: [{ id: "main", title: "My View", region: "left-sidebar", entry: "index.html" }],
+    });
+    const result = discoverPlugins(tmpRoot);
+    expect(result[0].manifest.views).toEqual([
+      { id: "main", title: "My View", region: "left-sidebar", entry: "index.html" },
+    ]);
+  });
+
+  it("skips a manifest with a view in an unknown region", () => {
+    writeManifest("bad-view", {
+      id: "bad-view",
+      name: "Bad View",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      views: [{ id: "main", title: "My View", region: "editor", entry: "index.html" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
+
+  it("skips a manifest with a malformed view entry", () => {
+    writeManifest("malformed-view", {
+      id: "malformed-view",
+      name: "Malformed View",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      views: [{ id: "main" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
 });

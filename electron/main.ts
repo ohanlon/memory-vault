@@ -14,8 +14,8 @@ import { readWorkspaceState, writeWorkspaceState } from "./workspaceState";
 import { DEFAULT_WORKSPACE_STATE } from "../shared/workspaceState";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
-import { isAllowedExternalUrl } from "./domainPolicy";
-import { createPluginWindow, pluginIdForWebContents } from "./pluginHost";
+import { isAllowedExternalUrl, isAllowedForPlugin } from "./domainPolicy";
+import { PLUGIN_SCHEME, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
 import { discoverPlugins } from "./pluginRegistry";
 import {
   grantPermission,
@@ -56,7 +56,6 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 let win: BrowserWindow | null = null;
 let currentWatcher: FSWatcher | null = null;
 let currentRoot: string | null = null;
-let pluginWindows: BrowserWindow[] = [];
 let searchCounter = 0;
 const activeSearchIds = new Set<string>();
 const cancelledSearchIds = new Set<string>();
@@ -104,6 +103,26 @@ function createWindow() {
     },
   });
 
+  // Plugin UI loads as sandboxed <iframe>s inside this same window/session
+  // (see src/plugins/PluginViewFrame.tsx), so their outgoing requests share
+  // this webContents — gate them here by identifying the initiating
+  // cairn-plugin://<pluginId>/ frame and reusing the existing domain policy.
+  win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    const frameUrl = details.frame?.url;
+    // Only gate requests actually leaving the plugin's own origin (e.g. a
+    // fetch() to a third-party API) — the plugin loading its own
+    // document/assets via cairn-plugin:// is already scoped and served by
+    // the protocol handler itself and must never require "network".
+    const isOwnOriginRequest = details.url.startsWith(`${PLUGIN_SCHEME}://`);
+    if (!frameUrl?.startsWith(`${PLUGIN_SCHEME}://`) || isOwnOriginRequest) {
+      callback({});
+      return;
+    }
+    const pluginId = new URL(frameUrl).hostname;
+    const permissions = readPluginPermissionsFile(pluginPermissionsFilePath());
+    callback({ cancel: !isAllowedForPlugin(details.url, pluginId, permissions) });
+  });
+
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
@@ -122,13 +141,17 @@ function cancelAllSearches() {
   for (const id of activeSearchIds) cancelledSearchIds.add(id);
 }
 
-function stopPluginWindows() {
-  for (const pluginWindow of pluginWindows) pluginWindow.destroy();
-  pluginWindows = [];
-}
+ipcMain.handle("shell:openExternal", async (_event, url: string) => {
+  // Only the host app itself calls this channel now — plugin-originated
+  // opens go through plugin:openExternal via the postMessage RPC bridge
+  // instead (see src/plugins/PluginViewFrame.tsx), since a plugin's iframe
+  // shares this window's webContents rather than having its own.
+  if (!isAllowedExternalUrl(url, null, {})) return false;
+  await shell.openExternal(url);
+  return true;
+});
 
-ipcMain.handle("shell:openExternal", async (event, url: string) => {
-  const pluginId = pluginIdForWebContents(event.sender.id) ?? null;
+ipcMain.handle("plugin:openExternal", async (_event, pluginId: string, url: string) => {
   const permissions = readPluginPermissionsFile(pluginPermissionsFilePath());
   if (!isAllowedExternalUrl(url, pluginId, permissions)) return false;
   await shell.openExternal(url);
@@ -171,7 +194,6 @@ ipcMain.handle("stacks:rename", async (_event, oldName: string, newName: string)
 
 ipcMain.handle("stack:load", async (_event, root: string) => {
   stopWatching();
-  stopPluginWindows();
   cancelAllSearches();
   currentRoot = root;
   // Only the root level is read up front so opening a large vault is fast;
@@ -182,8 +204,6 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
   currentWatcher = watchStack(root, (change) => {
     win?.webContents.send("stack:file-changed", change);
   });
-
-  pluginWindows = discoverPlugins(root).map((plugin) => createPluginWindow(plugin, pluginPermissionsFilePath()));
 
   // Graph/search/backlinks need the whole vault, not just what's been
   // expanded, so a full recursive scan still runs — just in the background,
@@ -503,11 +523,14 @@ ipcMain.handle("plugin:revokePermission", async (_event, pluginId: string, permi
 
 app.on("window-all-closed", () => {
   stopWatching();
-  stopPluginWindows();
   if (process.platform !== "darwin") {
     app.quit();
     win = null;
   }
 });
 
-app.whenReady().then(createWindow);
+registerPluginScheme();
+app.whenReady().then(() => {
+  createWindow();
+  handlePluginProtocol(() => (currentRoot ? discoverPlugins(currentRoot) : []), pluginPermissionsFilePath());
+});

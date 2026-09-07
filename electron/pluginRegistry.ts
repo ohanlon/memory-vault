@@ -1,8 +1,20 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { PluginManifest, PluginPermission } from "../shared/types";
+import type { PluginManifest, PluginPermission, PluginView } from "../shared/types";
 
 const VALID_PERMISSIONS: PluginPermission[] = ["network", "shell:openExternal"];
+const VALID_VIEW_REGIONS = ["left-sidebar", "right-sidebar"];
+
+function isValidView(v: unknown): v is PluginView {
+  if (!v || typeof v !== "object") return false;
+  const view = v as Record<string, unknown>;
+  return (
+    typeof view.id === "string" &&
+    typeof view.title === "string" &&
+    typeof view.entry === "string" &&
+    VALID_VIEW_REGIONS.includes(view.region as string)
+  );
+}
 
 function isValidManifest(v: unknown): v is PluginManifest {
   if (!v || typeof v !== "object") return false;
@@ -13,7 +25,8 @@ function isValidManifest(v: unknown): v is PluginManifest {
     typeof m.version === "string" &&
     typeof m.main === "string" &&
     Array.isArray(m.permissions) &&
-    m.permissions.every((p) => VALID_PERMISSIONS.includes(p as PluginPermission))
+    m.permissions.every((p) => VALID_PERMISSIONS.includes(p as PluginPermission)) &&
+    (m.views === undefined || (Array.isArray(m.views) && m.views.every(isValidView)))
   );
 }
 

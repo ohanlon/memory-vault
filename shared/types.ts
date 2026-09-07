@@ -197,6 +197,15 @@ export interface DailyNoteResult {
 // reach outside the current stack need an explicit grant.
 export type PluginPermission = "network" | "shell:openExternal";
 
+/** A sidebar panel a plugin contributes, rendered via a sandboxed iframe (see src/plugins/PluginViewFrame.tsx). */
+export interface PluginView {
+  id: string;
+  title: string;
+  region: "left-sidebar" | "right-sidebar";
+  /** HTML entry point for this view, relative to the plugin's own folder. */
+  entry: string;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -204,6 +213,8 @@ export interface PluginManifest {
   /** Entry point file, relative to the plugin's own folder. */
   main: string;
   permissions: PluginPermission[];
+  /** Sidebar views this plugin contributes, if any. */
+  views?: PluginView[];
 }
 
 export interface PluginPermissionState {

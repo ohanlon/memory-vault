@@ -88,6 +88,17 @@ const api = {
     ipcRenderer.invoke("plugin:getPermissions"),
   revokePluginPermission: (pluginId: string, permission: PluginPermission): Promise<boolean> =>
     ipcRenderer.invoke("plugin:revokePermission", pluginId, permission),
+  // Forwards RPC calls received from a plugin's sandboxed <iframe> (see
+  // src/plugins/PluginViewFrame.tsx) to the same main-process handlers a
+  // BrowserWindow-hosted plugin would call directly via its own preload.
+  pluginNotesRead: (relativePath: string): Promise<string> =>
+    ipcRenderer.invoke("plugin:notes:read", relativePath),
+  pluginNotesWrite: (relativePath: string, body: string): Promise<boolean> =>
+    ipcRenderer.invoke("plugin:notes:write", relativePath, body),
+  pluginRequestPermission: (pluginId: string, pluginName: string, permission: PluginPermission): Promise<boolean> =>
+    ipcRenderer.invoke("plugin:requestPermission", pluginId, pluginName, permission),
+  pluginOpenExternal: (pluginId: string, url: string): Promise<boolean> =>
+    ipcRenderer.invoke("plugin:openExternal", pluginId, url),
   onFileChanged: (cb: (event: FileChangeEvent) => void): (() => void) => {
     const listener = (_e: unknown, change: FileChangeEvent) => cb(change);
     ipcRenderer.on("stack:file-changed", listener);

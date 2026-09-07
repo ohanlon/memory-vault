@@ -56,6 +56,10 @@ export interface MemoryStackAPI {
   listPlugins(): Promise<PluginManifest[]>;
   getPluginPermissions(): Promise<PluginPermissionsFile>;
   revokePluginPermission(pluginId: string, permission: PluginPermission): Promise<boolean>;
+  pluginNotesRead(relativePath: string): Promise<string>;
+  pluginNotesWrite(relativePath: string, body: string): Promise<boolean>;
+  pluginRequestPermission(pluginId: string, pluginName: string, permission: PluginPermission): Promise<boolean>;
+  pluginOpenExternal(pluginId: string, url: string): Promise<boolean>;
   startSearch(options: SearchOptions): Promise<string>;
   cancelSearch(searchId: string): Promise<boolean>;
   onSearchResult(cb: (event: { searchId: string; result: SearchFileResult }) => void): () => void;
