@@ -6,6 +6,7 @@ import {
   closeOtherTabs,
   closeTabsLeft,
   closeTabsRight,
+  isSentinelTabId,
   reconcileTabs,
   relativePathToTabId,
   removeTab,
@@ -142,6 +143,28 @@ describe("reconcileTabs", () => {
     expect(reconcileTabs(["a", SETTINGS_TAB_ID], new Set(["a"]))).toEqual(["a", SETTINGS_TAB_ID]);
     expect(reconcileTabs([SETTINGS_TAB_ID], new Set())).toEqual([SETTINGS_TAB_ID]);
   });
+
+  it("never drops a plugin tab, even though it isn't a note path", () => {
+    const pluginTab = "@plugin:hello:mytab";
+    expect(reconcileTabs(["a", pluginTab], new Set(["a"]))).toEqual(["a", pluginTab]);
+    expect(reconcileTabs([pluginTab], new Set())).toEqual([pluginTab]);
+  });
+});
+
+describe("isSentinelTabId", () => {
+  it("is true for the graph and settings sentinels", () => {
+    expect(isSentinelTabId(GRAPH_TAB_ID)).toBe(true);
+    expect(isSentinelTabId(SETTINGS_TAB_ID)).toBe(true);
+  });
+
+  it("is true for a plugin tab id", () => {
+    expect(isSentinelTabId("@plugin:hello:mytab")).toBe(true);
+  });
+
+  it("is false for an absolute note path", () => {
+    expect(isSentinelTabId("/vault/a.md")).toBe(false);
+    expect(isSentinelTabId("C:\\vault\\a.md")).toBe(false);
+  });
 });
 
 const notes = [
@@ -158,6 +181,7 @@ describe("tabIdToRelativePath", () => {
   it("passes sentinel tab ids through unchanged", () => {
     expect(tabIdToRelativePath(GRAPH_TAB_ID, notes)).toBe(GRAPH_TAB_ID);
     expect(tabIdToRelativePath(SETTINGS_TAB_ID, notes)).toBe(SETTINGS_TAB_ID);
+    expect(tabIdToRelativePath("@plugin:hello:mytab", notes)).toBe("@plugin:hello:mytab");
   });
 
   it("returns null for a path with no matching note", () => {
@@ -174,6 +198,7 @@ describe("relativePathToTabId", () => {
   it("passes sentinel tab ids through unchanged", () => {
     expect(relativePathToTabId(GRAPH_TAB_ID, notes)).toBe(GRAPH_TAB_ID);
     expect(relativePathToTabId(SETTINGS_TAB_ID, notes)).toBe(SETTINGS_TAB_ID);
+    expect(relativePathToTabId("@plugin:hello:mytab", notes)).toBe("@plugin:hello:mytab");
   });
 
   it("returns null for a relative path with no matching note", () => {

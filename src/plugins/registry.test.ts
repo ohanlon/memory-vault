@@ -37,7 +37,10 @@ describe("PluginRegistry.unregisterPlugin", () => {
   });
 
   it("removes tab kinds registered by the plugin", () => {
-    pluginRegistry.registerTabKind({ id: "t1", matches: () => true, component: DummyComponent }, "test-plugin");
+    pluginRegistry.registerTabKind(
+      { id: "t1", title: "T1", matches: () => true, component: DummyComponent },
+      "test-plugin"
+    );
     expect(pluginRegistry.getTabKind("anything")?.id).toBe("t1");
     pluginRegistry.unregisterPlugin("test-plugin");
     expect(pluginRegistry.getTabKind("anything")).toBeUndefined();

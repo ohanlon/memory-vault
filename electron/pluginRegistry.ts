@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { PluginManifest, PluginPermission, PluginRibbonItem, PluginView } from "../shared/types";
+import type { PluginManifest, PluginPermission, PluginRibbonItem, PluginTab, PluginView } from "../shared/types";
 
 const VALID_PERMISSIONS: PluginPermission[] = ["network", "shell:openExternal"];
 const VALID_VIEW_REGIONS = ["left-sidebar", "right-sidebar"];
@@ -16,19 +16,26 @@ function isValidView(v: unknown): v is PluginView {
   );
 }
 
-// `opensView` must reference one of this same manifest's own declared views —
-// a dangling reference drops the whole manifest, same strictness as every
-// other malformed-manifest case here.
-function isValidRibbonItem(v: unknown, viewIds: Set<string>): v is PluginRibbonItem {
+function isValidTab(v: unknown): v is PluginTab {
+  if (!v || typeof v !== "object") return false;
+  const tab = v as Record<string, unknown>;
+  return typeof tab.id === "string" && typeof tab.title === "string" && typeof tab.entry === "string";
+}
+
+// `opensView`/`opensTab` must reference one of this same manifest's own
+// declared views/tabs, and exactly one of the two must be set — a dangling
+// reference or an ambiguous/empty item drops the whole manifest, same
+// strictness as every other malformed-manifest case here.
+function isValidRibbonItem(v: unknown, viewIds: Set<string>, tabIds: Set<string>): v is PluginRibbonItem {
   if (!v || typeof v !== "object") return false;
   const item = v as Record<string, unknown>;
-  return (
-    typeof item.id === "string" &&
-    typeof item.title === "string" &&
-    typeof item.icon === "string" &&
-    typeof item.opensView === "string" &&
-    viewIds.has(item.opensView as string)
-  );
+  if (typeof item.id !== "string" || typeof item.title !== "string" || typeof item.icon !== "string") {
+    return false;
+  }
+  const opensView = typeof item.opensView === "string" ? item.opensView : undefined;
+  const opensTab = typeof item.opensTab === "string" ? item.opensTab : undefined;
+  if ((opensView === undefined) === (opensTab === undefined)) return false; // exactly one required
+  return opensView !== undefined ? viewIds.has(opensView) : tabIds.has(opensTab as string);
 }
 
 function isValidManifest(v: unknown): v is PluginManifest {
@@ -36,6 +43,9 @@ function isValidManifest(v: unknown): v is PluginManifest {
   const m = v as Record<string, unknown>;
   const viewIds = new Set(
     Array.isArray(m.views) ? (m.views as PluginView[]).map((view) => view?.id).filter(Boolean) : []
+  );
+  const tabIds = new Set(
+    Array.isArray(m.tabs) ? (m.tabs as PluginTab[]).map((tab) => tab?.id).filter(Boolean) : []
   );
   return (
     typeof m.id === "string" &&
@@ -45,8 +55,9 @@ function isValidManifest(v: unknown): v is PluginManifest {
     Array.isArray(m.permissions) &&
     m.permissions.every((p) => VALID_PERMISSIONS.includes(p as PluginPermission)) &&
     (m.views === undefined || (Array.isArray(m.views) && m.views.every(isValidView))) &&
+    (m.tabs === undefined || (Array.isArray(m.tabs) && m.tabs.every(isValidTab))) &&
     (m.ribbonItems === undefined ||
-      (Array.isArray(m.ribbonItems) && m.ribbonItems.every((r) => isValidRibbonItem(r, viewIds))))
+      (Array.isArray(m.ribbonItems) && m.ribbonItems.every((r) => isValidRibbonItem(r, viewIds, tabIds))))
   );
 }
 

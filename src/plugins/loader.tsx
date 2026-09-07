@@ -48,13 +48,26 @@ export async function loadThirdPartyPlugins(): Promise<void> {
         manifest.id
       );
     }
+    for (const tab of manifest.tabs ?? []) {
+      const tabId = `@plugin:${manifest.id}:${tab.id}`;
+      pluginRegistry.registerTabKind(
+        {
+          id: `plugin:${manifest.id}:${tab.id}`,
+          title: tab.title,
+          matches: (id) => id === tabId,
+          component: makePluginViewComponent(manifest.id, manifest.name, tab.entry),
+        },
+        manifest.id
+      );
+    }
     for (const item of manifest.ribbonItems ?? []) {
       pluginRegistry.registerRibbonItem(
         {
           id: `plugin:${manifest.id}:${item.id}`,
           title: item.title,
           icon: item.icon,
-          viewId: `plugin:${manifest.id}:${item.opensView}`,
+          viewId: item.opensView ? `plugin:${manifest.id}:${item.opensView}` : undefined,
+          tabId: item.opensTab ? `@plugin:${manifest.id}:${item.opensTab}` : undefined,
         },
         manifest.id
       );

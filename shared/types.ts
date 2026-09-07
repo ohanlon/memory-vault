@@ -211,14 +211,24 @@ export interface PluginView {
   entry: string;
 }
 
-/** A left-ribbon launcher icon a plugin contributes — clicking it reveals and focuses one of the plugin's own declared views. */
+/** A full-pane tab this plugin contributes to the main editor area, rendered via a sandboxed iframe like a view. */
+export interface PluginTab {
+  id: string;
+  title: string;
+  /** HTML entry point for this tab, relative to the plugin's own folder. */
+  entry: string;
+}
+
+/** A left-ribbon launcher icon a plugin contributes — clicking it reveals/focuses one of the plugin's own declared views, or opens one of its declared tabs. Exactly one of opensView/opensTab must be set. */
 export interface PluginRibbonItem {
   id: string;
   title: string;
   /** SVG path `d` data, rendered at 16x16 with stroke="currentColor". */
   icon: string;
   /** id of one of this plugin's declared `views` to reveal and focus when clicked. */
-  opensView: string;
+  opensView?: string;
+  /** id of one of this plugin's declared `tabs` to open when clicked. */
+  opensTab?: string;
 }
 
 export interface PluginManifest {
@@ -230,6 +240,8 @@ export interface PluginManifest {
   permissions: PluginPermission[];
   /** Sidebar views this plugin contributes, if any. */
   views?: PluginView[];
+  /** Main-editor-area tabs this plugin contributes, if any. */
+  tabs?: PluginTab[];
   /** Left-ribbon launcher icons this plugin contributes, if any. */
   ribbonItems?: PluginRibbonItem[];
 }

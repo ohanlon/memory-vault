@@ -10,7 +10,7 @@ import { TagsPanel } from "../components/TagsPanel";
 import { PropertiesPanel } from "../components/PropertiesPanel";
 import { SettingsView } from "../components/SettingsView";
 import { BacklinksStat, CharactersStat, PropertiesStat, WordsStat } from "../components/StatusItems";
-import { GRAPH_TAB_ID, SETTINGS_TAB_ID } from "../stack/tabs";
+import { GRAPH_TAB_ID, SETTINGS_TAB_ID, isSentinelTabId } from "../stack/tabs";
 
 // The app's built-in functionality, expressed as a plugin against the same
 // API a future third-party plugin would use.
@@ -30,15 +30,22 @@ export function registerCorePlugin(): void {
     component: PropertiesPanel,
   });
 
-  pluginRegistry.registerTabKind({ id: "graph", matches: (tabId) => tabId === GRAPH_TAB_ID, component: GraphPanel });
+  pluginRegistry.registerTabKind({
+    id: "graph",
+    title: "Graph",
+    matches: (tabId) => tabId === GRAPH_TAB_ID,
+    component: GraphPanel,
+  });
   pluginRegistry.registerTabKind({
     id: "settings",
+    title: "Settings",
     matches: (tabId) => tabId === SETTINGS_TAB_ID,
     component: SettingsView,
   });
   pluginRegistry.registerTabKind({
     id: "note",
-    matches: (tabId) => tabId !== GRAPH_TAB_ID && tabId !== SETTINGS_TAB_ID,
+    title: "", // never displayed — a real note's title comes from the note itself, not this contribution
+    matches: (tabId) => tabId === null || !isSentinelTabId(tabId),
     component: EditorPane,
   });
 

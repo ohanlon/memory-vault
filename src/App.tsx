@@ -20,6 +20,7 @@ import {
   closeOtherTabs,
   closeTabsLeft,
   closeTabsRight,
+  isSentinelTabId,
   reconcileTabs,
   relativePathToTabId,
   removeTab,
@@ -200,8 +201,10 @@ export default function App() {
     () =>
       openPaths
         .map((p): TabItem | null => {
-          if (p === GRAPH_TAB_ID) return { id: p, label: "Graph" };
-          if (p === SETTINGS_TAB_ID) return { id: p, label: "Settings" };
+          if (isSentinelTabId(p)) {
+            const kind = pluginRegistry.getTabKind(p);
+            return kind ? { id: p, label: kind.title } : null;
+          }
           const note = notes.find((n) => n.path === p);
           if (!note) return null;
           const inSubfolder = /[\\/]/.test(note.relativePath);
@@ -417,17 +420,24 @@ export default function App() {
     window.memoryStack.showItemInFolder(absPath);
   }, []);
 
-  // A left-ribbon launcher button: reveal whichever sidebar the target view
-  // lives in (if collapsed) and focus that view within it.
-  const openRibbonItem = useCallback((item: RibbonItemContribution) => {
-    const view = [...pluginRegistry.getViews("left-sidebar"), ...pluginRegistry.getViews("right-sidebar")].find(
-      (v) => v.id === item.viewId
-    );
-    if (!view) return;
-    if (view.region === "left-sidebar") setSidebarCollapsed(false);
-    else setRightPanelCollapsed(false);
-    focusView(view.region, view.id);
-  }, []);
+  // A left-ribbon launcher button: either reveals/focuses one of the
+  // plugin's sidebar views, or opens one of its main-editor-area tabs.
+  const openRibbonItem = useCallback(
+    (item: RibbonItemContribution) => {
+      if (item.tabId) {
+        openTab(item.tabId);
+        return;
+      }
+      const view = [...pluginRegistry.getViews("left-sidebar"), ...pluginRegistry.getViews("right-sidebar")].find(
+        (v) => v.id === item.viewId
+      );
+      if (!view) return;
+      if (view.region === "left-sidebar") setSidebarCollapsed(false);
+      else setRightPanelCollapsed(false);
+      focusView(view.region, view.id);
+    },
+    [openTab]
+  );
 
   async function handlePickFolder() {
     const root = await window.memoryStack.pickStack();
@@ -822,7 +832,7 @@ export default function App() {
               onCloseRight={closeTabsRightOf}
               onCloseAll={closeAllTabs}
               onCloseOthers={closeOtherTabsOf}
-              isFileTab={(id) => id !== GRAPH_TAB_ID && id !== SETTINGS_TAB_ID}
+              isFileTab={(id) => !isSentinelTabId(id)}
               onRename={(id) => {
                 const note = notes.find((n) => n.path === id);
                 if (note) pluginRegistry.runCommand("stack.rename", note);

@@ -14,9 +14,12 @@ export interface ViewContribution {
 }
 
 // The editor region picks a renderer for the active tab based on which
-// contribution's `matches` predicate accepts the current tab id.
+// contribution's `matches` predicate accepts the current tab id. `title`
+// labels the tab in the tab bar (see App.tsx's openTabItems), since a tab id
+// alone (e.g. "@graph") isn't something a user should ever see.
 export interface TabKindContribution {
   id: string;
+  title: string;
   matches: (tabId: string | null) => boolean;
   component: ComponentType<any>;
 }
@@ -26,13 +29,15 @@ export interface StatusItemContribution {
   component: ComponentType<any>;
 }
 
-// A left-ribbon launcher button. `viewId` is the already-namespaced
-// ViewContribution id (e.g. "plugin:hello:main") it should reveal and focus.
+// A left-ribbon launcher button. Exactly one of viewId/tabId is set — the
+// already-namespaced ViewContribution/TabKindContribution id (e.g.
+// "plugin:hello:main") it should reveal/focus or open, respectively.
 export interface RibbonItemContribution {
   id: string;
   title: string;
   icon: string;
-  viewId: string;
+  viewId?: string;
+  tabId?: string;
 }
 
 export type CommandHandler = (...args: any[]) => void;

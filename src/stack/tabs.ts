@@ -4,6 +4,14 @@
 export const GRAPH_TAB_ID = "@graph";
 export const SETTINGS_TAB_ID = "@settings";
 
+// General test for any non-note tab id (Graph, Settings, or a plugin tab —
+// see PluginTab in shared/types.ts, whose ids take the form
+// "@plugin:<pluginId>:<tabId>"). All such sentinels start with "@", which a
+// real absolute filesystem note path never does.
+export function isSentinelTabId(id: string): boolean {
+  return id.startsWith("@");
+}
+
 /** Adds a path to the open-tabs list if it isn't already open (no-op otherwise). */
 export function addTab(paths: string[], path: string): string[] {
   return paths.includes(path) ? paths : [...paths, path];
@@ -51,9 +59,7 @@ export function closeOtherTabs(paths: string[], path: string): string[] {
  * callers can skip a state update.
  */
 export function reconcileTabs(paths: string[], existingPaths: ReadonlySet<string>): string[] {
-  const filtered = paths.filter(
-    (p) => p === GRAPH_TAB_ID || p === SETTINGS_TAB_ID || existingPaths.has(p)
-  );
+  const filtered = paths.filter((p) => isSentinelTabId(p) || existingPaths.has(p));
   return filtered.length === paths.length ? paths : filtered;
 }
 
@@ -68,12 +74,12 @@ interface NoteLike {
  * valid if the vault is relocated. Returns null when the note can't be found.
  */
 export function tabIdToRelativePath(tabId: string, notes: NoteLike[]): string | null {
-  if (tabId === GRAPH_TAB_ID || tabId === SETTINGS_TAB_ID) return tabId;
+  if (isSentinelTabId(tabId)) return tabId;
   return notes.find((n) => n.path === tabId)?.relativePath ?? null;
 }
 
 /** The inverse of tabIdToRelativePath — resolves persisted relative state back to a usable tab id. */
 export function relativePathToTabId(relativePath: string, notes: NoteLike[]): string | null {
-  if (relativePath === GRAPH_TAB_ID || relativePath === SETTINGS_TAB_ID) return relativePath;
+  if (isSentinelTabId(relativePath)) return relativePath;
   return notes.find((n) => n.relativePath === relativePath)?.path ?? null;
 }

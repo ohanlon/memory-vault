@@ -161,4 +161,84 @@ describe("discoverPlugins", () => {
     });
     expect(discoverPlugins(tmpRoot)).toEqual([]);
   });
+
+  it("discovers a manifest declaring an editor tab", () => {
+    writeManifest("with-tab", {
+      id: "with-tab",
+      name: "With Tab",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      tabs: [{ id: "main", title: "My Tab", entry: "tab.html" }],
+    });
+    const result = discoverPlugins(tmpRoot);
+    expect(result[0].manifest.tabs).toEqual([{ id: "main", title: "My Tab", entry: "tab.html" }]);
+  });
+
+  it("skips a manifest with a malformed tab entry", () => {
+    writeManifest("malformed-tab", {
+      id: "malformed-tab",
+      name: "Malformed Tab",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      tabs: [{ id: "main" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
+
+  it("discovers a ribbon item that opens a declared tab", () => {
+    writeManifest("with-tab-ribbon", {
+      id: "with-tab-ribbon",
+      name: "With Tab Ribbon",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      tabs: [{ id: "main", title: "My Tab", entry: "tab.html" }],
+      ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensTab: "main" }],
+    });
+    const result = discoverPlugins(tmpRoot);
+    expect(result[0].manifest.ribbonItems).toEqual([
+      { id: "launch", title: "Launch", icon: "M0 0L1 1", opensTab: "main" },
+    ]);
+  });
+
+  it("skips a manifest whose ribbon item references a tab that doesn't exist", () => {
+    writeManifest("dangling-tab-ribbon", {
+      id: "dangling-tab-ribbon",
+      name: "Dangling Tab Ribbon",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      tabs: [{ id: "main", title: "My Tab", entry: "tab.html" }],
+      ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensTab: "missing" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
+
+  it("skips a ribbon item declaring both opensView and opensTab", () => {
+    writeManifest("ambiguous-ribbon", {
+      id: "ambiguous-ribbon",
+      name: "Ambiguous Ribbon",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      views: [{ id: "main", title: "My View", region: "left-sidebar", entry: "index.html" }],
+      tabs: [{ id: "main", title: "My Tab", entry: "tab.html" }],
+      ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensView: "main", opensTab: "main" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
+
+  it("skips a ribbon item declaring neither opensView nor opensTab", () => {
+    writeManifest("empty-ribbon", {
+      id: "empty-ribbon",
+      name: "Empty Ribbon",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1" }],
+    });
+    expect(discoverPlugins(tmpRoot)).toEqual([]);
+  });
 });
