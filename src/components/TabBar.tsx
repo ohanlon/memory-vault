@@ -13,6 +13,10 @@ interface Props {
   activeId: string | null;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onCloseLeft: (id: string) => void;
+  onCloseRight: (id: string) => void;
+  onCloseAll: () => void;
+  onCloseOthers: (id: string) => void;
   onRename: (id: string) => void;
   onDelete: (id: string) => void;
   /** True for tabs backed by an actual note file (excludes e.g. the graph tab). */
@@ -21,7 +25,19 @@ interface Props {
 
 const SCROLL_STEP = 150;
 
-export function TabBar({ tabs, activeId, onSelect, onClose, onRename, onDelete, isFileTab }: Props) {
+export function TabBar({
+  tabs,
+  activeId,
+  onSelect,
+  onClose,
+  onCloseLeft,
+  onCloseRight,
+  onCloseAll,
+  onCloseOthers,
+  onRename,
+  onDelete,
+  isFileTab,
+}: Props) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -73,7 +89,6 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onRename, onDelete, 
             className={`tab${t.id === activeId ? " active" : ""}`}
             onClick={() => onSelect(t.id)}
             onContextMenu={(e) => {
-              if (!isFileTab(t.id)) return;
               e.preventDefault();
               setContextMenu({ id: t.id, x: e.clientX, y: e.clientY });
             }}
@@ -113,8 +128,22 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onRename, onDelete, 
           x={contextMenu.x}
           y={contextMenu.y}
           items={[
-            { label: "Rename", shortcut: "F2", onClick: () => onRename(contextMenu.id) },
-            { label: "Delete", shortcut: "Del", onClick: () => onDelete(contextMenu.id) },
+            ...(isFileTab(contextMenu.id)
+              ? [
+                  { label: "Rename", shortcut: "F2", onClick: () => onRename(contextMenu.id) },
+                  { label: "Delete", shortcut: "Del", onClick: () => onDelete(contextMenu.id) },
+                  { separator: true as const },
+                ]
+              : []),
+            {
+              label: "Tab",
+              children: [
+                { label: "Close Left", onClick: () => onCloseLeft(contextMenu.id) },
+                { label: "Close Right", onClick: () => onCloseRight(contextMenu.id) },
+                { label: "Close All", onClick: onCloseAll },
+                { label: "Close Others", onClick: () => onCloseOthers(contextMenu.id) },
+              ],
+            },
           ]}
           onClose={() => setContextMenu(null)}
         />

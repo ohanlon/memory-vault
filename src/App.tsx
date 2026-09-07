@@ -14,6 +14,9 @@ import {
   addTab as addTabPath,
   GRAPH_TAB_ID,
   SETTINGS_TAB_ID,
+  closeOtherTabs,
+  closeTabsLeft,
+  closeTabsRight,
   reconcileTabs,
   relativePathToTabId,
   removeTab,
@@ -324,6 +327,37 @@ export default function App() {
     },
     [openPaths, activePath]
   );
+
+  const closeTabsLeftOf = useCallback(
+    (path: string) => {
+      const remaining = closeTabsLeft(openPaths, path);
+      setOpenPaths(remaining);
+      if (activePath !== null && !remaining.includes(activePath)) setActivePath(path);
+    },
+    [openPaths, activePath]
+  );
+
+  const closeTabsRightOf = useCallback(
+    (path: string) => {
+      const remaining = closeTabsRight(openPaths, path);
+      setOpenPaths(remaining);
+      if (activePath !== null && !remaining.includes(activePath)) setActivePath(path);
+    },
+    [openPaths, activePath]
+  );
+
+  const closeOtherTabsOf = useCallback(
+    (path: string) => {
+      setOpenPaths((paths) => closeOtherTabs(paths, path));
+      setActivePath(path);
+    },
+    []
+  );
+
+  const closeAllTabs = useCallback(() => {
+    setOpenPaths([]);
+    setActivePath(null);
+  }, []);
 
   const selectByTitle = useCallback(
     (title: string) => {
@@ -698,6 +732,10 @@ export default function App() {
               activeId={activePath}
               onSelect={openTab}
               onClose={closeTab}
+              onCloseLeft={closeTabsLeftOf}
+              onCloseRight={closeTabsRightOf}
+              onCloseAll={closeAllTabs}
+              onCloseOthers={closeOtherTabsOf}
               isFileTab={(id) => id !== GRAPH_TAB_ID && id !== SETTINGS_TAB_ID}
               onRename={(id) => {
                 const note = notes.find((n) => n.path === id);

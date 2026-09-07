@@ -28,6 +28,23 @@ export function renameTab(paths: string[], oldPath: string, newPath: string): st
   return paths.map((p) => (p === oldPath ? newPath : p));
 }
 
+/** Closes every open tab to the left of `path`, keeping `path` and everything to its right. */
+export function closeTabsLeft(paths: string[], path: string): string[] {
+  const idx = paths.indexOf(path);
+  return idx === -1 ? paths : paths.slice(idx);
+}
+
+/** Closes every open tab to the right of `path`, keeping `path` and everything to its left. */
+export function closeTabsRight(paths: string[], path: string): string[] {
+  const idx = paths.indexOf(path);
+  return idx === -1 ? paths : paths.slice(0, idx + 1);
+}
+
+/** Closes every open tab except `path`. */
+export function closeOtherTabs(paths: string[], path: string): string[] {
+  return paths.includes(path) ? [path] : paths;
+}
+
 /**
  * Drops any open tabs whose path no longer exists (e.g. deleted or renamed
  * externally). Returns the same array reference when nothing changed, so

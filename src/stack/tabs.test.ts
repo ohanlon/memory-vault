@@ -3,6 +3,9 @@ import {
   GRAPH_TAB_ID,
   SETTINGS_TAB_ID,
   addTab,
+  closeOtherTabs,
+  closeTabsLeft,
+  closeTabsRight,
   reconcileTabs,
   relativePathToTabId,
   removeTab,
@@ -67,6 +70,52 @@ describe("renameTab", () => {
 
   it("is a no-op when the old path is not open", () => {
     expect(renameTab(["a", "b"], "missing", "x")).toEqual(["a", "b"]);
+  });
+});
+
+describe("closeTabsLeft", () => {
+  it("drops every tab before the given path", () => {
+    expect(closeTabsLeft(["a", "b", "c"], "c")).toEqual(["c"]);
+  });
+
+  it("keeps the given path and everything to its right", () => {
+    expect(closeTabsLeft(["a", "b", "c", "d"], "b")).toEqual(["b", "c", "d"]);
+  });
+
+  it("is a no-op for the leftmost tab", () => {
+    expect(closeTabsLeft(["a", "b"], "a")).toEqual(["a", "b"]);
+  });
+
+  it("is a no-op when the path is not open", () => {
+    expect(closeTabsLeft(["a", "b"], "missing")).toEqual(["a", "b"]);
+  });
+});
+
+describe("closeTabsRight", () => {
+  it("drops every tab after the given path", () => {
+    expect(closeTabsRight(["a", "b", "c"], "a")).toEqual(["a"]);
+  });
+
+  it("keeps the given path and everything to its left", () => {
+    expect(closeTabsRight(["a", "b", "c", "d"], "c")).toEqual(["a", "b", "c"]);
+  });
+
+  it("is a no-op for the rightmost tab", () => {
+    expect(closeTabsRight(["a", "b"], "b")).toEqual(["a", "b"]);
+  });
+
+  it("is a no-op when the path is not open", () => {
+    expect(closeTabsRight(["a", "b"], "missing")).toEqual(["a", "b"]);
+  });
+});
+
+describe("closeOtherTabs", () => {
+  it("keeps only the given path", () => {
+    expect(closeOtherTabs(["a", "b", "c"], "b")).toEqual(["b"]);
+  });
+
+  it("is a no-op when the path is not open", () => {
+    expect(closeOtherTabs(["a", "b"], "missing")).toEqual(["a", "b"]);
   });
 });
 
