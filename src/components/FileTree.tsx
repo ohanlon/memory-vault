@@ -50,7 +50,10 @@ const NOTE_DRAG_TYPE = "application/x-cairn-note";
 const FOLDER_DRAG_TYPE = "application/x-cairn-folder";
 
 type ContextMenuState = {
-  target: { type: "note"; note: Note } | { type: "folder"; folder: FolderEntry } | { type: "root" };
+  target:
+    | { type: "note"; note: Note; parentDir: string }
+    | { type: "folder"; folder: FolderEntry }
+    | { type: "root" };
   x: number;
   y: number;
 };
@@ -185,7 +188,7 @@ export function FileTree({
     }
   }
 
-  function renderNode(node: TreeNode, depth: number): ReactNode {
+  function renderNode(node: TreeNode, depth: number, parentDir: string): ReactNode {
     if (node.type === "note") {
       const note = node.note;
       if (note.path === renamingPath) {
@@ -215,7 +218,7 @@ export function FileTree({
             onClick={() => onSelect(note)}
             onContextMenu={(e) => {
               e.preventDefault();
-              setContextMenu({ target: { type: "note", note }, x: e.clientX, y: e.clientY });
+              setContextMenu({ target: { type: "note", note, parentDir }, x: e.clientX, y: e.clientY });
             }}
             onKeyDown={(e: KeyboardEvent) => {
               if (e.key === "F2") {
@@ -231,6 +234,12 @@ export function FileTree({
               if (matchesShortcut(e, "c")) {
                 e.preventDefault();
                 onCopyNote(note);
+                return;
+              }
+              if (matchesShortcut(e, "v")) {
+                if (!clipboard) return;
+                e.preventDefault();
+                onPasteInto(parentDir);
                 return;
               }
               if (e.key !== "Delete") return;
@@ -340,7 +349,9 @@ export function FileTree({
           </span>
         </div>
         {!isCollapsed && node.children.length > 0 && (
-          <ul className="file-tree-children">{node.children.map((c) => renderNode(c, depth + 1))}</ul>
+          <ul className="file-tree-children">
+            {node.children.map((c) => renderNode(c, depth + 1, node.path))}
+          </ul>
         )}
       </li>
     );
@@ -377,7 +388,7 @@ export function FileTree({
           onPasteInto(root);
         }}
       >
-        {tree.children.map((c) => renderNode(c, 0))}
+        {tree.children.map((c) => renderNode(c, 0, root))}
         {tree.children.length === 0 && <li className="file-tree-empty">No notes yet</li>}
       </ul>
       {contextMenu && (
@@ -387,16 +398,26 @@ export function FileTree({
           items={
             contextMenu.target.type === "note"
               ? (() => {
-                  const note = contextMenu.target.note;
-                  return [
+                  const { note, parentDir } = contextMenu.target;
+                  const items: ContextMenuEntry[] = [
                     { label: "Rename", shortcut: "F2", onClick: () => onRename(note) },
                     { label: "Delete", shortcut: "Del", onClick: () => onDelete(note) },
                     { separator: true as const },
                     { label: "Cut", shortcut: shortcutLabel("X"), onClick: () => onCutNote(note) },
                     { label: "Copy", shortcut: shortcutLabel("C"), onClick: () => onCopyNote(note) },
-                    { separator: true as const },
-                    { label: "Open in explorer", onClick: () => onShowInExplorer(note.path) },
                   ];
+                  if (clipboard) {
+                    items.push({
+                      label: "Paste",
+                      shortcut: shortcutLabel("V"),
+                      onClick: () => onPasteInto(parentDir),
+                    });
+                  }
+                  items.push(
+                    { separator: true as const },
+                    { label: "Open in explorer", onClick: () => onShowInExplorer(note.path) }
+                  );
+                  return items;
                 })()
               : contextMenu.target.type === "folder"
               ? (() => {
