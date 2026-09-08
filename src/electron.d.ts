@@ -31,7 +31,8 @@ export interface MemoryStackAPI {
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;
-  createNote(dir: string, title: string): Promise<string>;
+  createNote(dir: string, title: string, templateId?: string): Promise<string>;
+  seedStarterContent(): Promise<string[]>;
   deleteNote(absPath: string): Promise<boolean>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
   createFolder(dir: string, name: string): Promise<string>;

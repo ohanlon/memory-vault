@@ -8,6 +8,9 @@ interface Props {
   onOpenDailyNote: () => void;
   onGraphView: () => void;
   onOpenSettings: () => void;
+  /** Right-click on the "New note" button — opens the note-template picker. */
+  onNewNoteContextMenu: (x: number, y: number) => void;
+  onOpenHelp: () => void;
   regionId?: string;
   /** Left-ribbon launcher icons contributed by plugins, if any. */
   ribbonItems?: RibbonItemContribution[];
@@ -33,6 +36,8 @@ export function ActivityBar({
   onOpenDailyNote,
   onGraphView,
   onOpenSettings,
+  onNewNoteContextMenu,
+  onOpenHelp,
   regionId,
   ribbonItems = [],
   onOpenRibbonItem,
@@ -48,7 +53,15 @@ export function ActivityBar({
           {sidebarCollapsed ? "»" : "«"}
         </button>
       </div>
-      <button className="activity-bar-btn" onClick={onNewNote} title="New note">
+      <button
+        className="activity-bar-btn"
+        onClick={onNewNote}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onNewNoteContextMenu(e.clientX, e.clientY);
+        }}
+        title="New note (right-click for templates)"
+      >
         +
       </button>
       <button className="activity-bar-btn" onClick={onNewFolder} title="New folder">
@@ -70,7 +83,10 @@ export function ActivityBar({
           <RibbonIcon d={item.icon} />
         </button>
       ))}
-      <button className="activity-bar-btn activity-bar-btn-bottom" onClick={onOpenSettings} title="Settings">
+      <button className="activity-bar-btn activity-bar-btn-bottom" onClick={onOpenHelp} title="Keyboard shortcuts & help">
+        ?
+      </button>
+      <button className="activity-bar-btn" onClick={onOpenSettings} title="Settings">
         ⚙
       </button>
     </nav>

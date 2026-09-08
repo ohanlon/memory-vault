@@ -244,6 +244,29 @@ body {
   color: var(--accent-red);
 }
 
+.sidebar-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.sidebar-empty-state button {
+  background: var(--bg-control);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.sidebar-empty-state button:hover {
+  background: var(--bg-control-hover);
+}
+
 .stack-list {
   list-style: none;
   margin: 0;
@@ -1552,6 +1575,45 @@ body {
 
 .modal-actions button:hover {
   background: var(--bg-control-hover);
+}
+
+.shortcuts-group h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--text-label);
+  text-transform: uppercase;
+}
+
+.shortcuts-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shortcuts-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.shortcuts-list kbd {
+  background: var(--bg-control);
+  border: 1px solid var(--border-control);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tour-progress {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-label);
 }
 
 .context-menu {

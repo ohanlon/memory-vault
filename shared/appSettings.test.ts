@@ -15,6 +15,7 @@ describe("normalizeAppSettings", () => {
         editorFontFamily: "monospace",
         editorFontSize: 18,
         enabledCodeLanguages: ["python", "rust"],
+        hasSeenTour: true,
       })
     ).toEqual({
       tabFolderDisplay: "always",
@@ -26,6 +27,7 @@ describe("normalizeAppSettings", () => {
       editorFontFamily: "monospace",
       editorFontSize: 18,
       enabledCodeLanguages: ["python", "rust"],
+      hasSeenTour: true,
     });
     expect(
       normalizeAppSettings({
@@ -38,6 +40,7 @@ describe("normalizeAppSettings", () => {
         editorFontFamily: "arimo",
         editorFontSize: 12,
         enabledCodeLanguages: [],
+        hasSeenTour: false,
       })
     ).toEqual({
       tabFolderDisplay: "never",
@@ -49,6 +52,7 @@ describe("normalizeAppSettings", () => {
       editorFontFamily: "arimo",
       editorFontSize: 12,
       enabledCodeLanguages: [],
+      hasSeenTour: false,
     });
   });
 
@@ -156,5 +160,15 @@ describe("normalizeAppSettings", () => {
 
   it("preserves a deliberately empty selection instead of falling back to defaults", () => {
     expect(normalizeAppSettings({ enabledCodeLanguages: [] }).enabledCodeLanguages).toEqual([]);
+  });
+
+  it("falls back to the default for a non-boolean hasSeenTour", () => {
+    expect(normalizeAppSettings({ hasSeenTour: "yes" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ hasSeenTour: undefined })).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("accepts both boolean hasSeenTour values", () => {
+    expect(normalizeAppSettings({ hasSeenTour: true }).hasSeenTour).toBe(true);
+    expect(normalizeAppSettings({ hasSeenTour: false }).hasSeenTour).toBe(false);
   });
 });

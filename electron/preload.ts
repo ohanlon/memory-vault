@@ -48,8 +48,9 @@ const api = {
     ipcRenderer.invoke("stack:readRaw", absPath),
   saveNote: (absPath: string, content: string): Promise<boolean> =>
     ipcRenderer.invoke("stack:saveNote", absPath, content),
-  createNote: (dir: string, title: string): Promise<string> =>
-    ipcRenderer.invoke("stack:createNote", dir, title),
+  createNote: (dir: string, title: string, templateId?: string): Promise<string> =>
+    ipcRenderer.invoke("stack:createNote", dir, title, templateId),
+  seedStarterContent: (): Promise<string[]> => ipcRenderer.invoke("stack:seedStarterContent"),
   deleteNote: (absPath: string): Promise<boolean> =>
     ipcRenderer.invoke("stack:deleteNote", absPath),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>

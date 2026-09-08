@@ -186,6 +186,8 @@ export interface AppSettings {
   editorFontSize: number;
   /** highlight.js language ids (see shared/codeLanguages.ts) enabled for code-block syntax highlighting. */
   enabledCodeLanguages: string[];
+  /** Whether the first-run onboarding tour has already been shown (and dismissed/completed). */
+  hasSeenTour: boolean;
 }
 
 export interface DailyNoteResult {

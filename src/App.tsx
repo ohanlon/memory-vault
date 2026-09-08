@@ -6,6 +6,8 @@ import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { ContextMenu } from "./components/ContextMenu";
+import { ShortcutsPanel } from "./components/ShortcutsPanel";
+import { OnboardingTour } from "./components/OnboardingTour";
 import { DeleteIcon, RenameIcon } from "./components/icons";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
@@ -36,6 +38,7 @@ import { backlinkTitles } from "@shared/buildGraph";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
 import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
+import { NOTE_TEMPLATES } from "@shared/noteTemplates";
 import type { AppSettings, FolderEntry, LayoutRegionName, Note, StackEntry } from "@shared/types";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
@@ -73,6 +76,7 @@ type DialogState =
   | { kind: "manage-properties" }
   | { kind: "confirm-delete"; target: DeleteTarget }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
+  | { kind: "shortcuts" }
   | null;
 
 type StackContextMenuState = { stack: StackEntry; x: number; y: number };
@@ -121,6 +125,9 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_LAYOUT_PREFS.sidebarWidth);
   const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_LAYOUT_PREFS.rightPanelWidth);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const [templateMenu, setTemplateMenu] = useState<{ dir: string; x: number; y: number } | null>(null);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
   // Mirrors the two widths above so the drag-end handler can save the exact
   // latest value without waiting for a re-render to read fresh state.
@@ -150,12 +157,27 @@ export default function App() {
       setRightPanelWidth(prefs.rightPanelWidth);
       widthsRef.current = prefs;
     });
-    window.memoryStack.readAppSettings().then(setSettings);
+    window.memoryStack.readAppSettings().then((s) => {
+      setSettings(s);
+      setSettingsLoaded(true);
+    });
   }, []);
 
   function updateSettings(next: AppSettings) {
     setSettings(next);
     window.memoryStack.saveAppSettings(next);
+  }
+
+  // Shows the first-run tour once a stack is open, provided settings have
+  // loaded (so we know for sure it hasn't already been seen) and it hasn't
+  // been dismissed before. Never fires again once hasSeenTour is persisted.
+  useEffect(() => {
+    if (root && settingsLoaded && !settings.hasSeenTour) setShowTour(true);
+  }, [root, settingsLoaded, settings.hasSeenTour]);
+
+  function dismissTour() {
+    setShowTour(false);
+    updateSettings({ ...settings, hasSeenTour: true });
   }
 
   function resizeSidebar(deltaX: number) {
@@ -484,12 +506,17 @@ export default function App() {
     }
   }
 
-  async function handleCreateNote(dir: string) {
+  async function handleCreateNote(dir: string, templateId?: string) {
     setSidebarCollapsed(false);
-    const newPath = await window.memoryStack.createNote(dir, "");
+    const newPath = await window.memoryStack.createNote(dir, "", templateId);
     await refresh();
     openTab(newPath);
     setRenamingPath(newPath);
+  }
+
+  async function handleSeedStarterContent() {
+    await window.memoryStack.seedStarterContent();
+    await refresh({ showReindexing: true });
   }
 
   async function handleCreateFolder(dir: string) {
@@ -800,6 +827,8 @@ export default function App() {
             onOpenDailyNote={() => pluginRegistry.runCommand("stack.openDailyNote")}
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
             onOpenSettings={() => pluginRegistry.runCommand("view.openSettings")}
+            onNewNoteContextMenu={(x: number, y: number) => root && setTemplateMenu({ dir: root, x, y })}
+            onOpenHelp={() => setDialog({ kind: "shortcuts" })}
             regionId={regionId("left-ribbon")}
             ribbonItems={pluginRegistry.getRibbonItems()}
             onOpenRibbonItem={openRibbonItem}
@@ -845,6 +874,7 @@ export default function App() {
                 pluginRegistry.runCommand("stack.moveNote", notePath, destDir),
               onMoveFolder: (folderPath: string, destDir: string) =>
                 pluginRegistry.runCommand("stack.moveFolder", folderPath, destDir),
+              onSeedStarterContent: handleSeedStarterContent,
             }}
           />
         )}
@@ -972,6 +1002,27 @@ export default function App() {
               setDialog(null);
             }}
             onClose={() => setDialog(null)}
+          />
+        )}
+        {dialog?.kind === "shortcuts" && (
+          <ShortcutsPanel
+            onReplayTour={() => {
+              setDialog(null);
+              setShowTour(true);
+            }}
+            onClose={() => setDialog(null)}
+          />
+        )}
+        {showTour && <OnboardingTour onClose={dismissTour} />}
+        {templateMenu && (
+          <ContextMenu
+            x={templateMenu.x}
+            y={templateMenu.y}
+            items={NOTE_TEMPLATES.map((template) => ({
+              label: template.label,
+              onClick: () => handleCreateNote(templateMenu.dir, template.id),
+            }))}
+            onClose={() => setTemplateMenu(null)}
           />
         )}
       </div>

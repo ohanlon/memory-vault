@@ -8,6 +8,8 @@ import { readStackCache, writeStackCache } from "./stackCache";
 import { runSearch } from "./search";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import { titleFromPath } from "../shared/parseNote";
+import { STARTER_NOTES } from "../shared/starterContent";
+import { findNoteTemplate } from "../shared/noteTemplates";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
@@ -377,7 +379,7 @@ ipcMain.handle("stack:openOrCreateDailyNote", async (_event, folder: string) => 
 
 ipcMain.handle(
   "stack:createNote",
-  async (_event, dir: string, title: string) => {
+  async (_event, dir: string, title: string, templateId?: string) => {
     if (!currentRoot) throw new Error("No stack loaded");
     const safeTitle = title.trim() || "New File";
     let fileName = `${safeTitle}.md`;
@@ -389,11 +391,28 @@ ipcMain.handle(
       fullPath = path.join(dir, fileName);
     }
     const addHeading = readAppSettingsFile(appSettingsFilePath()).addHeadingToNewNotes;
-    const scaffold = addHeading ? `---\ntags: []\n---\n\n# ${safeTitle}\n` : `---\ntags: []\n---\n\n`;
+    const scaffold = findNoteTemplate(templateId).build(safeTitle, addHeading);
     fs.writeFileSync(fullPath, scaffold, "utf-8");
     return fullPath;
   }
 );
+
+// Seeds the currently open (empty) stack with a few example notes — offered
+// from the sidebar in place of a blank file tree so a first-time user has
+// something to explore instead of a blank canvas. Skips any file that would
+// collide with something already on disk, so it's safe to call more than
+// once.
+ipcMain.handle("stack:seedStarterContent", async () => {
+  if (!currentRoot) throw new Error("No stack loaded");
+  const created: string[] = [];
+  for (const note of STARTER_NOTES) {
+    const fullPath = path.join(currentRoot, note.fileName);
+    if (fs.existsSync(fullPath)) continue;
+    fs.writeFileSync(fullPath, note.content, "utf-8");
+    created.push(fullPath);
+  }
+  return created;
+});
 
 ipcMain.handle("stack:deleteNote", async (_event, absPath: string) => {
   fs.rmSync(absPath, { force: true });

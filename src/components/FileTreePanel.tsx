@@ -32,6 +32,7 @@ interface Props {
   onCutFolder: (folder: FolderEntry) => void;
   onCopyFolder: (folder: FolderEntry) => void;
   onPasteInto: (destDir: string) => void;
+  onSeedStarterContent: () => void;
 }
 
 export function FileTreePanel({
@@ -65,10 +66,19 @@ export function FileTreePanel({
   onCutFolder,
   onCopyFolder,
   onPasteInto,
+  onSeedStarterContent,
 }: Props) {
   return (
     <>
       {loading && <div className="loading">Loading...</div>}
+      {!loading && notes.length === 0 && (
+        <div className="sidebar-empty-state">
+          <p>This stack has no notes yet.</p>
+          <button type="button" onClick={onSeedStarterContent}>
+            Add example notes to get started
+          </button>
+        </div>
+      )}
       <FileTree
         root={root}
         notes={notes}
