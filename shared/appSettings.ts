@@ -8,7 +8,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   theme: "dark",
   addHeadingToNewNotes: true,
   hidePropertiesByDefault: true,
-  showLineNumbers: true,
+  showLineNumbers: false,
   editorFontFamily: "system-ui",
   editorFontSize: 14,
   enabledCodeLanguages: DEFAULT_ENABLED_CODE_LANGUAGES,
