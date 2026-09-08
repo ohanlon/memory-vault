@@ -31,6 +31,7 @@ import {
 import type { NavClipboard } from "./components/FileTree";
 import { stripMdExtension } from "@shared/displayName";
 import { isSameOrDescendant } from "@shared/fileTree";
+import { backlinkTitles } from "@shared/buildGraph";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
 import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
@@ -70,6 +71,7 @@ type DialogState =
   | { kind: "rename-stack"; stack: StackEntry }
   | { kind: "manage-properties" }
   | { kind: "confirm-delete"; target: DeleteTarget }
+  | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
   | null;
 
 type StackContextMenuState = { stack: StackEntry; x: number; y: number };
@@ -565,17 +567,26 @@ export default function App() {
     }
   }
 
-  async function handleCommitNoteRename(note: Note, newTitle: string) {
-    setRenamingPath(null);
-    if (!newTitle || newTitle === note.title) return;
+  async function performNoteRename(note: Note, newTitle: string, updateLinks: boolean) {
     // Flush any pending debounced save first — otherwise it fires after the
     // rename and rewrites the old path with pre-rename content, resurrecting
     // the file the rename just got rid of.
     await flushPendingSave(note.path);
-    const newPath = await window.memoryStack.renameNote(note.path, newTitle);
+    const newPath = await window.memoryStack.renameNote(note.path, newTitle, updateLinks);
     setOpenPaths((paths) => renameTab(paths, note.path, newPath));
     await refresh();
     if (activePath === note.path) setActivePath(newPath);
+  }
+
+  async function handleCommitNoteRename(note: Note, newTitle: string) {
+    setRenamingPath(null);
+    if (!newTitle || newTitle === note.title) return;
+    const backlinks = backlinkTitles(graph, note.title);
+    if (backlinks.length === 0) {
+      await performNoteRename(note, newTitle, false);
+      return;
+    }
+    setDialog({ kind: "rename-links", note, newTitle, backlinks });
   }
 
   async function handleCommitFolderRename(folder: FolderEntry, newName: string) {
@@ -915,6 +926,29 @@ export default function App() {
               setDialog(null);
             }}
             onCancel={() => setDialog(null)}
+          />
+        )}
+        {dialog?.kind === "rename-links" && (
+          <ConfirmModal
+            title="Update links to this note?"
+            message={`${dialog.backlinks.length} other note${
+              dialog.backlinks.length === 1 ? "" : "s"
+            } link${dialog.backlinks.length === 1 ? "s" : ""} to "${dialog.note.title}". Update ${
+              dialog.backlinks.length === 1 ? "it" : "them"
+            } to point to "${dialog.newTitle}"?`}
+            confirmLabel="Update links"
+            cancelLabel="Don't update"
+            showDontAskAgain={false}
+            onConfirm={() => {
+              const { note, newTitle } = dialog;
+              setDialog(null);
+              performNoteRename(note, newTitle, true);
+            }}
+            onCancel={() => {
+              const { note, newTitle } = dialog;
+              setDialog(null);
+              performNoteRename(note, newTitle, false);
+            }}
           />
         )}
         {dialog?.kind === "manage-properties" && (

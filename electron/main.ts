@@ -522,24 +522,26 @@ ipcMain.handle(
 
 ipcMain.handle(
   "stack:renameNote",
-  async (_event, absPath: string, newTitle: string) => {
+  async (_event, absPath: string, newTitle: string, updateLinks: boolean) => {
     if (!currentRoot) throw new Error("No stack loaded");
     const dir = path.dirname(absPath);
     const oldTitle = titleFromPath(path.relative(currentRoot, absPath));
     const newPath = path.join(dir, `${newTitle}.md`);
     fs.renameSync(absPath, newPath);
 
-    // Rewrite [[oldTitle]] references (and aliased/headered variants) across the stack.
-    const notes = await loadStack(currentRoot);
-    const linkRe = new RegExp(
-      `\\[\\[${escapeRegExp(oldTitle)}((?:#[^\\]|]+)?(?:\\|[^\\]]+)?)\\]\\]`,
-      "g"
-    );
-    for (const note of notes) {
-      if (!note.content.includes(`[[${oldTitle}`)) continue;
-      const raw = await fs.promises.readFile(note.path, "utf-8");
-      const updated = raw.replace(linkRe, (_m, suffix) => `[[${newTitle}${suffix}]]`);
-      if (updated !== raw) await fs.promises.writeFile(note.path, updated, "utf-8");
+    if (updateLinks) {
+      // Rewrite [[oldTitle]] references (and aliased/headered variants) across the stack.
+      const notes = await loadStack(currentRoot);
+      const linkRe = new RegExp(
+        `\\[\\[${escapeRegExp(oldTitle)}((?:#[^\\]|]+)?(?:\\|[^\\]]+)?)\\]\\]`,
+        "g"
+      );
+      for (const note of notes) {
+        if (!note.content.includes(`[[${oldTitle}`)) continue;
+        const raw = await fs.promises.readFile(note.path, "utf-8");
+        const updated = raw.replace(linkRe, (_m, suffix) => `[[${newTitle}${suffix}]]`);
+        if (updated !== raw) await fs.promises.writeFile(note.path, updated, "utf-8");
+      }
     }
 
     return newPath;

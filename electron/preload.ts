@@ -52,8 +52,8 @@ const api = {
     ipcRenderer.invoke("stack:createNote", dir, title),
   deleteNote: (absPath: string): Promise<boolean> =>
     ipcRenderer.invoke("stack:deleteNote", absPath),
-  renameNote: (absPath: string, newTitle: string): Promise<string> =>
-    ipcRenderer.invoke("stack:renameNote", absPath, newTitle),
+  renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
+    ipcRenderer.invoke("stack:renameNote", absPath, newTitle, updateLinks),
   createFolder: (dir: string, name: string): Promise<string> =>
     ipcRenderer.invoke("stack:createFolder", dir, name),
   deleteFolder: (absPath: string): Promise<boolean> =>

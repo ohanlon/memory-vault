@@ -4,11 +4,21 @@ interface Props {
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
+  showDontAskAgain?: boolean;
   onConfirm: (dontAskAgain: boolean) => void;
   onCancel: () => void;
 }
 
-export function ConfirmModal({ title, message, confirmLabel = "OK", onConfirm, onCancel }: Props) {
+export function ConfirmModal({
+  title,
+  message,
+  confirmLabel = "OK",
+  cancelLabel = "Cancel",
+  showDontAskAgain = true,
+  onConfirm,
+  onCancel,
+}: Props) {
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const confirmRef = useRef<HTMLButtonElement | null>(null);
 
@@ -27,17 +37,19 @@ export function ConfirmModal({ title, message, confirmLabel = "OK", onConfirm, o
       >
         <h3>{title}</h3>
         <p className="modal-message">{message}</p>
-        <label className="modal-checkbox">
-          <input
-            type="checkbox"
-            checked={dontAskAgain}
-            onChange={(e) => setDontAskAgain(e.target.checked)}
-          />
-          Don't ask me again
-        </label>
+        {showDontAskAgain && (
+          <label className="modal-checkbox">
+            <input
+              type="checkbox"
+              checked={dontAskAgain}
+              onChange={(e) => setDontAskAgain(e.target.checked)}
+            />
+            Don't ask me again
+          </label>
+        )}
         <div className="modal-actions">
           <button type="button" onClick={onCancel}>
-            Cancel
+            {cancelLabel}
           </button>
           <button ref={confirmRef} type="button" onClick={() => onConfirm(dontAskAgain)}>
             {confirmLabel}
