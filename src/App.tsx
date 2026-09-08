@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useStack } from "./stack/useStack";
+import { useStack, type ActiveSession } from "./stack/useStack";
 import { StatusBar } from "./components/StatusBar";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
@@ -25,18 +25,19 @@ import {
   closeTabsRight,
   isSentinelTabId,
   reconcileTabs,
-  relativePathToTabId,
   removeTab,
   renameTab,
-  tabIdToRelativePath,
+  tabIdToTabRef,
+  tabRefToTabId,
 } from "./stack/tabs";
+import { CombineStacksModal } from "./components/CombineStacksModal";
 import { stripMdExtension } from "@shared/displayName";
 import { backlinkTitles } from "@shared/buildGraph";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
 import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
 import { NOTE_TEMPLATES } from "@shared/noteTemplates";
-import type { AppSettings, LayoutRegionName, Note, StackEntry } from "@shared/types";
+import type { AppSettings, CairnEntry, LayoutRegionName, Note, StackEntry } from "@shared/types";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -53,32 +54,47 @@ function deleteConfirmMessage(note: Note): string {
   return `Delete "${stripMdExtension(note.relativePath)}"? This can't be undone.`;
 }
 
+/** The root a note's own stack lives at — the single open stack's root for
+ *  a plain session, or the matching member stack's root (via
+ *  Note.sourceStack) when notes are merged from an open Cairn. */
+function noteRootFor(note: Note | null, session: ActiveSession | null): string | null {
+  if (!note || !session) return null;
+  if (session.kind === "stack") return session.entry.root;
+  return session.memberStacks.find((s) => s.name === note.sourceStack)?.root ?? null;
+}
+
 type DialogState =
   | { kind: "name-stack"; root: string }
   | { kind: "rename-stack"; stack: StackEntry }
-  | { kind: "manage-properties" }
+  | { kind: "rename-cairn"; cairn: CairnEntry }
+  | { kind: "combine-stacks" }
+  | { kind: "manage-properties"; root: string }
   | { kind: "confirm-delete"; note: Note }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
   | { kind: "shortcuts" }
   | null;
 
-type StackContextMenuState = { stack: StackEntry; x: number; y: number };
+type StackContextMenuState = { target: { type: "stack"; stack: StackEntry } | { type: "cairn"; cairn: CairnEntry }; x: number; y: number };
 
 export default function App() {
   const {
     stacks,
-    activeName,
-    root,
+    cairns,
+    activeSession,
     notes,
     graph,
-    propertySchema,
+    propertySchemas,
     loading,
     error,
     reconciling,
     openStackByEntry,
+    openCairnByEntry,
     addStack,
     removeStack,
     renameStack,
+    addCairn,
+    removeCairn,
+    renameCairn,
     closeStack,
     refresh,
     saveSchema,
@@ -87,13 +103,14 @@ export default function App() {
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
-  // Which stack root a workspace-state restore has been kicked off for, so a
-  // refresh() of the same stack doesn't retrigger it — reset to null when the
-  // stack closes so reopening it (or a different one) restores again.
-  const restoreStartedRootRef = useRef<string | null>(null);
-  // Which stack root restored data has actually landed for — gates saving so
+  // Which session (a stack's root, or "cairn:<name>") a workspace-state
+  // restore has been kicked off for, so a refresh() of the same session
+  // doesn't retrigger it — reset to null when the session closes so
+  // reopening it (or a different one) restores again.
+  const restoreStartedSessionRef = useRef<string | null>(null);
+  // Which session restored data has actually landed for — gates saving so
   // the debounced save effect can't write back stale pre-restore state.
-  const restoredReadyRootRef = useRef<string | null>(null);
+  const restoredReadySessionRef = useRef<string | null>(null);
   const workspaceSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [stackContextMenu, setStackContextMenu] = useState<StackContextMenuState | null>(null);
@@ -105,8 +122,24 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showTour, setShowTour] = useState(false);
-  const [templateMenu, setTemplateMenu] = useState<{ dir: string; x: number; y: number } | null>(null);
+  // Stack-picker/template-picker menu shown for "New Note" — for a plain
+  // stack this is only ever opened via right-click (see
+  // handleNewNoteContextMenu); for an open Cairn, a left-click opens it too,
+  // since there's no single implicit target stack to ask "always ask" about.
+  const [templateMenu, setTemplateMenu] = useState<{ x: number; y: number } | null>(null);
+  // Stack-picker menu for "New Daily Note" in an open Cairn (same "always
+  // ask" reasoning as templateMenu; a plain stack never shows this).
+  const [dailyNoteMenu, setDailyNoteMenu] = useState<{ x: number; y: number } | null>(null);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
+  const activeName = activeSession?.entry.name ?? null;
+  const singleStackRoot = activeSession?.kind === "stack" ? activeSession.entry.root : null;
+  // Stable identity for the currently-open session, used to gate the
+  // workspace-state restore/save effects below.
+  const sessionKey = activeSession
+    ? activeSession.kind === "cairn"
+      ? `cairn:${activeSession.entry.name}`
+      : activeSession.entry.root
+    : null;
   // Mirrors the two widths above so the drag-end handler can save the exact
   // latest value without waiting for a re-render to read fresh state.
   const widthsRef = useRef(DEFAULT_LAYOUT_PREFS);
@@ -150,8 +183,8 @@ export default function App() {
   // loaded (so we know for sure it hasn't already been seen) and it hasn't
   // been dismissed before. Never fires again once hasSeenTour is persisted.
   useEffect(() => {
-    if (root && settingsLoaded && !settings.hasSeenTour) setShowTour(true);
-  }, [root, settingsLoaded, settings.hasSeenTour]);
+    if (activeSession && settingsLoaded && !settings.hasSeenTour) setShowTour(true);
+  }, [activeSession, settingsLoaded, settings.hasSeenTour]);
 
   function dismissTour() {
     setShowTour(false);
@@ -188,6 +221,15 @@ export default function App() {
     [notes, activePath]
   );
 
+  // Which stack root the active note's properties live under — a single
+  // stack's own root in a plain session, or the matching member stack when
+  // notes are merged from an open Cairn (see noteRootFor).
+  const activeNoteRoot = useMemo(
+    () => noteRootFor(activeNote, activeSession),
+    [activeNote, activeSession]
+  );
+  const activeNoteSchema = activeNoteRoot ? propertySchemas[activeNoteRoot] ?? [] : [];
+
   const openTabItems = useMemo<TabItem[]>(
     () =>
       openPaths
@@ -221,52 +263,68 @@ export default function App() {
     setActivePath((path) => (path === null || path === GRAPH_TAB_ID || existing.has(path) ? path : null));
   }, [notes]);
 
-  // Restores open tabs from <stack>/.cairn/workspace.json
-  // whenever a (newly opened or reopened) stack finishes loading. Guarded by
-  // restoreStartedRootRef so a refresh() of the same stack — triggered on
-  // every note create/save/delete — doesn't stomp on the current session's tabs.
+  // Reads workspace.json for the currently open session — a plain stack's
+  // own <stack>/.cairn/workspace.json, or an open Cairn's
+  // <userData>/cairns/<name>/workspace.json.
+  const readActiveWorkspaceState = useCallback(() => {
+    if (!activeSession) return Promise.resolve(null);
+    return activeSession.kind === "cairn"
+      ? window.memoryStack.readCairnWorkspaceState(activeSession.entry.name)
+      : window.memoryStack.readWorkspaceState();
+  }, [activeSession]);
+
+  // Restores open tabs from workspace state whenever a (newly opened or
+  // reopened) session finishes loading. Guarded by restoreStartedSessionRef
+  // so a refresh() of the same session — triggered on every note
+  // create/save/delete — doesn't stomp on the current session's tabs.
   useEffect(() => {
-    if (!root || restoreStartedRootRef.current === root) return;
-    restoreStartedRootRef.current = root;
-    window.memoryStack.readWorkspaceState().then((state) => {
+    if (!sessionKey || restoreStartedSessionRef.current === sessionKey) return;
+    restoreStartedSessionRef.current = sessionKey;
+    readActiveWorkspaceState().then((state) => {
+      if (!state) return;
       const restoredTabs = state.openTabs
-        .map((rel) => relativePathToTabId(rel, notes))
+        .map((ref) => tabRefToTabId(ref, notes))
         .filter((id): id is string => id !== null);
       setOpenPaths(restoredTabs);
-      const restoredActive = state.activeTab ? relativePathToTabId(state.activeTab, notes) : null;
+      const restoredActive = state.activeTab ? tabRefToTabId(state.activeTab, notes) : null;
       setActivePath(restoredActive && restoredTabs.includes(restoredActive) ? restoredActive : restoredTabs[0] ?? null);
-      restoredReadyRootRef.current = root;
+      restoredReadySessionRef.current = sessionKey;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [root]);
+  }, [sessionKey]);
 
-  // A stack was closed — clear both guards so reopening it (or a different
-  // stack) triggers a fresh restore instead of being skipped as a no-op.
+  // A session was closed — clear both guards so reopening it (or a
+  // different one) triggers a fresh restore instead of being skipped as a no-op.
   useEffect(() => {
-    if (root === null) {
-      restoreStartedRootRef.current = null;
-      restoredReadyRootRef.current = null;
+    if (sessionKey === null) {
+      restoreStartedSessionRef.current = null;
+      restoredReadySessionRef.current = null;
     }
-  }, [root]);
+  }, [sessionKey]);
 
-  // Persists open tabs/active tab back to workspace.json, debounced so rapid
-  // tab switching doesn't spam disk writes. Gated on restoredReadyRootRef so
-  // this can't fire with stale state before the restore above has actually
-  // landed.
+  // Persists open tabs/active tab back to workspace state, debounced so
+  // rapid tab switching doesn't spam disk writes. Gated on
+  // restoredReadySessionRef so this can't fire with stale state before the
+  // restore above has actually landed.
   useEffect(() => {
-    if (!root || restoredReadyRootRef.current !== root) return;
+    if (!activeSession || !sessionKey || restoredReadySessionRef.current !== sessionKey) return;
     if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     workspaceSaveTimer.current = setTimeout(() => {
       const openTabs = openPaths
-        .map((id) => tabIdToRelativePath(id, notes))
-        .filter((p): p is string => p !== null);
-      const activeTab = activePath ? tabIdToRelativePath(activePath, notes) : null;
-      window.memoryStack.saveWorkspaceState({ openTabs, activeTab });
+        .map((id) => tabIdToTabRef(id, notes))
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+      const activeTab = activePath ? tabIdToTabRef(activePath, notes) : null;
+      const state = { openTabs, activeTab };
+      if (activeSession.kind === "cairn") {
+        window.memoryStack.saveCairnWorkspaceState(activeSession.entry.name, state);
+      } else {
+        window.memoryStack.saveWorkspaceState(state);
+      }
     }, 300);
     return () => {
       if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     };
-  }, [root, openPaths, activePath, notes]);
+  }, [activeSession, sessionKey, openPaths, activePath, notes]);
 
   const openTab = useCallback((path: string) => {
     setOpenPaths((paths) => addTabPath(paths, path));
@@ -320,13 +378,20 @@ export default function App() {
         openTab(found.path);
         return;
       }
-      if (!root) return;
-      window.memoryStack.createNote(root, title).then(async (newPath) => {
+      if (!activeSession) return;
+      // Clicking an unresolved wikilink to create it: for a Cairn this
+      // defaults to the first member stack rather than prompting — this
+      // one flow keeps its immediacy instead of interrupting the click
+      // with a stack picker (New Note/New Daily Note still always ask).
+      const targetRoot =
+        activeSession.kind === "cairn" ? activeSession.memberStacks[0]?.root : activeSession.entry.root;
+      if (!targetRoot) return;
+      window.memoryStack.createNote(targetRoot, title).then(async (newPath) => {
         await refresh();
         openTab(newPath);
       });
     },
-    [notes, openTab, root, refresh]
+    [notes, openTab, activeSession, refresh]
   );
 
   const openExternal = useCallback((url: string) => {
@@ -410,11 +475,62 @@ export default function App() {
     await refresh({ showReindexing: true });
   }
 
-  async function handleOpenDailyNote() {
-    if (!root) return;
-    const result = await window.memoryStack.openOrCreateDailyNote(settings.dailyNotesFolder);
+  async function handleOpenDailyNote(stackRoot: string) {
+    const result = await window.memoryStack.openOrCreateDailyNote(settings.dailyNotesFolder, stackRoot);
     if (result.created) await refresh();
     openTab(result.path);
+  }
+
+  // "Always ask" for a Cairn: New Note/New Daily Note have no single
+  // implicit target stack once notes are merged, so both open a
+  // stack-picker menu instead of acting immediately. A plain single-stack
+  // session keeps today's one-click behavior.
+  function handleNewNoteClick(x: number, y: number) {
+    if (!activeSession) return;
+    if (activeSession.kind === "stack") {
+      handleCreateNote(activeSession.entry.root);
+      return;
+    }
+    setTemplateMenu({ x, y });
+  }
+
+  function handleNewNoteContextMenu(x: number, y: number) {
+    if (!activeSession) return;
+    setTemplateMenu({ x, y });
+  }
+
+  function handleOpenDailyNoteClick(x: number, y: number) {
+    if (!activeSession) return;
+    if (activeSession.kind === "stack") {
+      handleOpenDailyNote(activeSession.entry.root);
+      return;
+    }
+    setDailyNoteMenu({ x, y });
+  }
+
+  async function handleCombineStacksSubmit(name: string, memberStackNames: string[]) {
+    try {
+      await addCairn(name, memberStackNames);
+      setDialog(null);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleRemoveCairn(name: string) {
+    if (!window.confirm(`Remove Cairn "${name}"? Its member stacks are untouched.`)) return;
+    await removeCairn(name);
+  }
+
+  async function handleRenameCairnSubmit(newName: string) {
+    if (dialog?.kind !== "rename-cairn") return;
+    const oldName = dialog.cairn.name;
+    try {
+      await renameCairn(oldName, newName);
+      setDialog(null);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
   }
 
   async function performDeleteNote(note: Note) {
@@ -461,10 +577,12 @@ export default function App() {
   // render (cheap — a few Map.set calls) so handlers always close over
   // current state instead of going stale.
   useEffect(() => {
-    pluginRegistry.registerCommand("stack.newNote", () => {
-      if (root) handleCreateNote(root);
-    });
-    pluginRegistry.registerCommand("stack.openDailyNote", () => handleOpenDailyNote());
+    pluginRegistry.registerCommand("stack.newNote", () =>
+      handleNewNoteClick(window.innerWidth / 2, window.innerHeight / 2)
+    );
+    pluginRegistry.registerCommand("stack.openDailyNote", () =>
+      handleOpenDailyNoteClick(window.innerWidth / 2, window.innerHeight / 2)
+    );
     pluginRegistry.registerCommand("stack.switchStack", () => handleSwitchStack());
     pluginRegistry.registerCommand("stack.deleteNote", (note: Note) => requestDelete(note));
     pluginRegistry.registerCommand("stack.rename", (note: Note) => {
@@ -475,7 +593,9 @@ export default function App() {
     pluginRegistry.registerCommand("view.toggleRightPanel", () => setRightPanelCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.openGraph", () => openTab(GRAPH_TAB_ID));
     pluginRegistry.registerCommand("view.openSettings", () => openTab(SETTINGS_TAB_ID));
-    pluginRegistry.registerCommand("properties.manageSchema", () => setDialog({ kind: "manage-properties" }));
+    pluginRegistry.registerCommand("properties.manageSchema", (schemaRoot: string) =>
+      setDialog({ kind: "manage-properties", root: schemaRoot })
+    );
   });
 
   // F2 renames the active note, regardless of whether focus is on its tab,
@@ -495,7 +615,7 @@ export default function App() {
   const TitleBar = pluginRegistry.getRegion("title-bar");
   const LeftRibbon = pluginRegistry.getRegion("left-ribbon");
 
-  if (!root) {
+  if (!activeSession) {
     return (
       <div className="app-shell">
         {isRegionPresent("title-bar") && TitleBar && (
@@ -508,10 +628,35 @@ export default function App() {
         )}
         <div className="empty-state">
           <h1>Cairn</h1>
-          {stacks.length === 0 ? (
+          {stacks.length === 0 && cairns.length === 0 ? (
             <p>Add a folder of markdown notes to get started.</p>
           ) : (
             <ul className="stack-list">
+              {cairns.map((c) => (
+                <li key={`cairn:${c.name.toLowerCase()}`}>
+                  <button
+                    className="stack-list-item"
+                    onClick={() => openCairnByEntry(c)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setStackContextMenu({ target: { type: "cairn", cairn: c }, x: e.clientX, y: e.clientY });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "F2") {
+                        e.preventDefault();
+                        setDialog({ kind: "rename-cairn", cairn: c });
+                        return;
+                      }
+                      if (e.key !== "Delete") return;
+                      e.preventDefault();
+                      handleRemoveCairn(c.name);
+                    }}
+                  >
+                    <span className="stack-list-name">◆ {c.name}</span>
+                    <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
+                  </button>
+                </li>
+              ))}
               {stacks.map((v) => (
                 <li key={v.name.toLowerCase()}>
                   <button
@@ -519,7 +664,7 @@ export default function App() {
                     onClick={() => openStackByEntry(v)}
                     onContextMenu={(e) => {
                       e.preventDefault();
-                      setStackContextMenu({ stack: v, x: e.clientX, y: e.clientY });
+                      setStackContextMenu({ target: { type: "stack", stack: v }, x: e.clientX, y: e.clientY });
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "F2") {
@@ -539,7 +684,12 @@ export default function App() {
               ))}
             </ul>
           )}
-          <button onClick={handlePickFolder}>+ Add Stack</button>
+          <div className="empty-state-actions">
+            <button onClick={handlePickFolder}>+ Add Stack</button>
+            {stacks.length >= 2 && (
+              <button onClick={() => setDialog({ kind: "combine-stacks" })}>Combine stacks…</button>
+            )}
+          </div>
           {error && <p className="error">{error}</p>}
 
           {dialog?.kind === "name-stack" && (
@@ -559,6 +709,22 @@ export default function App() {
               onCancel={() => setDialog(null)}
             />
           )}
+          {dialog?.kind === "rename-cairn" && (
+            <PromptModal
+              title="Rename Cairn to"
+              initialValue={dialog.cairn.name}
+              confirmLabel="Rename"
+              onSubmit={handleRenameCairnSubmit}
+              onCancel={() => setDialog(null)}
+            />
+          )}
+          {dialog?.kind === "combine-stacks" && (
+            <CombineStacksModal
+              stacks={stacks}
+              onSubmit={handleCombineStacksSubmit}
+              onCancel={() => setDialog(null)}
+            />
+          )}
           {stackContextMenu && (
             <ContextMenu
               x={stackContextMenu.x}
@@ -568,13 +734,19 @@ export default function App() {
                   label: "Rename",
                   shortcut: "F2",
                   icon: <RenameIcon />,
-                  onClick: () => setDialog({ kind: "rename-stack", stack: stackContextMenu.stack }),
+                  onClick: () =>
+                    stackContextMenu.target.type === "stack"
+                      ? setDialog({ kind: "rename-stack", stack: stackContextMenu.target.stack })
+                      : setDialog({ kind: "rename-cairn", cairn: stackContextMenu.target.cairn }),
                 },
                 {
                   label: "Delete",
                   shortcut: "Del",
                   icon: <DeleteIcon />,
-                  onClick: () => handleRemoveStack(stackContextMenu.stack.name),
+                  onClick: () =>
+                    stackContextMenu.target.type === "stack"
+                      ? handleRemoveStack(stackContextMenu.target.stack.name)
+                      : handleRemoveCairn(stackContextMenu.target.cairn.name),
                 },
               ]}
               onClose={() => setStackContextMenu(null)}
@@ -594,7 +766,7 @@ export default function App() {
           showRightPanelToggle={isRegionPresent("right-sidebar")}
           regionId={regionId("title-bar")}
           activeName={activeName}
-          root={root}
+          root={singleStackRoot}
           onSwitchStack={() => pluginRegistry.runCommand("stack.switchStack")}
         />
       )}
@@ -615,11 +787,11 @@ export default function App() {
           <LeftRibbon
             sidebarCollapsed={sidebarCollapsed}
             onToggleSidebar={() => pluginRegistry.runCommand("view.toggleSidebar")}
-            onNewNote={() => pluginRegistry.runCommand("stack.newNote")}
-            onOpenDailyNote={() => pluginRegistry.runCommand("stack.openDailyNote")}
+            onNewNote={handleNewNoteClick}
+            onOpenDailyNote={handleOpenDailyNoteClick}
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
             onOpenSettings={() => pluginRegistry.runCommand("view.openSettings")}
-            onNewNoteContextMenu={(x: number, y: number) => root && setTemplateMenu({ dir: root, x, y })}
+            onNewNoteContextMenu={handleNewNoteContextMenu}
             onOpenHelp={() => setDialog({ kind: "shortcuts" })}
             regionId={regionId("left-ribbon")}
             ribbonItems={pluginRegistry.getRibbonItems()}
@@ -634,7 +806,7 @@ export default function App() {
             regionId={regionId("left-sidebar")}
             views={pluginRegistry.getViews("left-sidebar")}
             viewProps={{
-              root,
+              sessionKey,
               loading,
               notes,
               activePath,
@@ -645,7 +817,7 @@ export default function App() {
               onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
               onCancelRename: () => setRenamingPath(null),
-              onSeedStarterContent: handleSeedStarterContent,
+              onSeedStarterContent: activeSession.kind === "stack" ? handleSeedStarterContent : undefined,
             }}
           />
         )}
@@ -691,9 +863,10 @@ export default function App() {
                 settings,
                 onChange: updateSettings,
                 theme: resolvedTheme,
-                schema: propertySchema,
+                schema: activeNoteSchema,
                 onSaveProperties: saveNoteProperties,
-                onOpenSchemaManager: () => pluginRegistry.runCommand("properties.manageSchema"),
+                onOpenSchemaManager: () =>
+                  activeNoteRoot && pluginRegistry.runCommand("properties.manageSchema", activeNoteRoot),
               }}
             />
           </main>
@@ -716,12 +889,13 @@ export default function App() {
             viewProps={{
               note: activeNote,
               graph,
-              schema: propertySchema,
+              schema: activeNoteSchema,
               activeTitle: activeNote?.title ?? null,
               onSelectTitle: selectByTitle,
               onOpenExternal: openExternal,
               onSaveProperties: saveNoteProperties,
-              onOpenSchemaManager: () => pluginRegistry.runCommand("properties.manageSchema"),
+              onOpenSchemaManager: () =>
+                activeNoteRoot && pluginRegistry.runCommand("properties.manageSchema", activeNoteRoot),
               reconciling,
             }}
           />
@@ -765,9 +939,9 @@ export default function App() {
         )}
         {dialog?.kind === "manage-properties" && (
           <PropertySchemaModal
-            schema={propertySchema}
+            schema={propertySchemas[dialog.root] ?? []}
             onSave={async (updated) => {
-              await saveSchema(updated);
+              await saveSchema(dialog.root, updated);
               setDialog(null);
             }}
             onClose={() => setDialog(null)}
@@ -787,11 +961,32 @@ export default function App() {
           <ContextMenu
             x={templateMenu.x}
             y={templateMenu.y}
-            items={NOTE_TEMPLATES.map((template) => ({
-              label: template.label,
-              onClick: () => handleCreateNote(templateMenu.dir, template.id),
-            }))}
+            items={
+              activeSession.kind === "cairn"
+                ? activeSession.memberStacks.map((stack) => ({
+                    label: stack.name,
+                    children: NOTE_TEMPLATES.map((template) => ({
+                      label: template.label,
+                      onClick: () => handleCreateNote(stack.root, template.id),
+                    })),
+                  }))
+                : NOTE_TEMPLATES.map((template) => ({
+                    label: template.label,
+                    onClick: () => handleCreateNote(activeSession.entry.root, template.id),
+                  }))
+            }
             onClose={() => setTemplateMenu(null)}
+          />
+        )}
+        {dailyNoteMenu && activeSession.kind === "cairn" && (
+          <ContextMenu
+            x={dailyNoteMenu.x}
+            y={dailyNoteMenu.y}
+            items={activeSession.memberStacks.map((stack) => ({
+              label: stack.name,
+              onClick: () => handleOpenDailyNote(stack.root),
+            }))}
+            onClose={() => setDailyNoteMenu(null)}
           />
         )}
       </div>

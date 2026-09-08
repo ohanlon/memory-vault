@@ -3,8 +3,8 @@ import type { RibbonItemContribution } from "../plugins/types";
 interface Props {
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
-  onNewNote: () => void;
-  onOpenDailyNote: () => void;
+  onNewNote: (x: number, y: number) => void;
+  onOpenDailyNote: (x: number, y: number) => void;
   onGraphView: () => void;
   onOpenSettings: () => void;
   /** Right-click on the "New note" button — opens the note-template picker. */
@@ -53,7 +53,7 @@ export function ActivityBar({
       </div>
       <button
         className="activity-bar-btn"
-        onClick={onNewNote}
+        onClick={(e) => onNewNote(e.clientX, e.clientY)}
         onContextMenu={(e) => {
           e.preventDefault();
           onNewNoteContextMenu(e.clientX, e.clientY);
@@ -62,7 +62,11 @@ export function ActivityBar({
       >
         +
       </button>
-      <button className="activity-bar-btn" onClick={onOpenDailyNote} title="New daily note">
+      <button
+        className="activity-bar-btn"
+        onClick={(e) => onOpenDailyNote(e.clientX, e.clientY)}
+        title="New daily note"
+      >
         📅
       </button>
       <button className="activity-bar-btn" onClick={onGraphView} title="Graph view">

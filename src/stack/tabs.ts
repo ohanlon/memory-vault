@@ -68,18 +68,33 @@ interface NoteLike {
   relativePath: string;
 }
 
-/**
- * Converts an open-tab id (an absolute note path or a sentinel id) to the
- * stack-relative form persisted in workspace state, so saved state stays
- * valid if the vault is relocated. Returns null when the note can't be found.
- */
-export function tabIdToRelativePath(tabId: string, notes: NoteLike[]): string | null {
-  if (isSentinelTabId(tabId)) return tabId;
-  return notes.find((n) => n.path === tabId)?.relativePath ?? null;
+type TabRef = string | { root: string; relativePath: string };
+
+/** A note's own stack root, derived from its absolute path and stack-relative path. */
+function deriveNoteRoot(note: NoteLike): string {
+  return note.path.slice(0, note.path.length - note.relativePath.length).replace(/[\\/]+$/, "");
 }
 
-/** The inverse of tabIdToRelativePath — resolves persisted relative state back to a usable tab id. */
-export function relativePathToTabId(relativePath: string, notes: NoteLike[]): string | null {
-  if (isSentinelTabId(relativePath)) return relativePath;
-  return notes.find((n) => n.relativePath === relativePath)?.path ?? null;
+function belongsToRoot(note: NoteLike, root: string): boolean {
+  return note.path === root || note.path.startsWith(`${root}/`) || note.path.startsWith(`${root}\\`);
+}
+
+/**
+ * Converts an open-tab id (an absolute note path or a sentinel id) to the
+ * root-qualified form persisted in workspace state, so saved state stays
+ * valid if the vault is relocated and resolves to the right note even when
+ * more than one open stack shares a relative path (an open Cairn). Returns
+ * null when the note can't be found.
+ */
+export function tabIdToTabRef(tabId: string, notes: NoteLike[]): TabRef | null {
+  if (isSentinelTabId(tabId)) return tabId;
+  const note = notes.find((n) => n.path === tabId);
+  return note ? { root: deriveNoteRoot(note), relativePath: note.relativePath } : null;
+}
+
+/** The inverse of tabIdToTabRef — resolves persisted state back to a usable tab id. */
+export function tabRefToTabId(ref: TabRef, notes: NoteLike[]): string | null {
+  if (typeof ref === "string") return ref;
+  const note = notes.find((n) => n.relativePath === ref.relativePath && belongsToRoot(n, ref.root));
+  return note?.path ?? null;
 }

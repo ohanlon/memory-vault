@@ -87,10 +87,9 @@ export interface DiscoveredPlugin {
   dir: string;
 }
 
-// Plugins live under <stackRoot>/.cairn/plugins/<folder>/manifest.json — one
-// plugin set per stack, no global install directory.
-export function discoverPlugins(stackRoot: string): DiscoveredPlugin[] {
-  const pluginsDir = path.join(stackRoot, ".cairn", "plugins");
+// Plugins live under <userData>/plugins/<folder>/manifest.json — one global
+// install directory shared by every stack/Cairn, not scoped per stack.
+export function discoverPlugins(pluginsDir: string): DiscoveredPlugin[] {
   if (!fs.existsSync(pluginsDir)) return [];
 
   const plugins: DiscoveredPlugin[] = [];

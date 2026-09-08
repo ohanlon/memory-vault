@@ -3,14 +3,16 @@ import { buildSearchRegExp } from "@shared/search";
 import type { Note, SearchFileResult, SearchMode } from "@shared/types";
 
 interface Props {
-  root: string;
+  /** Identifies the open session (a stack root, or a Cairn) — clears stale
+   *  results when it changes. */
+  sessionKey: string;
   notes: Note[];
   onSelect: (note: Note) => void;
 }
 
 const DEBOUNCE_MS = 200;
 
-export function SearchPanel({ root, notes, onSelect }: Props) {
+export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<SearchMode>("plain");
   const [wholeWord, setWholeWord] = useState(false);
@@ -40,7 +42,7 @@ export function SearchPanel({ root, notes, onSelect }: Props) {
     setResults([]);
     setSearching(false);
     searchIdRef.current = null;
-  }, [root]);
+  }, [sessionKey]);
 
   const invalidRegex = mode === "regex" && buildSearchRegExp({ query, mode, wholeWord }) === null && query !== "";
 

@@ -240,6 +240,22 @@ body {
   background: var(--bg-control-hover);
 }
 
+.empty-state-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.combine-stacks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .error {
   color: var(--accent-red);
 }

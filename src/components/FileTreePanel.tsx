@@ -2,7 +2,6 @@ import { FileTree } from "./FileTree";
 import type { Note } from "@shared/types";
 
 interface Props {
-  root: string;
   loading: boolean;
   notes: Note[];
   activePath: string | null;
@@ -13,7 +12,9 @@ interface Props {
   onRename: (note: Note) => void;
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
-  onSeedStarterContent: () => void;
+  /** Omitted for an open Cairn — seeding starter content only applies to a
+   *  single freshly-opened, empty stack. */
+  onSeedStarterContent?: () => void;
 }
 
 export function FileTreePanel({
@@ -32,7 +33,7 @@ export function FileTreePanel({
   return (
     <>
       {loading && <div className="loading">Loading...</div>}
-      {!loading && notes.length === 0 && (
+      {!loading && notes.length === 0 && onSeedStarterContent && (
         <div className="sidebar-empty-state">
           <p>This stack has no notes yet.</p>
           <button type="button" onClick={onSeedStarterContent}>

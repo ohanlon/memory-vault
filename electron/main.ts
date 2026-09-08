@@ -7,13 +7,26 @@ import { loadStack, reconcileStackCache, readNote, watchStack } from "./stack";
 import { readStackCache, writeStackCache } from "./stackCache";
 import { runSearch } from "./search";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
+import {
+  addCairn,
+  readCairnsFile,
+  removeCairn,
+  renameCairn,
+  updateCairnMembers,
+  writeCairnsFile,
+} from "./cairnRegistry";
 import { titleFromPath } from "../shared/parseNote";
 import { STARTER_NOTES } from "../shared/starterContent";
 import { findNoteTemplate } from "../shared/noteTemplates";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
-import { readWorkspaceState, writeWorkspaceState } from "./workspaceState";
+import {
+  readCairnWorkspaceState,
+  readWorkspaceState,
+  writeCairnWorkspaceState,
+  writeWorkspaceState,
+} from "./workspaceState";
 import { DEFAULT_WORKSPACE_STATE } from "../shared/workspaceState";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
@@ -58,18 +71,55 @@ export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 
 let win: BrowserWindow | null = null;
-let currentWatcher: FSWatcher | null = null;
-let currentRoot: string | null = null;
-// Last notes handed back to the renderer for the current stack, used as the
-// "previous" baseline for incremental reloads (stack:reload) so unchanged
-// files aren't re-parsed.
-let currentNotes: Note[] = [];
+
+// One entry per currently-open stack root. A plain single-stack session has
+// exactly one entry (`name: null`, notes never carry Note.sourceStack); an
+// open Cairn has one entry per member stack (`name` set to that stack's
+// name, used to stamp Note.sourceStack on the notes handed to the
+// renderer). `notes` is always the raw, unstamped result of loadStack — the
+// same shape written to that root's on-disk cache — stamping happens only
+// when building an IPC response/event.
+interface StackSession {
+  name: string | null;
+  notes: Note[];
+  watcher: FSWatcher;
+}
+const sessions = new Map<string, StackSession>();
+// Ordered roots of the currently-open session — length 1 for a plain stack,
+// length N for an open Cairn's N member stacks.
+let activeRoots: string[] = [];
+
 let searchCounter = 0;
 const activeSearchIds = new Set<string>();
 const cancelledSearchIds = new Set<string>();
 
+function stampSourceStack(notes: Note[], name: string | null): Note[] {
+  return name ? notes.map((n) => ({ ...n, sourceStack: name })) : notes;
+}
+
+function sessionNotes(root: string): Note[] {
+  const session = sessions.get(root);
+  if (!session) return [];
+  return stampSourceStack(session.notes, session.name);
+}
+
+// Finds which currently-open root an absolute note path lives under — used
+// by handlers that used to assume a single implicit `currentRoot`.
+function ownerRootFor(absPath: string): string {
+  const owner = activeRoots.find((root) => {
+    const rel = path.relative(root, absPath);
+    return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
+  });
+  if (!owner) throw new Error("No open stack contains this path");
+  return owner;
+}
+
 function stacksFilePath(): string {
   return path.join(app.getPath("userData"), "stacks.json");
+}
+
+function cairnsFilePath(): string {
+  return path.join(app.getPath("userData"), "cairns.json");
 }
 
 function layoutPrefsFilePath(): string {
@@ -82,6 +132,10 @@ function appSettingsFilePath(): string {
 
 function pluginPermissionsFilePath(): string {
   return path.join(app.getPath("userData"), "plugin-permissions.json");
+}
+
+function pluginsDirPath(): string {
+  return path.join(app.getPath("userData"), "plugins");
 }
 
 function createWindow() {
@@ -138,11 +192,10 @@ function createWindow() {
   }
 }
 
-function stopWatching() {
-  if (currentWatcher) {
-    currentWatcher.close();
-    currentWatcher = null;
-  }
+function stopAllSessions() {
+  for (const session of sessions.values()) session.watcher.close();
+  sessions.clear();
+  activeRoots = [];
 }
 
 function cancelAllSearches() {
@@ -208,68 +261,128 @@ ipcMain.handle("stacks:rename", async (_event, oldName: string, newName: string)
   return updated;
 });
 
-ipcMain.handle("stack:load", async (_event, root: string) => {
-  stopWatching();
-  cancelAllSearches();
-  currentRoot = root;
+ipcMain.handle("cairns:list", async () => {
+  return readCairnsFile(cairnsFilePath());
+});
 
-  // A cached vault (from a previous open) loads instantly and shows the
-  // whole tree/graph right away; only a vault that's never been opened
-  // before pays for a full synchronous walk, which then seeds the cache.
+ipcMain.handle("cairns:add", async (_event, name: string, memberStackNames: string[]) => {
+  const cairns = readCairnsFile(cairnsFilePath());
+  const updated = addCairn(cairns, name, memberStackNames); // throws on empty/duplicate name or <2 members
+  writeCairnsFile(cairnsFilePath(), updated);
+  return updated;
+});
+
+ipcMain.handle("cairns:remove", async (_event, name: string) => {
+  const cairns = readCairnsFile(cairnsFilePath());
+  const updated = removeCairn(cairns, name);
+  writeCairnsFile(cairnsFilePath(), updated);
+  return updated;
+});
+
+ipcMain.handle("cairns:rename", async (_event, oldName: string, newName: string) => {
+  const cairns = readCairnsFile(cairnsFilePath());
+  const updated = renameCairn(cairns, oldName, newName); // throws on empty/duplicate name
+  writeCairnsFile(cairnsFilePath(), updated);
+  return updated;
+});
+
+ipcMain.handle("cairns:updateMembers", async (_event, name: string, memberStackNames: string[]) => {
+  const cairns = readCairnsFile(cairnsFilePath());
+  const updated = updateCairnMembers(cairns, name, memberStackNames); // throws on <2 members
+  writeCairnsFile(cairnsFilePath(), updated);
+  return updated;
+});
+
+// Loads (or serves from cache) one root's notes and starts watching it —
+// shared by both stack:load (a session of one root) and cairn:load (a
+// session of N member-stack roots). A cached vault loads instantly; only a
+// vault that's never been opened before pays for a full synchronous walk,
+// which then seeds the cache.
+async function openSessionRoot(root: string, name: string | null): Promise<void> {
   const cached = readStackCache(root);
-  let notes: Note[];
-  if (cached) {
-    notes = cached.notes;
-  } else {
-    notes = await loadStack(root);
-    writeStackCache(root, { notes });
-  }
-  currentNotes = notes;
+  const notes = cached ? cached.notes : await loadStack(root);
+  if (!cached) writeStackCache(root, { notes });
 
-  currentWatcher = watchStack(root, (change) => {
+  const watcher = watchStack(root, (change) => {
     win?.webContents.send("stack:file-changed", change);
   });
+  sessions.set(root, { name, notes, watcher });
 
   // Reconcile the cache against disk in the background — re-parses only
   // files whose mtime changed since the cache was written, and pushes the
   // reconciled result only if something actually differs (e.g. the vault
   // was edited outside the app while it was closed). The renderer treats
-  // reconciliation as started the moment stack:load resolves (see
-  // openStack), so only the "done" transition needs to be pushed here.
+  // reconciliation as started the moment stack:load/cairn:load resolves
+  // (see openStack/openCairn), so only the "done" transition needs to be
+  // pushed here.
   reconcileStackCache(root, notes)
     .then((result) => {
-      if (!result || currentRoot !== root) return;
-      currentNotes = result.notes;
-      win?.webContents.send("stack:reconciled", { root, notes: result.notes });
+      const session = sessions.get(root);
+      if (!result || !session) return;
+      session.notes = result.notes;
+      win?.webContents.send("stack:reconciled", { root, notes: sessionNotes(root) });
     })
     .finally(() => {
-      if (currentRoot !== root) return;
+      if (!sessions.has(root)) return;
       win?.webContents.send("stack:reconcile-status", { root, reconciling: false });
     });
+}
 
-  return { root, notes };
+async function reloadSessionRoot(root: string): Promise<Note[]> {
+  const session = sessions.get(root);
+  if (!session) throw new Error(`No open session for root: ${root}`);
+  const previous = new Map(session.notes.map((n) => [n.relativePath, n]));
+  const notes = await loadStack(root, previous);
+  session.notes = notes;
+  writeStackCache(root, { notes });
+  return notes;
+}
+
+ipcMain.handle("stack:load", async (_event, root: string) => {
+  stopAllSessions();
+  cancelAllSearches();
+  activeRoots = [root];
+  await openSessionRoot(root, null);
+  return { root, notes: sessionNotes(root) };
 });
 
 ipcMain.handle("stack:reload", async () => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  const previous = new Map(currentNotes.map((n) => [n.relativePath, n]));
-  const notes = await loadStack(currentRoot, previous);
-  currentNotes = notes;
-  writeStackCache(currentRoot, { notes });
+  if (activeRoots.length !== 1) throw new Error("No stack loaded");
+  const notes = await reloadSessionRoot(activeRoots[0]);
+  return { notes };
+});
+
+ipcMain.handle("cairn:load", async (_event, entries: { root: string; name: string }[]) => {
+  stopAllSessions();
+  cancelAllSearches();
+  activeRoots = entries.map((e) => e.root);
+  await Promise.all(entries.map((e) => openSessionRoot(e.root, e.name)));
+  const notes = activeRoots.flatMap((root) => sessionNotes(root));
+  return { roots: activeRoots, notes };
+});
+
+ipcMain.handle("cairn:reload", async () => {
+  if (activeRoots.length === 0) throw new Error("No stack loaded");
+  await Promise.all(activeRoots.map((root) => reloadSessionRoot(root)));
+  const notes = activeRoots.flatMap((root) => sessionNotes(root));
   return { notes };
 });
 
 ipcMain.handle("search:start", async (_event, options: SearchOptions) => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  const root = currentRoot;
+  if (activeRoots.length === 0) throw new Error("No stack loaded");
+  const roots = activeRoots;
   const searchId = `search-${++searchCounter}`;
   activeSearchIds.add(searchId);
 
-  runSearch(
-    root,
-    options,
-    (result) => win?.webContents.send("search:result", { searchId, result }),
-    () => cancelledSearchIds.has(searchId)
+  Promise.all(
+    roots.map((root) =>
+      runSearch(
+        root,
+        options,
+        (result) => win?.webContents.send("search:result", { searchId, result }),
+        () => cancelledSearchIds.has(searchId)
+      )
+    )
   ).finally(() => {
     activeSearchIds.delete(searchId);
     cancelledSearchIds.delete(searchId);
@@ -285,13 +398,11 @@ ipcMain.handle("search:cancel", async (_event, searchId: string) => {
 });
 
 ipcMain.handle("plugin:list", async () => {
-  if (!currentRoot) return [];
-  return discoverPlugins(currentRoot).map((p) => p.manifest);
+  return discoverPlugins(pluginsDirPath()).map((p) => p.manifest);
 });
 
 ipcMain.handle("stack:readNote", async (_event, absPath: string) => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  return readNote(currentRoot, absPath);
+  return readNote(ownerRootFor(absPath), absPath);
 });
 
 ipcMain.handle("stack:readRaw", async (_event, absPath: string) => {
@@ -319,25 +430,32 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("stack:readPropertySchema", async () => {
-  if (!currentRoot) return [];
-  return readPropertySchema(currentRoot);
+ipcMain.handle("stack:readPropertySchema", async (_event, stackRoot: string) => {
+  return readPropertySchema(stackRoot);
 });
 
-ipcMain.handle("stack:savePropertySchema", async (_event, properties: PropertyDef[]) => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  writePropertySchema(currentRoot, properties);
+ipcMain.handle("stack:savePropertySchema", async (_event, stackRoot: string, properties: PropertyDef[]) => {
+  writePropertySchema(stackRoot, properties);
   return properties;
 });
 
 ipcMain.handle("stack:readWorkspaceState", async () => {
-  if (!currentRoot) return DEFAULT_WORKSPACE_STATE;
-  return readWorkspaceState(currentRoot);
+  if (activeRoots.length !== 1) return DEFAULT_WORKSPACE_STATE;
+  return readWorkspaceState(activeRoots[0]);
 });
 
 ipcMain.handle("stack:saveWorkspaceState", async (_event, state: WorkspaceState) => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  writeWorkspaceState(currentRoot, state);
+  if (activeRoots.length !== 1) throw new Error("No stack loaded");
+  writeWorkspaceState(activeRoots[0], state);
+  return true;
+});
+
+ipcMain.handle("cairn:readWorkspaceState", async (_event, cairnName: string) => {
+  return readCairnWorkspaceState(app.getPath("userData"), cairnName);
+});
+
+ipcMain.handle("cairn:saveWorkspaceState", async (_event, cairnName: string, state: WorkspaceState) => {
+  writeCairnWorkspaceState(app.getPath("userData"), cairnName, state);
   return true;
 });
 
@@ -369,15 +487,14 @@ ipcMain.handle("window:setTitleBarOverlay", async (_event, theme: "dark" | "ligh
   return true;
 });
 
-ipcMain.handle("stack:openOrCreateDailyNote", async (_event, folder: string) => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  return openOrCreateDailyNote(currentRoot, folder, app.getLocale(), new Date());
+ipcMain.handle("stack:openOrCreateDailyNote", async (_event, folder: string, stackRoot: string) => {
+  return openOrCreateDailyNote(stackRoot, folder, app.getLocale(), new Date());
 });
 
 ipcMain.handle(
   "stack:createNote",
   async (_event, dir: string, title: string, templateId?: string) => {
-    if (!currentRoot) throw new Error("No stack loaded");
+    if (activeRoots.length === 0) throw new Error("No stack loaded");
     const safeTitle = title.trim() || "New File";
     let fileName = `${safeTitle}.md`;
     let fullPath = path.join(dir, fileName);
@@ -400,10 +517,13 @@ ipcMain.handle(
 // collide with something already on disk, so it's safe to call more than
 // once.
 ipcMain.handle("stack:seedStarterContent", async () => {
-  if (!currentRoot) throw new Error("No stack loaded");
+  // Only meaningful for a single freshly-opened, empty stack — a Cairn
+  // always has 2+ member stacks that already existed independently.
+  if (activeRoots.length !== 1) throw new Error("No stack loaded");
+  const root = activeRoots[0];
   const created: string[] = [];
   for (const note of STARTER_NOTES) {
-    const fullPath = path.join(currentRoot, note.fileName);
+    const fullPath = path.join(root, note.fileName);
     if (fs.existsSync(fullPath)) continue;
     fs.writeFileSync(fullPath, note.content, "utf-8");
     created.push(fullPath);
@@ -419,24 +539,36 @@ ipcMain.handle("stack:deleteNote", async (_event, absPath: string) => {
 ipcMain.handle(
   "stack:renameNote",
   async (_event, absPath: string, newTitle: string, updateLinks: boolean) => {
-    if (!currentRoot) throw new Error("No stack loaded");
+    const ownerRoot = ownerRootFor(absPath);
+    const ownerName = sessions.get(ownerRoot)?.name ?? null;
     const dir = path.dirname(absPath);
-    const oldTitle = titleFromPath(path.relative(currentRoot, absPath));
+    const oldTitle = titleFromPath(path.relative(ownerRoot, absPath));
     const newPath = path.join(dir, `${newTitle}.md`);
     fs.renameSync(absPath, newPath);
 
     if (updateLinks) {
-      // Rewrite [[oldTitle]] references (and aliased/headered variants) across the stack.
-      const notes = await loadStack(currentRoot);
-      const linkRe = new RegExp(
-        `\\[\\[${escapeRegExp(oldTitle)}((?:#[^\\]|]+)?(?:\\|[^\\]]+)?)\\]\\]`,
-        "g"
-      );
-      for (const note of notes) {
-        if (!note.content.includes(`[[${oldTitle}`)) continue;
-        const raw = await fs.promises.readFile(note.path, "utf-8");
-        const updated = raw.replace(linkRe, (_m, suffix) => `[[${newTitle}${suffix}]]`);
-        if (updated !== raw) await fs.promises.writeFile(note.path, updated, "utf-8");
+      // Rewrite [[oldTitle]] (and, when this note's stack is part of an
+      // open Cairn, the explicitly-qualified [[StackName/oldTitle]])
+      // references, across every open root — a link to this note can live
+      // in any member stack, not just its own.
+      const bareTarget = oldTitle;
+      const qualifiedTarget = ownerName ? `${ownerName}/${oldTitle}` : null;
+      const alternation = [bareTarget, qualifiedTarget].filter((t): t is string => t !== null).map(escapeRegExp);
+      const linkRe = new RegExp(`\\[\\[(${alternation.join("|")})((?:#[^\\]|]+)?(?:\\|[^\\]]+)?)\\]\\]`, "g");
+
+      for (const root of activeRoots) {
+        const notes = await loadStack(root);
+        for (const note of notes) {
+          if (!note.content.includes(`[[${bareTarget}`) && !(qualifiedTarget && note.content.includes(`[[${qualifiedTarget}`))) {
+            continue;
+          }
+          const raw = await fs.promises.readFile(note.path, "utf-8");
+          const updated = raw.replace(linkRe, (_m, matchedTarget, suffix) => {
+            const newTarget = matchedTarget.includes("/") ? `${ownerName}/${newTitle}` : newTitle;
+            return `[[${newTarget}${suffix}]]`;
+          });
+          if (updated !== raw) await fs.promises.writeFile(note.path, updated, "utf-8");
+        }
       }
     }
 
@@ -457,14 +589,32 @@ function resolveWithinStackRoot(root: string, relativePath: string): string {
   return resolved;
 }
 
+// Resolves a plugin RPC's relative path against whichever open root
+// actually has a matching file, trying each active session root in turn —
+// first match wins. A plugin call has no inherent "which stack" context of
+// its own, and this is a smaller, less-used surface than the core
+// note/graph experience, so this simple first-match resolution is a
+// deliberate simplification rather than adding root-qualified paths to the
+// plugin RPC surface.
+function resolveWithinAnyActiveRoot(relativePath: string): string {
+  if (activeRoots.length === 0) throw new Error("No stack loaded");
+  for (const root of activeRoots) {
+    try {
+      const resolved = resolveWithinStackRoot(root, relativePath);
+      if (fs.existsSync(resolved)) return resolved;
+    } catch {
+      // escapes this root — try the next one
+    }
+  }
+  return resolveWithinStackRoot(activeRoots[0], relativePath);
+}
+
 ipcMain.handle("plugin:notes:read", async (_event, relativePath: string) => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  return readNoteBody(resolveWithinStackRoot(currentRoot, relativePath));
+  return readNoteBody(resolveWithinAnyActiveRoot(relativePath));
 });
 
 ipcMain.handle("plugin:notes:write", async (_event, relativePath: string, body: string) => {
-  if (!currentRoot) throw new Error("No stack loaded");
-  saveNoteBody(resolveWithinStackRoot(currentRoot, relativePath), body);
+  saveNoteBody(resolveWithinAnyActiveRoot(relativePath), body);
   return true;
 });
 
@@ -503,7 +653,7 @@ ipcMain.handle("plugin:revokePermission", async (_event, pluginId: string, permi
 });
 
 app.on("window-all-closed", () => {
-  stopWatching();
+  stopAllSessions();
   if (process.platform !== "darwin") {
     app.quit();
     win = null;
@@ -513,5 +663,5 @@ app.on("window-all-closed", () => {
 registerPluginScheme();
 app.whenReady().then(() => {
   createWindow();
-  handlePluginProtocol(() => (currentRoot ? discoverPlugins(currentRoot) : []), pluginPermissionsFilePath());
+  handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
 });

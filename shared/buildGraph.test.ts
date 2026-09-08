@@ -6,6 +6,14 @@ function note(relativePath: string, raw: string) {
   return parseNote({ path: `/stack/${relativePath}`, relativePath, raw, mtimeMs: 0 });
 }
 
+/** A note stamped with a source stack, as buildGraph sees notes merged from an open Cairn. */
+function noteIn(sourceStack: string, relativePath: string, raw: string) {
+  return {
+    ...parseNote({ path: `/${sourceStack}/${relativePath}`, relativePath, raw, mtimeMs: 0 }),
+    sourceStack,
+  };
+}
+
 describe("buildGraph", () => {
   it("creates a wikilink edge for a resolvable link", () => {
     const a = note("A.md", "links to [[B]]");
@@ -118,5 +126,59 @@ describe("backlinkTitles", () => {
     const a = note("A.md", "links to [[A]]");
     const graph = buildGraph([a]);
     expect(backlinkTitles(graph, "A")).toEqual([]);
+  });
+});
+
+describe("buildGraph — title collisions across merged stacks", () => {
+  it("leaves a unique title's node id as the bare title even with sourceStack set", () => {
+    const a = noteIn("Work", "A.md", "no links");
+    const graph = buildGraph([a]);
+    expect(graph.nodes.map((n) => n.id)).toEqual(["A"]);
+  });
+
+  it("qualifies node ids as sourceStack/Title when two notes share a title", () => {
+    const a = noteIn("Work", "Notes.md", "no links");
+    const b = noteIn("Personal", "Notes.md", "no links");
+    const graph = buildGraph([a, b]);
+    expect(graph.nodes.map((n) => n.id).sort()).toEqual(["Personal/Notes", "Work/Notes"]);
+  });
+
+  it("resolves an unqualified link within the linking note's own stack first", () => {
+    const workLinker = noteIn("Work", "Linker.md", "see [[Notes]]");
+    const workNotes = noteIn("Work", "Notes.md", "no links");
+    const personalNotes = noteIn("Personal", "Notes.md", "no links");
+    const graph = buildGraph([workLinker, workNotes, personalNotes]);
+
+    expect(graph.edges).toContainEqual({ source: "Linker", target: "Work/Notes", kind: "wikilink" });
+    expect(graph.edges.some((e) => e.target === "Personal/Notes")).toBe(false);
+  });
+
+  it("flags an unqualified colliding link as ambiguous when the linking note is in neither stack", () => {
+    const thirdStackLinker = noteIn("Other", "Linker.md", "see [[Notes]]");
+    const workNotes = noteIn("Work", "Notes.md", "no links");
+    const personalNotes = noteIn("Personal", "Notes.md", "no links");
+    const graph = buildGraph([thirdStackLinker, workNotes, personalNotes]);
+
+    const edge = graph.edges.find((e) => e.kind === "wikilink");
+    expect(edge?.ambiguous).toBe(true);
+    expect([workNotes.title, personalNotes.title]).toContain("Notes");
+    expect(["Work/Notes", "Personal/Notes"]).toContain(edge?.target);
+  });
+
+  it("resolves an explicitly qualified StackName/Title link regardless of collision", () => {
+    const linker = noteIn("Other", "Linker.md", "see [[Personal/Notes]]");
+    const workNotes = noteIn("Work", "Notes.md", "no links");
+    const personalNotes = noteIn("Personal", "Notes.md", "no links");
+    const graph = buildGraph([linker, workNotes, personalNotes]);
+
+    expect(graph.edges).toContainEqual({ source: "Linker", target: "Personal/Notes", kind: "wikilink" });
+  });
+
+  it("resolves an explicitly qualified link even without a title collision", () => {
+    const linker = noteIn("Work", "Linker.md", "see [[Work/Solo]]");
+    const solo = noteIn("Work", "Solo.md", "no links");
+    const graph = buildGraph([linker, solo]);
+
+    expect(graph.edges).toContainEqual({ source: "Linker", target: "Solo", kind: "wikilink" });
   });
 });

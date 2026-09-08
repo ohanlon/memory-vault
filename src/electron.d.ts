@@ -1,5 +1,7 @@
 import type {
   AppSettings,
+  CairnEntry,
+  CairnIndex,
   DailyNoteResult,
   FileChangeEvent,
   LayoutPrefs,
@@ -21,12 +23,19 @@ export interface MemoryStackAPI {
   pickStack(): Promise<string | null>;
   loadStack(root: string): Promise<StackIndex>;
   reloadStack(): Promise<{ notes: Note[] }>;
+  loadCairn(entries: { root: string; name: string }[]): Promise<CairnIndex>;
+  reloadCairn(): Promise<{ notes: Note[] }>;
   onReconciled(cb: (event: StackReconciledEvent) => void): () => void;
   onReconcileStatus(cb: (event: StackReconcileStatusEvent) => void): () => void;
   listStacks(): Promise<StackEntry[]>;
   addStack(name: string, root: string): Promise<StackEntry[]>;
   removeStack(name: string): Promise<StackEntry[]>;
   renameStack(oldName: string, newName: string): Promise<StackEntry[]>;
+  listCairns(): Promise<CairnEntry[]>;
+  addCairn(name: string, memberStackNames: string[]): Promise<CairnEntry[]>;
+  removeCairn(name: string): Promise<CairnEntry[]>;
+  renameCairn(oldName: string, newName: string): Promise<CairnEntry[]>;
+  updateCairnMembers(name: string, memberStackNames: string[]): Promise<CairnEntry[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;
@@ -40,16 +49,18 @@ export interface MemoryStackAPI {
   readNoteBody(absPath: string): Promise<string>;
   readNoteProperties(absPath: string): Promise<Record<string, unknown>>;
   saveNoteProperties(absPath: string, properties: Record<string, unknown>): Promise<boolean>;
-  readPropertySchema(): Promise<PropertyDef[]>;
-  savePropertySchema(properties: PropertyDef[]): Promise<PropertyDef[]>;
+  readPropertySchema(stackRoot: string): Promise<PropertyDef[]>;
+  savePropertySchema(stackRoot: string, properties: PropertyDef[]): Promise<PropertyDef[]>;
   readWorkspaceState(): Promise<WorkspaceState>;
   saveWorkspaceState(state: WorkspaceState): Promise<boolean>;
+  readCairnWorkspaceState(cairnName: string): Promise<WorkspaceState>;
+  saveCairnWorkspaceState(cairnName: string, state: WorkspaceState): Promise<boolean>;
   readLayoutPrefs(): Promise<LayoutPrefs>;
   saveLayoutPrefs(prefs: LayoutPrefs): Promise<boolean>;
   readAppSettings(): Promise<AppSettings>;
   saveAppSettings(settings: AppSettings): Promise<boolean>;
   setTitleBarOverlay(theme: "dark" | "light"): Promise<boolean>;
-  openOrCreateDailyNote(folder: string): Promise<DailyNoteResult>;
+  openOrCreateDailyNote(folder: string, stackRoot: string): Promise<DailyNoteResult>;
   listPlugins(): Promise<PluginManifest[]>;
   getPluginPermissions(): Promise<PluginPermissionsFile>;
   revokePluginPermission(pluginId: string, permission: PluginPermission): Promise<boolean>;

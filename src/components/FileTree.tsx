@@ -148,7 +148,9 @@ export function FileTree({
               >
                 <span className="file-tree-item-title">{note.title}</span>
                 {duplicateTitles.has(note.title) && (
-                  <span className="file-tree-item-hint">{note.relativePath}</span>
+                  <span className="file-tree-item-hint">
+                    {note.sourceStack ? `${note.sourceStack}/${note.relativePath}` : note.relativePath}
+                  </span>
                 )}
               </button>
             </li>

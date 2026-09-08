@@ -6,20 +6,21 @@ import { discoverPlugins } from "./pluginRegistry";
 
 describe("discoverPlugins", () => {
   const tmpRoot = path.join(os.tmpdir(), `plugin-discovery-test-${process.pid}`);
+  const pluginsDir = path.join(tmpRoot, "plugins");
 
   afterEach(() => {
     fs.rmSync(tmpRoot, { force: true, recursive: true });
   });
 
   function writeManifest(id: string, manifest: unknown) {
-    const dir = path.join(tmpRoot, ".cairn", "plugins", id);
+    const dir = path.join(pluginsDir, id);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify(manifest), "utf-8");
     return dir;
   }
 
   it("returns an empty array when the plugins folder does not exist", () => {
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("discovers a valid manifest", () => {
@@ -30,7 +31,7 @@ describe("discoverPlugins", () => {
       main: "index.js",
       permissions: [],
     });
-    const result = discoverPlugins(tmpRoot);
+    const result = discoverPlugins(pluginsDir);
     expect(result).toEqual([
       { manifest: { id: "hello", name: "Hello", version: "1.0.0", main: "index.js", permissions: [] }, dir },
     ]);
@@ -44,25 +45,25 @@ describe("discoverPlugins", () => {
       main: "index.js",
       permissions: ["network", "shell:openExternal"],
     });
-    const result = discoverPlugins(tmpRoot);
+    const result = discoverPlugins(pluginsDir);
     expect(result[0].manifest.permissions).toEqual(["network", "shell:openExternal"]);
   });
 
   it("skips a folder with no manifest.json", () => {
-    fs.mkdirSync(path.join(tmpRoot, ".cairn", "plugins", "empty"), { recursive: true });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    fs.mkdirSync(path.join(pluginsDir, "empty"), { recursive: true });
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("skips corrupt JSON instead of throwing", () => {
-    const dir = path.join(tmpRoot, ".cairn", "plugins", "broken");
+    const dir = path.join(pluginsDir, "broken");
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "manifest.json"), "{not valid json", "utf-8");
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("skips a manifest missing required fields", () => {
     writeManifest("incomplete", { id: "incomplete", name: "Incomplete" });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("skips a manifest declaring an unknown permission", () => {
@@ -73,13 +74,13 @@ describe("discoverPlugins", () => {
       main: "index.js",
       permissions: ["filesystem:all"],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("discovers multiple plugins", () => {
     writeManifest("a", { id: "a", name: "A", version: "1.0.0", main: "index.js", permissions: [] });
     writeManifest("b", { id: "b", name: "B", version: "1.0.0", main: "index.js", permissions: [] });
-    expect(discoverPlugins(tmpRoot)).toHaveLength(2);
+    expect(discoverPlugins(pluginsDir)).toHaveLength(2);
   });
 
   it("discovers a manifest declaring sidebar views", () => {
@@ -91,7 +92,7 @@ describe("discoverPlugins", () => {
       permissions: [],
       views: [{ id: "main", title: "My View", region: "left-sidebar", entry: "index.html" }],
     });
-    const result = discoverPlugins(tmpRoot);
+    const result = discoverPlugins(pluginsDir);
     expect(result[0].manifest.views).toEqual([
       { id: "main", title: "My View", region: "left-sidebar", entry: "index.html" },
     ]);
@@ -106,7 +107,7 @@ describe("discoverPlugins", () => {
       permissions: [],
       views: [{ id: "main", title: "My View", region: "editor", entry: "index.html" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("skips a manifest with a malformed view entry", () => {
@@ -118,7 +119,7 @@ describe("discoverPlugins", () => {
       permissions: [],
       views: [{ id: "main" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("discovers a manifest declaring a ribbon item that opens a declared view", () => {
@@ -131,7 +132,7 @@ describe("discoverPlugins", () => {
       views: [{ id: "main", title: "My View", region: "left-sidebar", entry: "index.html" }],
       ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensView: "main" }],
     });
-    const result = discoverPlugins(tmpRoot);
+    const result = discoverPlugins(pluginsDir);
     expect(result[0].manifest.ribbonItems).toEqual([
       { id: "launch", title: "Launch", icon: "M0 0L1 1", opensView: "main" },
     ]);
@@ -147,7 +148,7 @@ describe("discoverPlugins", () => {
       views: [{ id: "main", title: "My View", region: "left-sidebar", entry: "index.html" }],
       ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensView: "missing" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("skips a manifest with a malformed ribbon item", () => {
@@ -159,7 +160,7 @@ describe("discoverPlugins", () => {
       permissions: [],
       ribbonItems: [{ id: "launch" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("discovers a manifest declaring an editor tab", () => {
@@ -171,7 +172,7 @@ describe("discoverPlugins", () => {
       permissions: [],
       tabs: [{ id: "main", title: "My Tab", entry: "tab.html" }],
     });
-    const result = discoverPlugins(tmpRoot);
+    const result = discoverPlugins(pluginsDir);
     expect(result[0].manifest.tabs).toEqual([{ id: "main", title: "My Tab", entry: "tab.html" }]);
   });
 
@@ -184,7 +185,7 @@ describe("discoverPlugins", () => {
       permissions: [],
       tabs: [{ id: "main" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("discovers a ribbon item that opens a declared tab", () => {
@@ -197,7 +198,7 @@ describe("discoverPlugins", () => {
       tabs: [{ id: "main", title: "My Tab", entry: "tab.html" }],
       ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensTab: "main" }],
     });
-    const result = discoverPlugins(tmpRoot);
+    const result = discoverPlugins(pluginsDir);
     expect(result[0].manifest.ribbonItems).toEqual([
       { id: "launch", title: "Launch", icon: "M0 0L1 1", opensTab: "main" },
     ]);
@@ -213,7 +214,7 @@ describe("discoverPlugins", () => {
       tabs: [{ id: "main", title: "My Tab", entry: "tab.html" }],
       ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensTab: "missing" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("skips a ribbon item declaring both opensView and opensTab", () => {
@@ -227,7 +228,7 @@ describe("discoverPlugins", () => {
       tabs: [{ id: "main", title: "My Tab", entry: "tab.html" }],
       ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1", opensView: "main", opensTab: "main" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("skips a ribbon item declaring neither opensView nor opensTab", () => {
@@ -239,7 +240,7 @@ describe("discoverPlugins", () => {
       permissions: [],
       ribbonItems: [{ id: "launch", title: "Launch", icon: "M0 0L1 1" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("discovers a manifest declaring context menu items", () => {
@@ -254,7 +255,7 @@ describe("discoverPlugins", () => {
         { id: "folder-action", label: "Do a folder thing", target: "folder" },
       ],
     });
-    const result = discoverPlugins(tmpRoot);
+    const result = discoverPlugins(pluginsDir);
     expect(result[0].manifest.contextMenuItems).toEqual([
       { id: "note-action", label: "Do a note thing", target: "note" },
       { id: "folder-action", label: "Do a folder thing", target: "folder" },
@@ -270,7 +271,7 @@ describe("discoverPlugins", () => {
       permissions: [],
       contextMenuItems: [{ id: "action", label: "Do a thing", target: "editor" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 
   it("skips a manifest with a malformed context menu item", () => {
@@ -282,6 +283,6 @@ describe("discoverPlugins", () => {
       permissions: [],
       contextMenuItems: [{ id: "action" }],
     });
-    expect(discoverPlugins(tmpRoot)).toEqual([]);
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
 });

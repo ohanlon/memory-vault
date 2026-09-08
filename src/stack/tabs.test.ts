@@ -8,10 +8,10 @@ import {
   closeTabsRight,
   isSentinelTabId,
   reconcileTabs,
-  relativePathToTabId,
+  tabRefToTabId,
   removeTab,
   renameTab,
-  tabIdToRelativePath,
+  tabIdToTabRef,
 } from "./tabs";
 
 describe("addTab", () => {
@@ -172,36 +172,45 @@ const notes = [
   { path: "/vault/sub/b.md", relativePath: "sub\\b.md" },
 ];
 
-describe("tabIdToRelativePath", () => {
-  it("resolves an absolute note path to its relative path", () => {
-    expect(tabIdToRelativePath("/vault/a.md", notes)).toBe("a.md");
-    expect(tabIdToRelativePath("/vault/sub/b.md", notes)).toBe("sub\\b.md");
+describe("tabIdToTabRef", () => {
+  it("resolves an absolute note path to a root-qualified ref", () => {
+    expect(tabIdToTabRef("/vault/a.md", notes)).toEqual({ root: "/vault", relativePath: "a.md" });
+    expect(tabIdToTabRef("/vault/sub/b.md", notes)).toEqual({ root: "/vault", relativePath: "sub\\b.md" });
   });
 
   it("passes sentinel tab ids through unchanged", () => {
-    expect(tabIdToRelativePath(GRAPH_TAB_ID, notes)).toBe(GRAPH_TAB_ID);
-    expect(tabIdToRelativePath(SETTINGS_TAB_ID, notes)).toBe(SETTINGS_TAB_ID);
-    expect(tabIdToRelativePath("@plugin:hello:mytab", notes)).toBe("@plugin:hello:mytab");
+    expect(tabIdToTabRef(GRAPH_TAB_ID, notes)).toBe(GRAPH_TAB_ID);
+    expect(tabIdToTabRef(SETTINGS_TAB_ID, notes)).toBe(SETTINGS_TAB_ID);
+    expect(tabIdToTabRef("@plugin:hello:mytab", notes)).toBe("@plugin:hello:mytab");
   });
 
   it("returns null for a path with no matching note", () => {
-    expect(tabIdToRelativePath("/vault/missing.md", notes)).toBeNull();
+    expect(tabIdToTabRef("/vault/missing.md", notes)).toBeNull();
   });
 });
 
-describe("relativePathToTabId", () => {
-  it("resolves a relative path to its absolute note path", () => {
-    expect(relativePathToTabId("a.md", notes)).toBe("/vault/a.md");
-    expect(relativePathToTabId("sub\\b.md", notes)).toBe("/vault/sub/b.md");
+describe("tabRefToTabId", () => {
+  it("resolves a root-qualified ref to its absolute note path", () => {
+    expect(tabRefToTabId({ root: "/vault", relativePath: "a.md" }, notes)).toBe("/vault/a.md");
+    expect(tabRefToTabId({ root: "/vault", relativePath: "sub\\b.md" }, notes)).toBe("/vault/sub/b.md");
   });
 
   it("passes sentinel tab ids through unchanged", () => {
-    expect(relativePathToTabId(GRAPH_TAB_ID, notes)).toBe(GRAPH_TAB_ID);
-    expect(relativePathToTabId(SETTINGS_TAB_ID, notes)).toBe(SETTINGS_TAB_ID);
-    expect(relativePathToTabId("@plugin:hello:mytab", notes)).toBe("@plugin:hello:mytab");
+    expect(tabRefToTabId(GRAPH_TAB_ID, notes)).toBe(GRAPH_TAB_ID);
+    expect(tabRefToTabId(SETTINGS_TAB_ID, notes)).toBe(SETTINGS_TAB_ID);
+    expect(tabRefToTabId("@plugin:hello:mytab", notes)).toBe("@plugin:hello:mytab");
   });
 
-  it("returns null for a relative path with no matching note", () => {
-    expect(relativePathToTabId("missing.md", notes)).toBeNull();
+  it("returns null for a ref with no matching note", () => {
+    expect(tabRefToTabId({ root: "/vault", relativePath: "missing.md" }, notes)).toBeNull();
+  });
+
+  it("disambiguates two stacks that share the same relative path (an open Cairn)", () => {
+    const cairnNotes = [
+      { path: "/work/a.md", relativePath: "a.md" },
+      { path: "/personal/a.md", relativePath: "a.md" },
+    ];
+    expect(tabRefToTabId({ root: "/work", relativePath: "a.md" }, cairnNotes)).toBe("/work/a.md");
+    expect(tabRefToTabId({ root: "/personal", relativePath: "a.md" }, cairnNotes)).toBe("/personal/a.md");
   });
 });

@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   AppSettings,
+  CairnEntry,
+  CairnIndex,
   DailyNoteResult,
   FileChangeEvent,
   LayoutPrefs,
@@ -24,6 +26,9 @@ const api = {
     ipcRenderer.invoke("stack:load", root),
   reloadStack: (): Promise<{ notes: Note[] }> =>
     ipcRenderer.invoke("stack:reload"),
+  loadCairn: (entries: { root: string; name: string }[]): Promise<CairnIndex> =>
+    ipcRenderer.invoke("cairn:load", entries),
+  reloadCairn: (): Promise<{ notes: Note[] }> => ipcRenderer.invoke("cairn:reload"),
   onReconciled: (cb: (event: StackReconciledEvent) => void): (() => void) => {
     const listener = (_e: unknown, event: StackReconciledEvent) => cb(event);
     ipcRenderer.on("stack:reconciled", listener);
@@ -41,6 +46,14 @@ const api = {
     ipcRenderer.invoke("stacks:remove", name),
   renameStack: (oldName: string, newName: string): Promise<StackEntry[]> =>
     ipcRenderer.invoke("stacks:rename", oldName, newName),
+  listCairns: (): Promise<CairnEntry[]> => ipcRenderer.invoke("cairns:list"),
+  addCairn: (name: string, memberStackNames: string[]): Promise<CairnEntry[]> =>
+    ipcRenderer.invoke("cairns:add", name, memberStackNames),
+  removeCairn: (name: string): Promise<CairnEntry[]> => ipcRenderer.invoke("cairns:remove", name),
+  renameCairn: (oldName: string, newName: string): Promise<CairnEntry[]> =>
+    ipcRenderer.invoke("cairns:rename", oldName, newName),
+  updateCairnMembers: (name: string, memberStackNames: string[]): Promise<CairnEntry[]> =>
+    ipcRenderer.invoke("cairns:updateMembers", name, memberStackNames),
   readNote: (absPath: string): Promise<Note> =>
     ipcRenderer.invoke("stack:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>
@@ -64,22 +77,26 @@ const api = {
     ipcRenderer.invoke("stack:readNoteProperties", absPath),
   saveNoteProperties: (absPath: string, properties: Record<string, unknown>): Promise<boolean> =>
     ipcRenderer.invoke("stack:saveNoteProperties", absPath, properties),
-  readPropertySchema: (): Promise<PropertyDef[]> =>
-    ipcRenderer.invoke("stack:readPropertySchema"),
-  savePropertySchema: (properties: PropertyDef[]): Promise<PropertyDef[]> =>
-    ipcRenderer.invoke("stack:savePropertySchema", properties),
+  readPropertySchema: (stackRoot: string): Promise<PropertyDef[]> =>
+    ipcRenderer.invoke("stack:readPropertySchema", stackRoot),
+  savePropertySchema: (stackRoot: string, properties: PropertyDef[]): Promise<PropertyDef[]> =>
+    ipcRenderer.invoke("stack:savePropertySchema", stackRoot, properties),
   readWorkspaceState: (): Promise<WorkspaceState> =>
     ipcRenderer.invoke("stack:readWorkspaceState"),
   saveWorkspaceState: (state: WorkspaceState): Promise<boolean> =>
     ipcRenderer.invoke("stack:saveWorkspaceState", state),
+  readCairnWorkspaceState: (cairnName: string): Promise<WorkspaceState> =>
+    ipcRenderer.invoke("cairn:readWorkspaceState", cairnName),
+  saveCairnWorkspaceState: (cairnName: string, state: WorkspaceState): Promise<boolean> =>
+    ipcRenderer.invoke("cairn:saveWorkspaceState", cairnName, state),
   readLayoutPrefs: (): Promise<LayoutPrefs> => ipcRenderer.invoke("layout:read"),
   saveLayoutPrefs: (prefs: LayoutPrefs): Promise<boolean> => ipcRenderer.invoke("layout:save", prefs),
   readAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke("settings:read"),
   saveAppSettings: (settings: AppSettings): Promise<boolean> => ipcRenderer.invoke("settings:save", settings),
   setTitleBarOverlay: (theme: "dark" | "light"): Promise<boolean> =>
     ipcRenderer.invoke("window:setTitleBarOverlay", theme),
-  openOrCreateDailyNote: (folder: string): Promise<DailyNoteResult> =>
-    ipcRenderer.invoke("stack:openOrCreateDailyNote", folder),
+  openOrCreateDailyNote: (folder: string, stackRoot: string): Promise<DailyNoteResult> =>
+    ipcRenderer.invoke("stack:openOrCreateDailyNote", folder, stackRoot),
   listPlugins: (): Promise<PluginManifest[]> => ipcRenderer.invoke("plugin:list"),
   getPluginPermissions: (): Promise<PluginPermissionsFile> =>
     ipcRenderer.invoke("plugin:getPermissions"),

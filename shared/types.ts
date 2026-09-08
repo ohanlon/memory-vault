@@ -22,10 +22,17 @@ export interface Note {
   links: WikiLink[];
   content: string;
   mtimeMs: number;
+  /** Origin stack's name — set only when notes are merged from more than one
+   *  stack (an open Cairn); undefined for a plain single-stack session. Used
+   *  by buildGraph to disambiguate a title held by more than one note. */
+  sourceStack?: string;
 }
 
 export interface GraphNode {
-  id: string; // note title, a "#tag" id for a tag hub, or a URL for an external node
+  // A note's title, unless its title collides with another note in the same
+  // graph (merged from more than one stack), in which case
+  // "sourceStack/Title"; a "#tag" id for a tag hub; or a URL for an external node.
+  id: string;
   path: string;
   tags: string[];
   /** True if this node represents an external URL rather than a stack note. */
@@ -35,11 +42,15 @@ export interface GraphNode {
 }
 
 export interface GraphEdge {
-  source: string; // note title
-  target: string; // note title, a "#tag" id, or a URL for an external-link edge
+  source: string; // note's graph node id (see GraphNode.id)
+  target: string; // note's graph node id, a "#tag" id, or a URL for an external-link edge
   kind: "wikilink" | "tag" | "external-link";
   /** For kind "tag", which tag produced this edge (without the "#" prefix) */
   tag?: string;
+  /** True for a wikilink whose unqualified title matches notes in more than
+   *  one source stack, with no same-stack match to prefer — the target was
+   *  picked deterministically rather than resolved with confidence. */
+  ambiguous?: boolean;
 }
 
 export interface GraphModel {
@@ -49,6 +60,13 @@ export interface GraphModel {
 
 export interface StackIndex {
   root: string;
+  notes: Note[];
+}
+
+/** Returned by cairn:load — notes merged from every member stack, each
+ *  stamped with Note.sourceStack. */
+export interface CairnIndex {
+  roots: string[];
   notes: Note[];
 }
 
@@ -72,6 +90,19 @@ export interface StackEntry {
   name: string;
   /** Absolute path to the stack's root folder. */
   root: string;
+}
+
+/**
+ * A named group of stacks, opened together as one merged note list/graph.
+ * Members reference StackEntry.name — an entry whose name no longer exists
+ * in the stack list is silently dropped when the Cairn is loaded rather
+ * than erroring, mirroring how a removed stack disappears gracefully.
+ */
+export interface CairnEntry {
+  /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
+  name: string;
+  /** Names of member StackEntry entries (case-insensitively unique among themselves). */
+  memberStackNames: string[];
 }
 
 export type FileChangeKind = "add" | "change" | "unlink";
@@ -130,13 +161,19 @@ export interface LayoutPrefs {
   rightPanelWidth: number;
 }
 
-// Persisted per-stack (under <stackRoot>/.cairn/workspace.json) so reopening
-// a vault restores which notes were open.
+// Persisted per-stack (under <stackRoot>/.cairn/workspace.json) or per-Cairn
+// (under <userData>/cairns/<name>/workspace.json) so reopening restores
+// which notes were open.
+/** A bare sentinel tab id (e.g. "@graph", never root-qualified) or a real
+ *  note, qualified by which stack root it belongs to so a tab can be
+ *  restored correctly even when notes are merged from more than one stack. */
+export type WorkspaceTabRef = string | { root: string; relativePath: string };
+
 export interface WorkspaceState {
-  /** Relative paths (or tab sentinel ids, e.g. "@graph") of open tabs, in order. */
-  openTabs: string[];
-  /** Relative path (or tab sentinel id) of the active tab, if any. */
-  activeTab: string | null;
+  /** Open tabs, in order. */
+  openTabs: WorkspaceTabRef[];
+  /** The active tab, if any. */
+  activeTab: WorkspaceTabRef | null;
 }
 
 /** How a note's parent folder path is shown in its tab header. */
