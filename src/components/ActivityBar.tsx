@@ -4,7 +4,6 @@ interface Props {
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
   onNewNote: () => void;
-  onNewFolder: () => void;
   onOpenDailyNote: () => void;
   onGraphView: () => void;
   onOpenSettings: () => void;
@@ -32,7 +31,6 @@ export function ActivityBar({
   sidebarCollapsed,
   onToggleSidebar,
   onNewNote,
-  onNewFolder,
   onOpenDailyNote,
   onGraphView,
   onOpenSettings,
@@ -63,9 +61,6 @@ export function ActivityBar({
         title="New note (right-click for templates)"
       >
         +
-      </button>
-      <button className="activity-bar-btn" onClick={onNewFolder} title="New folder">
-        ⊞
       </button>
       <button className="activity-bar-btn" onClick={onOpenDailyNote} title="New daily note">
         📅

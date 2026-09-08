@@ -3,7 +3,7 @@ import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { parseNote } from "../shared/parseNote";
 import { writeStackCache } from "./stackCache";
-import type { FileChangeEvent, FolderEntry, Note } from "../shared/types";
+import type { FileChangeEvent, Note } from "../shared/types";
 
 async function walkDir(root: string, dir: string, out: string[]): Promise<void> {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -16,24 +16,6 @@ async function walkDir(root: string, dir: string, out: string[]): Promise<void> 
       out.push(full);
     }
   }
-}
-
-async function walkDirs(root: string, dir: string, out: FolderEntry[]): Promise<void> {
-  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.name.startsWith(".")) continue;
-    if (entry.isDirectory()) {
-      const full = path.join(dir, entry.name);
-      out.push({ path: full, relativePath: path.relative(root, full) });
-      await walkDirs(root, full, out);
-    }
-  }
-}
-
-export async function listFolders(root: string): Promise<FolderEntry[]> {
-  const out: FolderEntry[] = [];
-  await walkDirs(root, root, out);
-  return out;
 }
 
 /** All markdown files under root, excluding dotfolders (e.g. .cairn) and dotfiles. */
@@ -93,30 +75,20 @@ function notesChanged(previous: Note[], notes: Note[]): boolean {
   return false;
 }
 
-function foldersChanged(previous: FolderEntry[], folders: FolderEntry[]): boolean {
-  const previousPaths = new Set(previous.map((f) => f.relativePath));
-  if (previousPaths.size !== folders.length) return true;
-  for (const folder of folders) {
-    if (!previousPaths.has(folder.relativePath)) return true;
-  }
-  return false;
-}
-
 // Re-walks the vault, reusing unchanged notes (see loadStack's `previous`
 // param), and returns the reconciled result only if something actually
-// differs from `previousNotes`/`previousFolders` — otherwise returns null so
-// callers can skip a wasted cache write/IPC push, which is the common case
-// on every reopen of a vault nothing was edited in since it was last cached.
+// differs from `previousNotes` — otherwise returns null so callers can skip
+// a wasted cache write/IPC push, which is the common case on every reopen of
+// a vault nothing was edited in since it was last cached.
 export async function reconcileStackCache(
   root: string,
-  previousNotes: Note[],
-  previousFolders: FolderEntry[]
-): Promise<{ notes: Note[]; folders: FolderEntry[] } | null> {
+  previousNotes: Note[]
+): Promise<{ notes: Note[] } | null> {
   const previousByRelPath = new Map(previousNotes.map((n) => [n.relativePath, n]));
-  const [notes, folders] = await Promise.all([loadStack(root, previousByRelPath), listFolders(root)]);
-  if (!notesChanged(previousNotes, notes) && !foldersChanged(previousFolders, folders)) return null;
-  writeStackCache(root, { notes, folders });
-  return { notes, folders };
+  const notes = await loadStack(root, previousByRelPath);
+  if (!notesChanged(previousNotes, notes)) return null;
+  writeStackCache(root, { notes });
+  return { notes };
 }
 
 export function watchStack(

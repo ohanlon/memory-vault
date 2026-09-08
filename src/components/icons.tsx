@@ -77,26 +77,6 @@ export function OpenInExplorerIcon() {
   );
 }
 
-export function ExcludeFromGraphIcon() {
-  return (
-    <Svg>
-      <path d="M3 3L21 21" />
-      <path d="M10.6 5.2C11 5.1 11.5 5 12 5C17 5 20.5 12 20.5 12C20.1 12.8 19.5 13.7 18.8 14.6" />
-      <path d="M7 6.6C4.5 8.2 3 12 3 12C3 12 6.5 19 12 19C13.5 19 14.8 18.5 15.9 17.8" />
-      <path d="M9.9 10C9.3 10.5 9 11.2 9 12C9 13.7 10.3 15 12 15C12.8 15 13.5 14.7 14 14.2" />
-    </Svg>
-  );
-}
-
-export function IncludeInGraphIcon() {
-  return (
-    <Svg>
-      <path d="M3 12C3 12 6.5 5 12 5C17.5 5 21 12 21 12C21 12 17.5 19 12 19C6.5 19 3 12 3 12Z" />
-      <circle cx="12" cy="12" r="3" />
-    </Svg>
-  );
-}
-
 export function LinkIcon() {
   return (
     <Svg>

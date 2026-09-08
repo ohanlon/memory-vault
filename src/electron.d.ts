@@ -2,7 +2,6 @@ import type {
   AppSettings,
   DailyNoteResult,
   FileChangeEvent,
-  FolderEntry,
   LayoutPrefs,
   Note,
   PluginManifest,
@@ -21,7 +20,7 @@ import type {
 export interface MemoryStackAPI {
   pickStack(): Promise<string | null>;
   loadStack(root: string): Promise<StackIndex>;
-  reloadStack(): Promise<{ notes: Note[]; folders: FolderEntry[] }>;
+  reloadStack(): Promise<{ notes: Note[] }>;
   onReconciled(cb: (event: StackReconciledEvent) => void): () => void;
   onReconcileStatus(cb: (event: StackReconcileStatusEvent) => void): () => void;
   listStacks(): Promise<StackEntry[]>;
@@ -35,13 +34,6 @@ export interface MemoryStackAPI {
   seedStarterContent(): Promise<string[]>;
   deleteNote(absPath: string): Promise<boolean>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
-  createFolder(dir: string, name: string): Promise<string>;
-  deleteFolder(absPath: string): Promise<boolean>;
-  moveNote(absPath: string, destDir: string): Promise<string>;
-  moveFolder(absPath: string, destParentDir: string): Promise<string>;
-  copyNote(absPath: string, destDir: string): Promise<string>;
-  copyFolder(absPath: string, destParentDir: string): Promise<string>;
-  renameFolder(absPath: string, newName: string): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;
   onFileChanged(cb: (event: FileChangeEvent) => void): () => void;

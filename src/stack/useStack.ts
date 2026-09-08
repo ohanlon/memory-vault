@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FolderEntry, GraphModel, Note, PropertyDef, StackEntry } from "@shared/types";
+import type { GraphModel, Note, PropertyDef, StackEntry } from "@shared/types";
 import { buildGraph } from "@shared/buildGraph";
 import { loadThirdPartyPlugins } from "../plugins/loader";
 
@@ -8,7 +8,6 @@ export interface StackState {
   activeName: string | null;
   root: string | null;
   notes: Note[];
-  folders: FolderEntry[];
   graph: GraphModel;
   propertySchema: PropertyDef[];
   loading: boolean;
@@ -26,7 +25,6 @@ export function useStack() {
     activeName: null,
     root: null,
     notes: [],
-    folders: [],
     graph: EMPTY_GRAPH,
     propertySchema: [],
     loading: false,
@@ -58,7 +56,6 @@ export function useStack() {
         root: index.root,
         activeName: name,
         notes: index.notes,
-        folders: index.folders,
         graph: buildGraph(index.notes),
         propertySchema,
         loading: false,
@@ -77,12 +74,12 @@ export function useStack() {
 
   // The background reconciliation pass (kicked off by openStack) found the
   // on-disk vault differs from the cache it served initially — replace
-  // notes/folders and rebuild the graph with the reconciled result.
+  // notes and rebuild the graph with the reconciled result.
   useEffect(() => {
-    const unsubscribe = window.memoryStack.onReconciled(({ root: eventRoot, notes, folders }) => {
+    const unsubscribe = window.memoryStack.onReconciled(({ root: eventRoot, notes }) => {
       setState((s) => {
         if (s.root !== eventRoot) return s; // stale event for a stack we've since left
-        return { ...s, notes, folders, graph: buildGraph(notes) };
+        return { ...s, notes, graph: buildGraph(notes) };
       });
     });
     return unsubscribe;
@@ -126,7 +123,6 @@ export function useStack() {
               root: null,
               activeName: null,
               notes: [],
-              folders: [],
               graph: EMPTY_GRAPH,
               propertySchema: [],
               reconciling: false,
@@ -168,19 +164,18 @@ export function useStack() {
   // pass, so only files that actually changed get re-parsed. Pass
   // `showReindexing: true` to surface the same "Reindexing vault…" toast the
   // background reconciliation pass uses — worth it for a rename, which can
-  // touch many files at once (the folder itself plus every note whose
-  // incoming links got rewritten), but not for routine autosaves.
+  // touch many files at once (every note whose incoming links got
+  // rewritten), but not for routine autosaves.
   const refresh = useCallback(
     async (options?: { showReindexing?: boolean }) => {
       if (!state.root) return;
       const showReindexing = options?.showReindexing ?? false;
       if (showReindexing) setState((s) => ({ ...s, reconciling: true }));
       try {
-        const { notes, folders } = await window.memoryStack.reloadStack();
+        const { notes } = await window.memoryStack.reloadStack();
         setState((s) => ({
           ...s,
           notes,
-          folders,
           graph: buildGraph(notes),
           ...(showReindexing ? { reconciling: false } : {}),
         }));

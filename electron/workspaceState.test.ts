@@ -19,20 +19,16 @@ describe("readWorkspaceState / writeWorkspaceState", () => {
   it("creates the .cairn directory on first write", () => {
     expect(fs.existsSync(path.join(stackRoot, ".cairn"))).toBe(false);
     writeWorkspaceState(stackRoot, {
-      collapsedFolders: [],
       openTabs: ["a.md"],
       activeTab: "a.md",
-      excludedFolders: [],
     });
     expect(fs.existsSync(workspaceStateFilePath(stackRoot))).toBe(true);
   });
 
   it("round-trips state through disk", () => {
     const state = {
-      collapsedFolders: ["sub"],
       openTabs: ["sub/a.md", "@graph"],
       activeTab: "@graph",
-      excludedFolders: ["archive"],
     };
     writeWorkspaceState(stackRoot, state);
     expect(readWorkspaceState(stackRoot)).toEqual(state);

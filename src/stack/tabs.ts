@@ -36,23 +36,6 @@ export function renameTab(paths: string[], oldPath: string, newPath: string): st
   return paths.map((p) => (p === oldPath ? newPath : p));
 }
 
-/**
- * Rewrites every open tab path under a renamed/moved folder to its new
- * location, preserving position — e.g. a tab for
- * "<root>/Old/Note.md" becomes "<root>/New/Note.md" after "Old" is renamed
- * to "New". Leaves sentinel tab ids and paths outside the folder untouched.
- */
-export function remapTabsUnderFolder(paths: string[], oldFolderPath: string, newFolderPath: string): string[] {
-  return paths.map((p) => {
-    if (isSentinelTabId(p)) return p;
-    if (p === oldFolderPath) return newFolderPath;
-    if (p.startsWith(oldFolderPath + "/") || p.startsWith(oldFolderPath + "\\")) {
-      return newFolderPath + p.slice(oldFolderPath.length);
-    }
-    return p;
-  });
-}
-
 /** Closes every open tab to the left of `path`, keeping `path` and everything to its right. */
 export function closeTabsLeft(paths: string[], path: string): string[] {
   const idx = paths.indexOf(path);

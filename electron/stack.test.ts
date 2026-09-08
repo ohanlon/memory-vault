@@ -87,7 +87,7 @@ describe("reconcileStackCache", () => {
     write("a.md");
     const notes = await loadStack(root);
 
-    const result = await reconcileStackCache(root, notes, []);
+    const result = await reconcileStackCache(root, notes);
 
     expect(result).toBeNull();
     expect(fs.existsSync(path.join(root, ".cairn", "index.json"))).toBe(false);
@@ -101,20 +101,10 @@ describe("reconcileStackCache", () => {
     write("a.md", "# Changed");
     fs.utimesSync(path.join(root, "a.md"), new Date(), new Date());
 
-    const result = await reconcileStackCache(root, notes, []);
+    const result = await reconcileStackCache(root, notes);
 
     expect(result).not.toBeNull();
     expect(result?.notes[0].content).toContain("Changed");
     expect(fs.existsSync(path.join(root, ".cairn", "index.json"))).toBe(true);
-  });
-
-  it("returns the reconciled result when a folder was added", async () => {
-    write("a.md");
-    const notes = await loadStack(root);
-    fs.mkdirSync(path.join(root, "new-folder"), { recursive: true });
-
-    const result = await reconcileStackCache(root, notes, []);
-
-    expect(result?.folders.map((f) => f.relativePath)).toEqual(["new-folder"]);
   });
 });

@@ -26,20 +26,17 @@ import {
   isSentinelTabId,
   reconcileTabs,
   relativePathToTabId,
-  remapTabsUnderFolder,
   removeTab,
   renameTab,
   tabIdToRelativePath,
 } from "./stack/tabs";
-import type { NavClipboard } from "./components/FileTree";
 import { stripMdExtension } from "@shared/displayName";
-import { isSameOrDescendant } from "@shared/fileTree";
 import { backlinkTitles } from "@shared/buildGraph";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
 import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
 import { NOTE_TEMPLATES } from "@shared/noteTemplates";
-import type { AppSettings, FolderEntry, LayoutRegionName, Note, StackEntry } from "@shared/types";
+import type { AppSettings, LayoutRegionName, Note, StackEntry } from "@shared/types";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -52,29 +49,15 @@ function clampWidth(width: number): number {
   return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width));
 }
 
-type DeleteTarget = { type: "note"; note: Note } | { type: "folder"; folder: FolderEntry };
-
-function deleteConfirmMessage(target: DeleteTarget, notes: Note[], folders: FolderEntry[]): string {
-  if (target.type === "note") {
-    return `Delete "${stripMdExtension(target.note.relativePath)}"? This can't be undone.`;
-  }
-  const folder = target.folder;
-  const noteCount = notes.filter((n) => isSameOrDescendant(folder.path, n.path)).length;
-  const subfolderCount = folders.filter(
-    (f) => f.path !== folder.path && isSameOrDescendant(folder.path, f.path)
-  ).length;
-  const parts: string[] = [];
-  if (noteCount > 0) parts.push(`${noteCount} note${noteCount === 1 ? "" : "s"}`);
-  if (subfolderCount > 0) parts.push(`${subfolderCount} subfolder${subfolderCount === 1 ? "" : "s"}`);
-  const warning = parts.length > 0 ? ` It contains ${parts.join(" and ")} that will also be deleted.` : "";
-  return `Delete folder "${folder.relativePath}"?${warning} This can't be undone.`;
+function deleteConfirmMessage(note: Note): string {
+  return `Delete "${stripMdExtension(note.relativePath)}"? This can't be undone.`;
 }
 
 type DialogState =
   | { kind: "name-stack"; root: string }
   | { kind: "rename-stack"; stack: StackEntry }
   | { kind: "manage-properties" }
-  | { kind: "confirm-delete"; target: DeleteTarget }
+  | { kind: "confirm-delete"; note: Note }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
   | { kind: "shortcuts" }
   | null;
@@ -87,7 +70,6 @@ export default function App() {
     activeName,
     root,
     notes,
-    folders,
     graph,
     propertySchema,
     loading,
@@ -105,10 +87,6 @@ export default function App() {
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
-  const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
-  const [excludedFolders, setExcludedFolders] = useState<string[]>([]);
-  // Cut/copy clipboard for the file tree — not persisted, cleared on app restart.
-  const [navClipboard, setNavClipboard] = useState<NavClipboard | null>(null);
   // Which stack root a workspace-state restore has been kicked off for, so a
   // refresh() of the same stack doesn't retrigger it — reset to null when the
   // stack closes so reopening it (or a different one) restores again.
@@ -210,19 +188,6 @@ export default function App() {
     [notes, activePath]
   );
 
-  // Titles of notes under an excluded folder (or a descendant of one), for
-  // the graph to hide by default — see the "Excluded folders" graph filter.
-  const excludedNoteIds = useMemo(() => {
-    if (excludedFolders.length === 0) return new Set<string>();
-    const ids = new Set<string>();
-    for (const note of notes) {
-      if (excludedFolders.some((f) => isSameOrDescendant(f, note.relativePath))) {
-        ids.add(note.title);
-      }
-    }
-    return ids;
-  }, [notes, excludedFolders]);
-
   const openTabItems = useMemo<TabItem[]>(
     () =>
       openPaths
@@ -256,30 +221,7 @@ export default function App() {
     setActivePath((path) => (path === null || path === GRAPH_TAB_ID || existing.has(path) ? path : null));
   }, [notes]);
 
-  // Drop collapsed-folder entries for folders that no longer exist. Safe to
-  // run on every folders change — folders is always the complete vault list
-  // from the moment openStack resolves, not a partial/lazily-discovered one.
-  // Returns the same array reference when nothing changed so this doesn't
-  // retrigger the debounced save effect.
-  useEffect(() => {
-    const existing = new Set(folders.map((f) => f.relativePath));
-    setCollapsedFolders((paths) => {
-      const filtered = paths.filter((p) => existing.has(p));
-      return filtered.length === paths.length ? paths : filtered;
-    });
-  }, [folders]);
-
-  // Drop excluded-folder entries for folders that no longer exist, same as
-  // the collapsed-folder pruning above.
-  useEffect(() => {
-    const existing = new Set(folders.map((f) => f.relativePath));
-    setExcludedFolders((paths) => {
-      const filtered = paths.filter((p) => existing.has(p));
-      return filtered.length === paths.length ? paths : filtered;
-    });
-  }, [folders]);
-
-  // Restores open tabs/collapsed folders from <stack>/.cairn/workspace.json
+  // Restores open tabs from <stack>/.cairn/workspace.json
   // whenever a (newly opened or reopened) stack finishes loading. Guarded by
   // restoreStartedRootRef so a refresh() of the same stack — triggered on
   // every note create/save/delete — doesn't stomp on the current session's tabs.
@@ -293,11 +235,6 @@ export default function App() {
       setOpenPaths(restoredTabs);
       const restoredActive = state.activeTab ? relativePathToTabId(state.activeTab, notes) : null;
       setActivePath(restoredActive && restoredTabs.includes(restoredActive) ? restoredActive : restoredTabs[0] ?? null);
-      // Trust the persisted list as-is — folders is already the complete
-      // vault list by the time this runs, so the pruning effect above will
-      // catch any genuinely-stale entries on the next render.
-      setCollapsedFolders(state.collapsedFolders);
-      setExcludedFolders(state.excludedFolders);
       restoredReadyRootRef.current = root;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -312,10 +249,10 @@ export default function App() {
     }
   }, [root]);
 
-  // Persists open tabs/active tab/collapsed folders back to workspace.json,
-  // debounced so rapid tab switching doesn't spam disk writes. Gated on
-  // restoredReadyRootRef so this can't fire with stale state before the
-  // restore above has actually landed.
+  // Persists open tabs/active tab back to workspace.json, debounced so rapid
+  // tab switching doesn't spam disk writes. Gated on restoredReadyRootRef so
+  // this can't fire with stale state before the restore above has actually
+  // landed.
   useEffect(() => {
     if (!root || restoredReadyRootRef.current !== root) return;
     if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
@@ -324,58 +261,12 @@ export default function App() {
         .map((id) => tabIdToRelativePath(id, notes))
         .filter((p): p is string => p !== null);
       const activeTab = activePath ? tabIdToRelativePath(activePath, notes) : null;
-      window.memoryStack.saveWorkspaceState({ collapsedFolders, openTabs, activeTab, excludedFolders });
+      window.memoryStack.saveWorkspaceState({ openTabs, activeTab });
     }, 300);
     return () => {
       if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     };
-  }, [root, openPaths, activePath, collapsedFolders, excludedFolders, notes]);
-
-  const toggleFolder = useCallback((relativePath: string) => {
-    setCollapsedFolders((prev) =>
-      prev.includes(relativePath) ? prev.filter((p) => p !== relativePath) : [...prev, relativePath]
-    );
-  }, []);
-
-  const expandFolders = useCallback((relativePaths: string[]) => {
-    setCollapsedFolders((prev) => prev.filter((p) => !relativePaths.includes(p)));
-  }, []);
-
-  const toggleExcludeFolder = useCallback((folder: FolderEntry) => {
-    setExcludedFolders((prev) =>
-      prev.includes(folder.relativePath)
-        ? prev.filter((p) => p !== folder.relativePath)
-        : [...prev, folder.relativePath]
-    );
-  }, []);
-
-  const cutNote = useCallback((note: Note) => setNavClipboard({ type: "note", mode: "cut", path: note.path }), []);
-  const copyNoteToClipboard = useCallback(
-    (note: Note) => setNavClipboard({ type: "note", mode: "copy", path: note.path }),
-    []
-  );
-  const cutFolder = useCallback(
-    (folder: FolderEntry) => setNavClipboard({ type: "folder", mode: "cut", path: folder.path }),
-    []
-  );
-  const copyFolderToClipboard = useCallback(
-    (folder: FolderEntry) => setNavClipboard({ type: "folder", mode: "copy", path: folder.path }),
-    []
-  );
-
-  const pasteIntoFolder = useCallback(
-    (destDir: string) => {
-      if (!navClipboard) return;
-      const { type, mode, path: srcPath } = navClipboard;
-      if (mode === "cut") {
-        pluginRegistry.runCommand(type === "note" ? "stack.moveNote" : "stack.moveFolder", srcPath, destDir);
-        setNavClipboard(null);
-      } else {
-        pluginRegistry.runCommand(type === "note" ? "stack.copyNote" : "stack.copyFolder", srcPath, destDir);
-      }
-    },
-    [navClipboard]
-  );
+  }, [root, openPaths, activePath, notes]);
 
   const openTab = useCallback((path: string) => {
     setOpenPaths((paths) => addTabPath(paths, path));
@@ -519,13 +410,6 @@ export default function App() {
     await refresh({ showReindexing: true });
   }
 
-  async function handleCreateFolder(dir: string) {
-    setSidebarCollapsed(false);
-    const newPath = await window.memoryStack.createFolder(dir, "");
-    await refresh();
-    setRenamingPath(newPath);
-  }
-
   async function handleOpenDailyNote() {
     if (!root) return;
     const result = await window.memoryStack.openOrCreateDailyNote(settings.dailyNotesFolder);
@@ -539,60 +423,12 @@ export default function App() {
     await refresh();
   }
 
-  async function performDeleteFolder(folder: FolderEntry) {
-    await window.memoryStack.deleteFolder(folder.path);
-    await refresh();
-  }
-
-  function requestDelete(target: DeleteTarget) {
+  function requestDelete(note: Note) {
     if (skipDeleteConfirm) {
-      if (target.type === "note") performDeleteNote(target.note);
-      else performDeleteFolder(target.folder);
+      performDeleteNote(note);
       return;
     }
-    setDialog({ kind: "confirm-delete", target });
-  }
-
-  async function handleMoveNote(notePath: string, destDir: string) {
-    try {
-      await flushPendingSave(notePath);
-      const newPath = await window.memoryStack.moveNote(notePath, destDir);
-      setOpenPaths((paths) => renameTab(paths, notePath, newPath));
-      if (activePath === notePath) setActivePath(newPath);
-      await refresh();
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleMoveFolder(folderPath: string, destDir: string) {
-    try {
-      if (activeNote && isSameOrDescendant(folderPath, activeNote.path)) {
-        await flushPendingSave(activeNote.path);
-      }
-      await window.memoryStack.moveFolder(folderPath, destDir);
-      await refresh();
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleCopyNote(notePath: string, destDir: string) {
-    try {
-      await window.memoryStack.copyNote(notePath, destDir);
-      await refresh();
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleCopyFolder(folderPath: string, destDir: string) {
-    try {
-      await window.memoryStack.copyFolder(folderPath, destDir);
-      await refresh();
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
+    setDialog({ kind: "confirm-delete", note });
   }
 
   async function performNoteRename(note: Note, newTitle: string, updateLinks: boolean) {
@@ -621,25 +457,6 @@ export default function App() {
     setDialog({ kind: "rename-links", note, newTitle, backlinks });
   }
 
-  async function handleCommitFolderRename(folder: FolderEntry, newName: string) {
-    setRenamingPath(null);
-    const currentName = folder.relativePath.split(/[\\/]/).pop() ?? "";
-    if (!newName || newName === currentName) return;
-    if (activeNote && isSameOrDescendant(folder.path, activeNote.path)) {
-      await flushPendingSave(activeNote.path);
-    }
-    const newFolderPath = await window.memoryStack.renameFolder(folder.path, newName);
-    // Remap open tabs under the renamed folder before refreshing notes —
-    // same ordering reason as performNoteRename: otherwise the "drop tabs
-    // for notes that no longer exist" effect sees their old paths vanish
-    // from the freshly-reloaded notes before activePath/openPaths catch up.
-    setOpenPaths((paths) => remapTabsUnderFolder(paths, folder.path, newFolderPath));
-    if (activePath && isSameOrDescendant(folder.path, activePath)) {
-      setActivePath(newFolderPath + activePath.slice(folder.path.length));
-    }
-    await refresh({ showReindexing: true });
-  }
-
   // Bind the commands core regions/views invoke by id. Re-registered every
   // render (cheap — a few Map.set calls) so handlers always close over
   // current state instead of going stale.
@@ -647,37 +464,13 @@ export default function App() {
     pluginRegistry.registerCommand("stack.newNote", () => {
       if (root) handleCreateNote(root);
     });
-    pluginRegistry.registerCommand("stack.newFolder", () => {
-      if (root) handleCreateFolder(root);
-    });
     pluginRegistry.registerCommand("stack.openDailyNote", () => handleOpenDailyNote());
     pluginRegistry.registerCommand("stack.switchStack", () => handleSwitchStack());
-    pluginRegistry.registerCommand("stack.deleteNote", (note: Note) => requestDelete({ type: "note", note }));
+    pluginRegistry.registerCommand("stack.deleteNote", (note: Note) => requestDelete(note));
     pluginRegistry.registerCommand("stack.rename", (note: Note) => {
       setSidebarCollapsed(false);
       setRenamingPath(note.path);
     });
-    pluginRegistry.registerCommand("stack.renameFolder", (folder: FolderEntry) => {
-      setSidebarCollapsed(false);
-      setRenamingPath(folder.path);
-    });
-    pluginRegistry.registerCommand("stack.newNoteInFolder", (dir: string) => handleCreateNote(dir));
-    pluginRegistry.registerCommand("stack.newFolderInFolder", (dir: string) => handleCreateFolder(dir));
-    pluginRegistry.registerCommand("stack.deleteFolder", (folder: FolderEntry) =>
-      requestDelete({ type: "folder", folder })
-    );
-    pluginRegistry.registerCommand("stack.moveNote", (notePath: string, destDir: string) =>
-      handleMoveNote(notePath, destDir)
-    );
-    pluginRegistry.registerCommand("stack.moveFolder", (folderPath: string, destDir: string) =>
-      handleMoveFolder(folderPath, destDir)
-    );
-    pluginRegistry.registerCommand("stack.copyNote", (notePath: string, destDir: string) =>
-      handleCopyNote(notePath, destDir)
-    );
-    pluginRegistry.registerCommand("stack.copyFolder", (folderPath: string, destDir: string) =>
-      handleCopyFolder(folderPath, destDir)
-    );
     pluginRegistry.registerCommand("view.toggleSidebar", () => setSidebarCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.toggleRightPanel", () => setRightPanelCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.openGraph", () => openTab(GRAPH_TAB_ID));
@@ -823,7 +616,6 @@ export default function App() {
             sidebarCollapsed={sidebarCollapsed}
             onToggleSidebar={() => pluginRegistry.runCommand("view.toggleSidebar")}
             onNewNote={() => pluginRegistry.runCommand("stack.newNote")}
-            onNewFolder={() => pluginRegistry.runCommand("stack.newFolder")}
             onOpenDailyNote={() => pluginRegistry.runCommand("stack.openDailyNote")}
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}
             onOpenSettings={() => pluginRegistry.runCommand("view.openSettings")}
@@ -845,35 +637,14 @@ export default function App() {
               root,
               loading,
               notes,
-              folders,
               activePath,
               renamingPath,
-              collapsedFolders,
-              excludedFolders,
-              onToggleFolder: toggleFolder,
-              onToggleExcludeFolder: toggleExcludeFolder,
-              onExpandFolders: expandFolders,
               onShowInExplorer: showInExplorer,
-              clipboard: navClipboard,
-              onCutNote: cutNote,
-              onCopyNote: copyNoteToClipboard,
-              onCutFolder: cutFolder,
-              onCopyFolder: copyFolderToClipboard,
-              onPasteInto: pasteIntoFolder,
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
               onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),
-              onRenameFolder: (f: FolderEntry) => pluginRegistry.runCommand("stack.renameFolder", f),
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
-              onCommitFolderRename: (f: FolderEntry, newName: string) => handleCommitFolderRename(f, newName),
               onCancelRename: () => setRenamingPath(null),
-              onNewNoteInFolder: (dir: string) => pluginRegistry.runCommand("stack.newNoteInFolder", dir),
-              onNewFolderInFolder: (dir: string) => pluginRegistry.runCommand("stack.newFolderInFolder", dir),
-              onDeleteFolder: (f: FolderEntry) => pluginRegistry.runCommand("stack.deleteFolder", f),
-              onMoveNote: (notePath: string, destDir: string) =>
-                pluginRegistry.runCommand("stack.moveNote", notePath, destDir),
-              onMoveFolder: (folderPath: string, destDir: string) =>
-                pluginRegistry.runCommand("stack.moveFolder", folderPath, destDir),
               onSeedStarterContent: handleSeedStarterContent,
             }}
           />
@@ -913,7 +684,6 @@ export default function App() {
               slotProps={{
                 note: activeNote,
                 graph,
-                excludedNoteIds,
                 activeTitle: activeNote?.title ?? null,
                 onSaved: () => refresh(),
                 onSelectTitle: selectByTitle,
@@ -959,13 +729,12 @@ export default function App() {
 
         {dialog?.kind === "confirm-delete" && (
           <ConfirmModal
-            title={dialog.target.type === "note" ? "Delete note" : "Delete folder"}
-            message={deleteConfirmMessage(dialog.target, notes, folders)}
+            title="Delete note"
+            message={deleteConfirmMessage(dialog.note)}
             confirmLabel="Delete"
             onConfirm={(dontAskAgain) => {
               if (dontAskAgain) setSkipDeleteConfirm(true);
-              if (dialog.target.type === "note") performDeleteNote(dialog.target.note);
-              else performDeleteFolder(dialog.target.folder);
+              performDeleteNote(dialog.note);
               setDialog(null);
             }}
             onCancel={() => setDialog(null)}

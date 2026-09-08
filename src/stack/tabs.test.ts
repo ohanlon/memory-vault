@@ -9,7 +9,6 @@ import {
   isSentinelTabId,
   reconcileTabs,
   relativePathToTabId,
-  remapTabsUnderFolder,
   removeTab,
   renameTab,
   tabIdToRelativePath,
@@ -72,49 +71,6 @@ describe("renameTab", () => {
 
   it("is a no-op when the old path is not open", () => {
     expect(renameTab(["a", "b"], "missing", "x")).toEqual(["a", "b"]);
-  });
-});
-
-describe("remapTabsUnderFolder", () => {
-  it("rewrites a tab path directly under the renamed folder", () => {
-    expect(remapTabsUnderFolder(["/root/Old/Note.md"], "/root/Old", "/root/New")).toEqual([
-      "/root/New/Note.md",
-    ]);
-  });
-
-  it("rewrites a tab path nested deeper under the renamed folder", () => {
-    expect(remapTabsUnderFolder(["/root/Old/Sub/Note.md"], "/root/Old", "/root/New")).toEqual([
-      "/root/New/Sub/Note.md",
-    ]);
-  });
-
-  it("rewrites a tab path equal to the folder itself", () => {
-    expect(remapTabsUnderFolder(["/root/Old"], "/root/Old", "/root/New")).toEqual(["/root/New"]);
-  });
-
-  it("leaves paths outside the renamed folder untouched", () => {
-    expect(remapTabsUnderFolder(["/root/Other/Note.md"], "/root/Old", "/root/New")).toEqual([
-      "/root/Other/Note.md",
-    ]);
-  });
-
-  it("leaves sentinel tab ids untouched", () => {
-    expect(remapTabsUnderFolder([GRAPH_TAB_ID, SETTINGS_TAB_ID], "/root/Old", "/root/New")).toEqual([
-      GRAPH_TAB_ID,
-      SETTINGS_TAB_ID,
-    ]);
-  });
-
-  it("doesn't rewrite a sibling folder with a name prefixed by the renamed folder's name", () => {
-    expect(remapTabsUnderFolder(["/root/OldSibling/Note.md"], "/root/Old", "/root/New")).toEqual([
-      "/root/OldSibling/Note.md",
-    ]);
-  });
-
-  it("preserves tab order", () => {
-    expect(
-      remapTabsUnderFolder(["/root/Old/A.md", "/root/Other.md", "/root/Old/B.md"], "/root/Old", "/root/New")
-    ).toEqual(["/root/New/A.md", "/root/Other.md", "/root/New/B.md"]);
   });
 });
 

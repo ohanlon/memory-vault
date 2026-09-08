@@ -3,7 +3,6 @@ import type {
   AppSettings,
   DailyNoteResult,
   FileChangeEvent,
-  FolderEntry,
   LayoutPrefs,
   Note,
   PluginManifest,
@@ -23,7 +22,7 @@ const api = {
   pickStack: (): Promise<string | null> => ipcRenderer.invoke("stack:pick"),
   loadStack: (root: string): Promise<StackIndex> =>
     ipcRenderer.invoke("stack:load", root),
-  reloadStack: (): Promise<{ notes: Note[]; folders: FolderEntry[] }> =>
+  reloadStack: (): Promise<{ notes: Note[] }> =>
     ipcRenderer.invoke("stack:reload"),
   onReconciled: (cb: (event: StackReconciledEvent) => void): (() => void) => {
     const listener = (_e: unknown, event: StackReconciledEvent) => cb(event);
@@ -55,20 +54,6 @@ const api = {
     ipcRenderer.invoke("stack:deleteNote", absPath),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
     ipcRenderer.invoke("stack:renameNote", absPath, newTitle, updateLinks),
-  createFolder: (dir: string, name: string): Promise<string> =>
-    ipcRenderer.invoke("stack:createFolder", dir, name),
-  deleteFolder: (absPath: string): Promise<boolean> =>
-    ipcRenderer.invoke("stack:deleteFolder", absPath),
-  moveNote: (absPath: string, destDir: string): Promise<string> =>
-    ipcRenderer.invoke("stack:moveNote", absPath, destDir),
-  moveFolder: (absPath: string, destParentDir: string): Promise<string> =>
-    ipcRenderer.invoke("stack:moveFolder", absPath, destParentDir),
-  copyNote: (absPath: string, destDir: string): Promise<string> =>
-    ipcRenderer.invoke("stack:copyNote", absPath, destDir),
-  copyFolder: (absPath: string, destParentDir: string): Promise<string> =>
-    ipcRenderer.invoke("stack:copyFolder", absPath, destParentDir),
-  renameFolder: (absPath: string, newName: string): Promise<string> =>
-    ipcRenderer.invoke("stack:renameFolder", absPath, newName),
   openExternal: (url: string): Promise<boolean> =>
     ipcRenderer.invoke("shell:openExternal", url),
   showItemInFolder: (absPath: string): Promise<boolean> =>

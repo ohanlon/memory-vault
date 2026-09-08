@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
-import { listFolders, loadStack, reconcileStackCache, readNote, watchStack } from "./stack";
+import { loadStack, reconcileStackCache, readNote, watchStack } from "./stack";
 import { readStackCache, writeStackCache } from "./stackCache";
 import { runSearch } from "./search";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
@@ -29,7 +29,6 @@ import {
 } from "./pluginPermissions";
 import type {
   AppSettings,
-  FolderEntry,
   LayoutPrefs,
   Note,
   PluginPermission,
@@ -219,13 +218,11 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
   // before pays for a full synchronous walk, which then seeds the cache.
   const cached = readStackCache(root);
   let notes: Note[];
-  let folders: FolderEntry[];
   if (cached) {
     notes = cached.notes;
-    folders = cached.folders;
   } else {
-    [notes, folders] = await Promise.all([loadStack(root), listFolders(root)]);
-    writeStackCache(root, { notes, folders });
+    notes = await loadStack(root);
+    writeStackCache(root, { notes });
   }
   currentNotes = notes;
 
@@ -239,27 +236,27 @@ ipcMain.handle("stack:load", async (_event, root: string) => {
   // was edited outside the app while it was closed). The renderer treats
   // reconciliation as started the moment stack:load resolves (see
   // openStack), so only the "done" transition needs to be pushed here.
-  reconcileStackCache(root, notes, folders)
+  reconcileStackCache(root, notes)
     .then((result) => {
       if (!result || currentRoot !== root) return;
       currentNotes = result.notes;
-      win?.webContents.send("stack:reconciled", { root, notes: result.notes, folders: result.folders });
+      win?.webContents.send("stack:reconciled", { root, notes: result.notes });
     })
     .finally(() => {
       if (currentRoot !== root) return;
       win?.webContents.send("stack:reconcile-status", { root, reconciling: false });
     });
 
-  return { root, notes, folders };
+  return { root, notes };
 });
 
 ipcMain.handle("stack:reload", async () => {
   if (!currentRoot) throw new Error("No stack loaded");
   const previous = new Map(currentNotes.map((n) => [n.relativePath, n]));
-  const [notes, folders] = await Promise.all([loadStack(currentRoot, previous), listFolders(currentRoot)]);
+  const notes = await loadStack(currentRoot, previous);
   currentNotes = notes;
-  writeStackCache(currentRoot, { notes, folders });
-  return { notes, folders };
+  writeStackCache(currentRoot, { notes });
+  return { notes };
 });
 
 ipcMain.handle("search:start", async (_event, options: SearchOptions) => {
@@ -418,126 +415,6 @@ ipcMain.handle("stack:deleteNote", async (_event, absPath: string) => {
   fs.rmSync(absPath, { force: true });
   return true;
 });
-
-ipcMain.handle(
-  "stack:createFolder",
-  async (_event, dir: string, name: string) => {
-    const safeName = name.trim() || "New Folder";
-    let folderName = safeName;
-    let fullPath = path.join(dir, folderName);
-    let n = 0;
-    while (fs.existsSync(fullPath)) {
-      n += 1;
-      folderName = `${safeName} ${n}`;
-      fullPath = path.join(dir, folderName);
-    }
-    fs.mkdirSync(fullPath, { recursive: true });
-    return fullPath;
-  }
-);
-
-ipcMain.handle("stack:deleteFolder", async (_event, absPath: string) => {
-  fs.rmSync(absPath, { force: true, recursive: true });
-  return true;
-});
-
-ipcMain.handle(
-  "stack:moveNote",
-  async (_event, absPath: string, destDir: string) => {
-    if (path.dirname(absPath) === destDir) return absPath;
-    const fileName = path.basename(absPath);
-    const target = path.join(destDir, fileName);
-    if (fs.existsSync(target)) {
-      throw new Error(`"${fileName}" already exists in that folder`);
-    }
-    fs.renameSync(absPath, target);
-    return target;
-  }
-);
-
-ipcMain.handle(
-  "stack:moveFolder",
-  async (_event, absPath: string, destParentDir: string) => {
-    if (path.dirname(absPath) === destParentDir) return absPath;
-    const rel = path.relative(absPath, destParentDir);
-    const isSelfOrDescendant = rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
-    if (isSelfOrDescendant) {
-      throw new Error("Can't move a folder into itself or one of its own subfolders");
-    }
-    const folderName = path.basename(absPath);
-    const target = path.join(destParentDir, folderName);
-    if (fs.existsSync(target)) {
-      throw new Error(`"${folderName}" already exists in that folder`);
-    }
-    fs.renameSync(absPath, target);
-    return target;
-  }
-);
-
-// Shared by copyNote/copyFolder — picks the first non-colliding "name",
-// "name copy", "name copy 2", ... in destDir, mirroring the "New File",
-// "New File 1", ... dedupe pattern used by stack:createNote/createFolder.
-function dedupeCopyName(destDir: string, baseName: string, ext: string): string {
-  let name = `${baseName}${ext}`;
-  if (!fs.existsSync(path.join(destDir, name))) return name;
-  name = `${baseName} copy${ext}`;
-  let n = 1;
-  while (fs.existsSync(path.join(destDir, name))) {
-    n += 1;
-    name = `${baseName} copy ${n}${ext}`;
-  }
-  return name;
-}
-
-function copyFolderRecursive(src: string, dest: string): void {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) copyFolderRecursive(srcPath, destPath);
-    else fs.copyFileSync(srcPath, destPath);
-  }
-}
-
-ipcMain.handle(
-  "stack:copyNote",
-  async (_event, absPath: string, destDir: string) => {
-    const ext = path.extname(absPath);
-    const baseName = path.basename(absPath, ext);
-    const target = path.join(destDir, dedupeCopyName(destDir, baseName, ext));
-    fs.copyFileSync(absPath, target);
-    return target;
-  }
-);
-
-ipcMain.handle(
-  "stack:copyFolder",
-  async (_event, absPath: string, destParentDir: string) => {
-    const rel = path.relative(absPath, destParentDir);
-    const isSelfOrDescendant = rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
-    if (isSelfOrDescendant) {
-      throw new Error("Can't copy a folder into itself or one of its own subfolders");
-    }
-    const folderName = path.basename(absPath);
-    const target = path.join(destParentDir, dedupeCopyName(destParentDir, folderName, ""));
-    copyFolderRecursive(absPath, target);
-    return target;
-  }
-);
-
-ipcMain.handle(
-  "stack:renameFolder",
-  async (_event, absPath: string, newName: string) => {
-    const dir = path.dirname(absPath);
-    const target = path.join(dir, newName);
-    if (target === absPath) return absPath;
-    if (fs.existsSync(target)) {
-      throw new Error(`"${newName}" already exists in that folder`);
-    }
-    fs.renameSync(absPath, target);
-    return target;
-  }
-);
 
 ipcMain.handle(
   "stack:renameNote",

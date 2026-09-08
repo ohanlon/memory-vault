@@ -10,7 +10,6 @@ interface Props {
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
   theme?: "dark" | "light";
-  excludedNoteIds?: Set<string>;
 }
 
 interface GraphPalette {
@@ -58,7 +57,6 @@ export function GraphPanel({
   onSelectTitle,
   onOpenExternal,
   theme = "dark",
-  excludedNoteIds = new Set(),
 }: Props) {
   const palette = theme === "light" ? LIGHT_PALETTE : DARK_PALETTE;
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
@@ -80,10 +78,7 @@ export function GraphPanel({
     return () => observer.disconnect();
   }, []);
 
-  const filteredGraph = useMemo(
-    () => filterGraph(graph, filters, excludedNoteIds),
-    [graph, filters, excludedNoteIds]
-  );
+  const filteredGraph = useMemo(() => filterGraph(graph, filters), [graph, filters]);
 
   // Judged against the unfiltered graph, same as the "orphaned" filter itself —
   // hiding e.g. tags shouldn't make an otherwise-connected note look orphaned.

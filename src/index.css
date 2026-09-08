@@ -426,87 +426,11 @@ body {
   background: var(--bg-selected);
 }
 
-.file-tree li.file-tree-folder {
-  display: block;
-}
-
-.file-tree-folder-row {
-  display: flex;
-  align-items: center;
-  padding: 6px 10px 6px 0;
-  cursor: pointer;
-  user-select: none;
-}
-
-.file-tree-folder-row:hover {
-  color: var(--text-strong);
-}
-
-.file-tree-folder-row.drag-over,
-.file-tree.drag-over-root {
-  background: var(--bg-selected);
-  outline: 1px dashed var(--accent-violet);
-  outline-offset: -1px;
-}
-
-.file-tree-folder-row-excluded .file-tree-folder-name {
-  opacity: 0.55;
-  font-style: italic;
-}
-
-.file-tree-folder-row-cut .file-tree-folder-name,
-.file-tree-item-cut {
-  opacity: 0.5;
-}
-
-.file-tree-folder-icon {
-  flex-shrink: 0;
-  margin-right: 6px;
-  font-size: 13px;
-  line-height: 1;
-}
-
-.file-tree-folder-name {
-  flex: 1;
-  color: var(--text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-tree-folder-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-}
-
-.file-tree-folder-row:hover .file-tree-folder-actions {
-  opacity: 1;
-}
-
-.file-tree-folder-actions button {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 2px 5px;
-  font-size: 12px;
-  line-height: 1;
-}
-
-.file-tree-folder-actions button:hover {
-  color: var(--text-strong);
-}
-
-.file-tree-children {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
 .file-tree-item {
   flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   text-align: left;
   background: none;
   border: none;
@@ -514,8 +438,6 @@ body {
   padding: 6px 10px;
   cursor: pointer;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 13px;
 }
 
@@ -523,24 +445,30 @@ body {
   color: var(--text-strong);
 }
 
-.file-tree-item-edit,
-.file-tree-folder-name-edit {
+.file-tree-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree-item-hint {
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.file-tree-item-edit {
   background: var(--bg-base);
   color: var(--text-primary);
   border: 1px solid var(--accent-violet);
   border-radius: 3px;
   outline: none;
   font: inherit;
-}
-
-.file-tree-item-edit {
   margin: 0 10px 0 0;
   padding: 4px 6px;
-}
-
-.file-tree-folder-name-edit {
-  flex: 1;
-  padding: 2px 4px;
 }
 
 .file-tree-empty {

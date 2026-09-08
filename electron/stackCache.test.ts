@@ -17,11 +17,11 @@ describe("readStackCache / writeStackCache", () => {
 
   it("creates the .cairn directory on first write", () => {
     expect(fs.existsSync(path.join(stackRoot, ".cairn"))).toBe(false);
-    writeStackCache(stackRoot, { notes: [], folders: [] });
+    writeStackCache(stackRoot, { notes: [] });
     expect(fs.existsSync(stackCacheFilePath(stackRoot))).toBe(true);
   });
 
-  it("round-trips notes/folders through disk", () => {
+  it("round-trips notes through disk", () => {
     const cache = {
       notes: [
         {
@@ -35,7 +35,6 @@ describe("readStackCache / writeStackCache", () => {
           mtimeMs: 123,
         },
       ],
-      folders: [{ path: path.join(stackRoot, "sub"), relativePath: "sub" }],
     };
     writeStackCache(stackRoot, cache);
     expect(readStackCache(stackRoot)).toEqual(cache);
