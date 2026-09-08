@@ -11,6 +11,7 @@ import { livePreview } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest } from "../editor/editorContextMenu";
+import { formatShortcutsKeymap } from "../editor/formatShortcuts";
 import { shortcutLabel } from "../platform";
 import {
   BlockIcon,
@@ -181,6 +182,7 @@ export function EditorPane({
       loremIpsumExpand(),
       noCurlyBraceAutoClose(),
       listIndentKeymap(),
+      formatShortcutsKeymap(),
       fontTheme,
     ],
     [onSelectTitle, onOpenExternal, noteTitles, fontTheme, enabledCmLanguages]
@@ -303,9 +305,24 @@ export function EditorPane({
               label: "Format",
               icon: <FormatIcon />,
               children: [
-                { label: "Bold", icon: <BoldIcon />, onClick: contextMenuRequest.makeBold },
-                { label: "Italic", icon: <ItalicIcon />, onClick: contextMenuRequest.makeItalic },
-                { label: "Underline", icon: <UnderlineIcon />, onClick: contextMenuRequest.makeUnderline },
+                {
+                  label: "Bold",
+                  icon: <BoldIcon />,
+                  shortcut: shortcutLabel("B"),
+                  onClick: contextMenuRequest.makeBold,
+                },
+                {
+                  label: "Italic",
+                  icon: <ItalicIcon />,
+                  shortcut: shortcutLabel("I"),
+                  onClick: contextMenuRequest.makeItalic,
+                },
+                {
+                  label: "Underline",
+                  icon: <UnderlineIcon />,
+                  shortcut: shortcutLabel("U"),
+                  onClick: contextMenuRequest.makeUnderline,
+                },
                 {
                   label: "Strikethrough",
                   icon: <StrikethroughIcon />,
