@@ -12,6 +12,7 @@ import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
 import { TabKindSlot } from "./plugins/TabKindSlot";
 import { focusView } from "./plugins/focusedViewStore";
+import { flushPendingSave } from "./editor/pendingSave";
 import type { RibbonItemContribution } from "./plugins/types";
 import {
   addTab as addTabPath,
@@ -524,6 +525,7 @@ export default function App() {
 
   async function handleMoveNote(notePath: string, destDir: string) {
     try {
+      await flushPendingSave(notePath);
       const newPath = await window.memoryStack.moveNote(notePath, destDir);
       setOpenPaths((paths) => renameTab(paths, notePath, newPath));
       if (activePath === notePath) setActivePath(newPath);
@@ -535,6 +537,9 @@ export default function App() {
 
   async function handleMoveFolder(folderPath: string, destDir: string) {
     try {
+      if (activeNote && isSameOrDescendant(folderPath, activeNote.path)) {
+        await flushPendingSave(activeNote.path);
+      }
       await window.memoryStack.moveFolder(folderPath, destDir);
       await refresh();
     } catch (err) {
@@ -563,6 +568,10 @@ export default function App() {
   async function handleCommitNoteRename(note: Note, newTitle: string) {
     setRenamingPath(null);
     if (!newTitle || newTitle === note.title) return;
+    // Flush any pending debounced save first — otherwise it fires after the
+    // rename and rewrites the old path with pre-rename content, resurrecting
+    // the file the rename just got rid of.
+    await flushPendingSave(note.path);
     const newPath = await window.memoryStack.renameNote(note.path, newTitle);
     setOpenPaths((paths) => renameTab(paths, note.path, newPath));
     await refresh();
@@ -573,6 +582,9 @@ export default function App() {
     setRenamingPath(null);
     const currentName = folder.relativePath.split(/[\\/]/).pop() ?? "";
     if (!newName || newName === currentName) return;
+    if (activeNote && isSameOrDescendant(folder.path, activeNote.path)) {
+      await flushPendingSave(activeNote.path);
+    }
     await window.memoryStack.renameFolder(folder.path, newName);
     await refresh();
   }

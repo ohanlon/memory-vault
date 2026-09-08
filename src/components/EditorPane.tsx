@@ -12,6 +12,7 @@ import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExp
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest } from "../editor/editorContextMenu";
 import { formatShortcutsKeymap } from "../editor/formatShortcuts";
+import { registerPendingSave, unregisterPendingSave } from "../editor/pendingSave";
 import { shortcutLabel } from "../platform";
 import {
   BlockIcon,
@@ -103,6 +104,8 @@ export function EditorPane({
   const [propertiesVisible, setPropertiesVisible] = useState(!settings.hidePropertiesByDefault);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
+  const contentRef = useRef(content);
+  contentRef.current = content;
 
   const noteTitles = useMemo(
     () => new Set(graph.nodes.filter((n) => !n.external && !n.isTag).map((n) => n.id.toLowerCase())),
@@ -128,6 +131,24 @@ export function EditorPane({
     return () => {
       cancelled = true;
     };
+  }, [note?.path]);
+
+  // Lets a rename/move flush the pending debounced save (see handleChange)
+  // before touching the file on disk — otherwise the stale timer fires
+  // after the rename and rewrites the old path with pre-rename content,
+  // resurrecting the file the rename just got rid of.
+  useEffect(() => {
+    if (!note) return;
+    const path = note.path;
+    const flush = async () => {
+      if (!saveTimer.current) return;
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+      await window.memoryStack.saveNote(path, contentRef.current);
+      onSaved(path, contentRef.current);
+    };
+    registerPendingSave(path, flush);
+    return () => unregisterPendingSave(path, flush);
   }, [note?.path]);
 
   function handleChange(value: string) {
