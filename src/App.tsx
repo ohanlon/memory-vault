@@ -562,6 +562,23 @@ export default function App() {
     await refresh({ showReindexing: true });
   }
 
+  // Moves a note to a different member stack of the open Cairn. Unlike a
+  // rename, the title (and therefore every [[link]] to it) doesn't change —
+  // only the note's physical location and sourceStack do, so no link
+  // rewriting is needed; the graph just re-resolves against the moved
+  // note's new sourceStack on the next refresh.
+  async function handleMoveNoteToStack(note: Note, destRoot: string) {
+    try {
+      await flushPendingSave(note.path);
+      const newPath = await window.memoryStack.moveNoteToStack(note.path, destRoot);
+      setOpenPaths((paths) => renameTab(paths, note.path, newPath));
+      if (activePath === note.path) setActivePath(newPath);
+      await refresh({ showReindexing: true });
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function handleCommitNoteRename(note: Note, newTitle: string) {
     setRenamingPath(null);
     if (!newTitle || newTitle === note.title) return;
@@ -818,6 +835,8 @@ export default function App() {
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
               onCancelRename: () => setRenamingPath(null),
               onSeedStarterContent: activeSession.kind === "stack" ? handleSeedStarterContent : undefined,
+              memberStacks: activeSession.kind === "cairn" ? activeSession.memberStacks : undefined,
+              onMoveNoteToStack: (n: Note, destRoot: string) => handleMoveNoteToStack(n, destRoot),
             }}
           />
         )}

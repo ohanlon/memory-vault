@@ -43,6 +43,7 @@ export interface MemoryStackAPI {
   seedStarterContent(): Promise<string[]>;
   deleteNote(absPath: string): Promise<boolean>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
+  moveNoteToStack(absPath: string, destRoot: string): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;
   onFileChanged(cb: (event: FileChangeEvent) => void): () => void;

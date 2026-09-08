@@ -1,5 +1,5 @@
 import { FileTree } from "./FileTree";
-import type { Note } from "@shared/types";
+import type { Note, StackEntry } from "@shared/types";
 
 interface Props {
   loading: boolean;
@@ -15,6 +15,10 @@ interface Props {
   /** Omitted for an open Cairn — seeding starter content only applies to a
    *  single freshly-opened, empty stack. */
   onSeedStarterContent?: () => void;
+  /** Every member stack of an open Cairn, for "move to" — omitted for a
+   *  plain single-stack session (nothing to move a note to). */
+  memberStacks?: StackEntry[];
+  onMoveNoteToStack?: (note: Note, destRoot: string) => void;
 }
 
 export function FileTreePanel({
@@ -29,6 +33,8 @@ export function FileTreePanel({
   onCommitNoteRename,
   onCancelRename,
   onSeedStarterContent,
+  memberStacks,
+  onMoveNoteToStack,
 }: Props) {
   return (
     <>
@@ -51,6 +57,8 @@ export function FileTreePanel({
         onRename={onRename}
         onCommitNoteRename={onCommitNoteRename}
         onCancelRename={onCancelRename}
+        memberStacks={memberStacks}
+        onMoveNoteToStack={onMoveNoteToStack}
       />
     </>
   );

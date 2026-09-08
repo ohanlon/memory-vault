@@ -67,6 +67,8 @@ const api = {
     ipcRenderer.invoke("stack:deleteNote", absPath),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
     ipcRenderer.invoke("stack:renameNote", absPath, newTitle, updateLinks),
+  moveNoteToStack: (absPath: string, destRoot: string): Promise<string> =>
+    ipcRenderer.invoke("stack:moveNoteToStack", absPath, destRoot),
   openExternal: (url: string): Promise<boolean> =>
     ipcRenderer.invoke("shell:openExternal", url),
   showItemInFolder: (absPath: string): Promise<boolean> =>

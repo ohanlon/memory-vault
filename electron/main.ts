@@ -576,6 +576,32 @@ ipcMain.handle(
   }
 );
 
+// Moves a note to a different member stack of the currently open Cairn —
+// notes aren't renamed by this (title, and therefore every [[link]] to it,
+// stays valid), only their physical file/sourceStack changes.
+ipcMain.handle(
+  "stack:moveNoteToStack",
+  async (_event, absPath: string, destRoot: string) => {
+    if (!activeRoots.includes(destRoot)) throw new Error("Target stack is not open");
+    if (path.dirname(absPath) === destRoot) return absPath;
+    const fileName = path.basename(absPath);
+    const target = path.join(destRoot, fileName);
+    if (fs.existsSync(target)) {
+      throw new Error(`"${fileName}" already exists in that stack`);
+    }
+    try {
+      fs.renameSync(absPath, target);
+    } catch (err) {
+      // The two stacks can live on different drives, which a plain rename
+      // can't cross — fall back to copy + delete.
+      if ((err as NodeJS.ErrnoException).code !== "EXDEV") throw err;
+      fs.copyFileSync(absPath, target);
+      fs.rmSync(absPath, { force: true });
+    }
+    return target;
+  }
+);
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

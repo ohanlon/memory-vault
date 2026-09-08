@@ -446,6 +446,12 @@ body {
   display: block;
 }
 
+.file-tree-group.drag-over {
+  background: var(--bg-selected);
+  outline: 1px dashed var(--accent-violet);
+  outline-offset: -1px;
+}
+
 .file-tree-group-header {
   display: flex;
   align-items: center;

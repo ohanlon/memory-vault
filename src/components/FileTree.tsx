@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
-import type { Note } from "@shared/types";
+import type { DragEvent, KeyboardEvent, ReactNode } from "react";
+import type { Note, StackEntry } from "@shared/types";
 import { findDuplicateTitles } from "@shared/duplicateTitles";
 import { pluginRegistry } from "../plugins/registry";
 import { pushToPlugin } from "../plugins/pluginFrameRegistry";
@@ -17,9 +17,15 @@ interface Props {
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
   onShowInExplorer: (absPath: string) => void;
+  /** Every member stack of an open Cairn, for "move to" — omitted for a
+   *  plain single-stack session (nothing to move a note to). */
+  memberStacks?: StackEntry[];
+  onMoveNoteToStack?: (note: Note, destRoot: string) => void;
 }
 
 type ContextMenuState = { note: Note; x: number; y: number };
+
+const NOTE_DRAG_TYPE = "application/x-cairn-note";
 
 // Plugin-contributed context-menu entries for a note, hidden entirely when
 // the owning plugin has no live iframe mounted (see pluginFrameRegistry.ts)
@@ -101,11 +107,16 @@ export function FileTree({
   onCommitNoteRename,
   onCancelRename,
   onShowInExplorer,
+  memberStacks,
+  onMoveNoteToStack,
 }: Props) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   // Which source-stack groups are collapsed — only relevant for an open
   // Cairn (see groupedByStack below); session-local, not persisted.
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(new Set());
+  // Which stack group a dragged note is currently over, for drop-target
+  // highlighting — only relevant for an open Cairn.
+  const [dragOverStack, setDragOverStack] = useState<string | null>(null);
 
   const sorted = useMemo(() => [...notes].sort((a, b) => a.title.localeCompare(b.title)), [notes]);
 
@@ -132,6 +143,7 @@ export function FileTree({
   // Every note carries a sourceStack in an open Cairn, none does in a plain
   // single-stack session — this is enough to tell the two apart.
   const isGrouped = sorted.length > 0 && sorted.every((n) => n.sourceStack !== undefined);
+  const canMove = isGrouped && !!memberStacks && !!onMoveNoteToStack;
 
   function toggleStack(stackName: string) {
     setCollapsedStacks((prev) => {
@@ -140,6 +152,37 @@ export function FileTree({
       else next.add(stackName);
       return next;
     });
+  }
+
+  function acceptsNoteDrag(e: DragEvent) {
+    return e.dataTransfer.types.includes(NOTE_DRAG_TYPE);
+  }
+
+  function handleDropOnStack(e: DragEvent, stackName: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverStack(null);
+    if (!canMove) return;
+    const notePath = e.dataTransfer.getData(NOTE_DRAG_TYPE);
+    const note = notes.find((n) => n.path === notePath);
+    if (!note || note.sourceStack === stackName) return;
+    const destStack = memberStacks!.find((s) => s.name === stackName);
+    if (destStack) onMoveNoteToStack!(note, destStack.root);
+  }
+
+  function moveToMenuEntries(note: Note): ContextMenuEntry[] {
+    if (!canMove) return [];
+    const targets = memberStacks!.filter((s) => s.name !== note.sourceStack);
+    if (targets.length === 0) return [];
+    return [
+      {
+        label: "Move to",
+        children: targets.map((stack) => ({
+          label: stack.name,
+          onClick: () => onMoveNoteToStack!(note, stack.root),
+        })),
+      },
+    ];
   }
 
   function renderNoteRow(note: Note, indented: boolean): ReactNode {
@@ -159,6 +202,12 @@ export function FileTree({
       <li key={note.path} className={note.path === activePath ? "active" : ""}>
         <button
           className={`file-tree-item${indented ? " file-tree-item-indented" : ""}`}
+          draggable={canMove}
+          onDragStart={(e) => {
+            if (!canMove) return;
+            e.dataTransfer.setData(NOTE_DRAG_TYPE, note.path);
+            e.dataTransfer.effectAllowed = "move";
+          }}
           onClick={() => onSelect(note)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -195,7 +244,25 @@ export function FileTree({
               .map(([stackName, stackNotes]) => {
                 const collapsed = collapsedStacks.has(stackName);
                 return (
-                  <li key={stackName} className="file-tree-group">
+                  <li
+                    key={stackName}
+                    className={`file-tree-group${dragOverStack === stackName ? " drag-over" : ""}`}
+                    onDragOver={(e) => {
+                      if (!acceptsNoteDrag(e)) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                    }}
+                    onDragEnter={(e) => {
+                      if (!acceptsNoteDrag(e)) return;
+                      e.preventDefault();
+                      setDragOverStack(stackName);
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                      setDragOverStack((cur) => (cur === stackName ? null : cur));
+                    }}
+                    onDrop={(e) => handleDropOnStack(e, stackName)}
+                  >
                     <div
                       className="file-tree-group-header"
                       tabIndex={0}
@@ -230,6 +297,7 @@ export function FileTree({
           items={[
             { label: "Rename", shortcut: "F2", icon: <RenameIcon />, onClick: () => onRename(contextMenu.note) },
             { label: "Delete", shortcut: "Del", icon: <DeleteIcon />, onClick: () => onDelete(contextMenu.note) },
+            ...moveToMenuEntries(contextMenu.note),
             ...pluginContextMenuEntries(contextMenu.note.relativePath),
             { separator: true as const },
             {
