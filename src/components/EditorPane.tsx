@@ -121,12 +121,20 @@ export function EditorPane({
       loadedPath.current = null;
       return;
     }
-    window.memoryStack.readNoteBody(note.path).then((body) => {
-      if (!cancelled) {
-        setContent(body);
-        loadedPath.current = note.path;
-      }
-    });
+    window.memoryStack
+      .readNoteBody(note.path)
+      .then((body) => {
+        if (!cancelled) {
+          setContent(body);
+          loadedPath.current = note.path;
+        }
+      })
+      .catch(() => {
+        // The path can momentarily point at a file that's mid-rename/move —
+        // a stale in-flight read for the path we've since navigated away
+        // from shouldn't crash the main process console or clobber content.
+        if (!cancelled) setContent("");
+      });
     setPropertiesVisible(!settings.hidePropertiesByDefault);
     return () => {
       cancelled = true;

@@ -165,16 +165,31 @@ export function useStack() {
   // Reloads the currently open stack from disk (e.g. after a note is
   // created/renamed/deleted/saved, or on a debounced external file change).
   // Backed by the same mtime-aware loadStack as the cache reconciliation
-  // pass, so only files that actually changed get re-parsed.
-  const refresh = useCallback(async () => {
-    if (!state.root) return;
-    try {
-      const { notes, folders } = await window.memoryStack.reloadStack();
-      setState((s) => ({ ...s, notes, folders, graph: buildGraph(notes) }));
-    } catch (err) {
-      setState((s) => ({ ...s, error: String(err) }));
-    }
-  }, [state.root]);
+  // pass, so only files that actually changed get re-parsed. Pass
+  // `showReindexing: true` to surface the same "Reindexing vault…" toast the
+  // background reconciliation pass uses — worth it for a rename, which can
+  // touch many files at once (the folder itself plus every note whose
+  // incoming links got rewritten), but not for routine autosaves.
+  const refresh = useCallback(
+    async (options?: { showReindexing?: boolean }) => {
+      if (!state.root) return;
+      const showReindexing = options?.showReindexing ?? false;
+      if (showReindexing) setState((s) => ({ ...s, reconciling: true }));
+      try {
+        const { notes, folders } = await window.memoryStack.reloadStack();
+        setState((s) => ({
+          ...s,
+          notes,
+          folders,
+          graph: buildGraph(notes),
+          ...(showReindexing ? { reconciling: false } : {}),
+        }));
+      } catch (err) {
+        setState((s) => ({ ...s, error: String(err), ...(showReindexing ? { reconciling: false } : {}) }));
+      }
+    },
+    [state.root]
+  );
 
   const saveSchema = useCallback(async (properties: PropertyDef[]) => {
     const updated = await window.memoryStack.savePropertySchema(properties);

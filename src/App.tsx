@@ -24,6 +24,7 @@ import {
   isSentinelTabId,
   reconcileTabs,
   relativePathToTabId,
+  remapTabsUnderFolder,
   removeTab,
   renameTab,
   tabIdToRelativePath,
@@ -574,8 +575,12 @@ export default function App() {
     await flushPendingSave(note.path);
     const newPath = await window.memoryStack.renameNote(note.path, newTitle, updateLinks);
     setOpenPaths((paths) => renameTab(paths, note.path, newPath));
-    await refresh();
+    // Update activePath before refreshing notes — otherwise the "drop tabs
+    // for notes that no longer exist" effect (keyed on the notes list) sees
+    // the old path vanish from the freshly-reloaded notes while activePath
+    // still points at it, and briefly clears the active note.
     if (activePath === note.path) setActivePath(newPath);
+    await refresh({ showReindexing: true });
   }
 
   async function handleCommitNoteRename(note: Note, newTitle: string) {
@@ -596,8 +601,16 @@ export default function App() {
     if (activeNote && isSameOrDescendant(folder.path, activeNote.path)) {
       await flushPendingSave(activeNote.path);
     }
-    await window.memoryStack.renameFolder(folder.path, newName);
-    await refresh();
+    const newFolderPath = await window.memoryStack.renameFolder(folder.path, newName);
+    // Remap open tabs under the renamed folder before refreshing notes —
+    // same ordering reason as performNoteRename: otherwise the "drop tabs
+    // for notes that no longer exist" effect sees their old paths vanish
+    // from the freshly-reloaded notes before activePath/openPaths catch up.
+    setOpenPaths((paths) => remapTabsUnderFolder(paths, folder.path, newFolderPath));
+    if (activePath && isSameOrDescendant(folder.path, activePath)) {
+      setActivePath(newFolderPath + activePath.slice(folder.path.length));
+    }
+    await refresh({ showReindexing: true });
   }
 
   // Bind the commands core regions/views invoke by id. Re-registered every
@@ -872,7 +885,7 @@ export default function App() {
                 graph,
                 excludedNoteIds,
                 activeTitle: activeNote?.title ?? null,
-                onSaved: refresh,
+                onSaved: () => refresh(),
                 onSelectTitle: selectByTitle,
                 onOpenExternal: openExternal,
                 settings,
