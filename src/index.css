@@ -442,6 +442,45 @@ body {
   background: var(--bg-selected);
 }
 
+.file-tree li.file-tree-group {
+  display: block;
+}
+
+.file-tree-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.file-tree-group-header:hover {
+  color: var(--text-strong);
+}
+
+.file-tree-group-icon {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.file-tree-group-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree-group-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .file-tree-item {
   flex: 1;
   display: flex;
@@ -455,6 +494,10 @@ body {
   cursor: pointer;
   overflow: hidden;
   font-size: 13px;
+}
+
+.file-tree-item-indented {
+  padding-left: 26px;
 }
 
 .file-tree-item:hover {
@@ -485,6 +528,10 @@ body {
   font: inherit;
   margin: 0 10px 0 0;
   padding: 4px 6px;
+}
+
+.file-tree-item-edit.file-tree-item-indented {
+  padding-left: 26px;
 }
 
 .file-tree-empty {

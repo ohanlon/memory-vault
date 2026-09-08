@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import type { Note } from "@shared/types";
 import { findDuplicateTitles } from "@shared/duplicateTitles";
 import { pluginRegistry } from "../plugins/registry";
@@ -103,6 +103,9 @@ export function FileTree({
   onShowInExplorer,
 }: Props) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  // Which source-stack groups are collapsed — only relevant for an open
+  // Cairn (see groupedByStack below); session-local, not persisted.
+  const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => [...notes].sort((a, b) => a.title.localeCompare(b.title)), [notes]);
 
@@ -110,52 +113,114 @@ export function FileTree({
   // path as a disambiguating hint, since the list is otherwise flat.
   const duplicateTitles = useMemo(() => findDuplicateTitles(notes), [notes]);
 
+  // An open Cairn stamps every note with its origin stack — group by that
+  // to simulate the folder-like separation a single stack no longer has,
+  // one collapsible section per member stack. A plain single-stack session
+  // has no sourceStack on any note, so this is a no-op there (flat list,
+  // unchanged from before).
+  const groupedByStack = useMemo(() => {
+    const groups = new Map<string, Note[]>();
+    for (const note of sorted) {
+      if (!note.sourceStack) continue;
+      const group = groups.get(note.sourceStack);
+      if (group) group.push(note);
+      else groups.set(note.sourceStack, [note]);
+    }
+    return groups;
+  }, [sorted]);
+
+  // Every note carries a sourceStack in an open Cairn, none does in a plain
+  // single-stack session — this is enough to tell the two apart.
+  const isGrouped = sorted.length > 0 && sorted.every((n) => n.sourceStack !== undefined);
+
+  function toggleStack(stackName: string) {
+    setCollapsedStacks((prev) => {
+      const next = new Set(prev);
+      if (next.has(stackName)) next.delete(stackName);
+      else next.add(stackName);
+      return next;
+    });
+  }
+
+  function renderNoteRow(note: Note, indented: boolean): ReactNode {
+    if (note.path === renamingPath) {
+      return (
+        <li key={note.path} className={note.path === activePath ? "active" : ""}>
+          <EditableLabel
+            className={`file-tree-item file-tree-item-edit${indented ? " file-tree-item-indented" : ""}`}
+            initialValue={note.title}
+            onCommit={(value) => onCommitNoteRename(note, value)}
+            onCancel={onCancelRename}
+          />
+        </li>
+      );
+    }
+    return (
+      <li key={note.path} className={note.path === activePath ? "active" : ""}>
+        <button
+          className={`file-tree-item${indented ? " file-tree-item-indented" : ""}`}
+          onClick={() => onSelect(note)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setContextMenu({ note, x: e.clientX, y: e.clientY });
+          }}
+          onKeyDown={(e: KeyboardEvent) => {
+            if (e.key === "F2") {
+              e.preventDefault();
+              onRename(note);
+              return;
+            }
+            if (e.key !== "Delete") return;
+            e.preventDefault();
+            onDelete(note);
+          }}
+        >
+          <span className="file-tree-item-title">{note.title}</span>
+          {duplicateTitles.has(note.title) && (
+            <span className="file-tree-item-hint">
+              {note.sourceStack ? `${note.sourceStack}/${note.relativePath}` : note.relativePath}
+            </span>
+          )}
+        </button>
+      </li>
+    );
+  }
+
   return (
     <>
       <ul className="file-tree" tabIndex={0}>
-        {sorted.map((note) => {
-          if (note.path === renamingPath) {
-            return (
-              <li key={note.path} className={note.path === activePath ? "active" : ""}>
-                <EditableLabel
-                  className="file-tree-item file-tree-item-edit"
-                  initialValue={note.title}
-                  onCommit={(value) => onCommitNoteRename(note, value)}
-                  onCancel={onCancelRename}
-                />
-              </li>
-            );
-          }
-          return (
-            <li key={note.path} className={note.path === activePath ? "active" : ""}>
-              <button
-                className="file-tree-item"
-                onClick={() => onSelect(note)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({ note, x: e.clientX, y: e.clientY });
-                }}
-                onKeyDown={(e: KeyboardEvent) => {
-                  if (e.key === "F2") {
-                    e.preventDefault();
-                    onRename(note);
-                    return;
-                  }
-                  if (e.key !== "Delete") return;
-                  e.preventDefault();
-                  onDelete(note);
-                }}
-              >
-                <span className="file-tree-item-title">{note.title}</span>
-                {duplicateTitles.has(note.title) && (
-                  <span className="file-tree-item-hint">
-                    {note.sourceStack ? `${note.sourceStack}/${note.relativePath}` : note.relativePath}
-                  </span>
-                )}
-              </button>
-            </li>
-          );
-        })}
+        {isGrouped
+          ? [...groupedByStack.entries()]
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([stackName, stackNotes]) => {
+                const collapsed = collapsedStacks.has(stackName);
+                return (
+                  <li key={stackName} className="file-tree-group">
+                    <div
+                      className="file-tree-group-header"
+                      tabIndex={0}
+                      onClick={() => toggleStack(stackName)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleStack(stackName);
+                        }
+                      }}
+                    >
+                      <span className="file-tree-group-icon" aria-hidden="true">
+                        {collapsed ? "📁" : "📂"}
+                      </span>
+                      <span className="file-tree-group-name">{stackName}</span>
+                    </div>
+                    {!collapsed && (
+                      <ul className="file-tree-group-children">
+                        {stackNotes.map((note) => renderNoteRow(note, true))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })
+          : sorted.map((note) => renderNoteRow(note, false))}
         {sorted.length === 0 && <li className="file-tree-empty">No notes yet</li>}
       </ul>
       {contextMenu && (
