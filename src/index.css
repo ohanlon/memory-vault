@@ -765,6 +765,10 @@ body {
   font-style: italic;
 }
 
+.cm-underline {
+  text-decoration: underline;
+}
+
 .cm-highlight {
   background: var(--bg-highlight);
 }

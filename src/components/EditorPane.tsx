@@ -33,6 +33,7 @@ import {
   StrikethroughIcon,
   SubscriptIcon,
   SuperscriptIcon,
+  UnderlineIcon,
 } from "./icons";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
@@ -304,6 +305,7 @@ export function EditorPane({
               children: [
                 { label: "Bold", icon: <BoldIcon />, onClick: contextMenuRequest.makeBold },
                 { label: "Italic", icon: <ItalicIcon />, onClick: contextMenuRequest.makeItalic },
+                { label: "Underline", icon: <UnderlineIcon />, onClick: contextMenuRequest.makeUnderline },
                 {
                   label: "Strikethrough",
                   icon: <StrikethroughIcon />,

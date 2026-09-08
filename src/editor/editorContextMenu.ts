@@ -21,6 +21,7 @@ import {
   subscriptSpec,
   superscriptSpec,
   taskListSpec,
+  underlineSpec,
   unorderedListSpec,
 } from "./listCommands";
 
@@ -49,6 +50,7 @@ export interface EditorContextMenuRequest {
   makeTaskList: () => void;
   makeBold: () => void;
   makeItalic: () => void;
+  makeUnderline: () => void;
   makeStrikethrough: () => void;
   makeSuperscript: () => void;
   makeSubscript: () => void;
@@ -110,6 +112,7 @@ export function editorContextMenu(onRequest: (req: EditorContextMenuRequest) => 
         makeTaskList: () => apply(taskListSpec(view.state)),
         makeBold: () => apply(boldSpec(view.state)),
         makeItalic: () => apply(italicSpec(view.state)),
+        makeUnderline: () => apply(underlineSpec(view.state)),
         makeStrikethrough: () => apply(strikethroughSpec(view.state)),
         makeSuperscript: () => apply(superscriptSpec(view.state)),
         makeSubscript: () => apply(subscriptSpec(view.state)),

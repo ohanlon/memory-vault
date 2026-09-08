@@ -17,6 +17,7 @@ import {
   subscriptSpec,
   superscriptSpec,
   taskListSpec,
+  underlineSpec,
   unorderedListSpec,
 } from "./listCommands";
 
@@ -68,6 +69,20 @@ describe("italicSpec", () => {
     const state = apply("", 0, 0, italicSpec);
     expect(state.doc.toString()).toBe("**");
     expect(state.selection.main.head).toBe(1);
+  });
+});
+
+describe("underlineSpec", () => {
+  it("wraps a selection in <u>...</u>", () => {
+    const state = apply("hello world", 6, 11, underlineSpec);
+    expect(state.doc.toString()).toBe("hello <u>world</u>");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts an empty <u></u> with the cursor inside when nothing is selected", () => {
+    const state = apply("", 0, 0, underlineSpec);
+    expect(state.doc.toString()).toBe("<u></u>");
+    expect(state.selection.main.head).toBe(3);
   });
 });
 

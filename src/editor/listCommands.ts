@@ -25,6 +25,10 @@ export function italicSpec(state: EditorState): TransactionSpec {
   return wrapSelectionSpec(state, "*");
 }
 
+export function underlineSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "<u>", "</u>");
+}
+
 export function strikethroughSpec(state: EditorState): TransactionSpec {
   return wrapSelectionSpec(state, "~~");
 }

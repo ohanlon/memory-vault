@@ -24,6 +24,7 @@ const WIKILINK_RE = /\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
 const MARKDOWN_LINK_RE = /(?<!!)\[([^\]]*)\]\(([^)]+)\)/g;
 const BOLD_RE = /\*\*([^*]+)\*\*|__([^_]+)__/g;
 const ITALIC_RE = /(?<!\*)\*([^*]+)\*(?!\*)|(?<!_)_([^_]+)_(?!_)/g;
+const UNDERLINE_RE = /<u>([^<]+)<\/u>/g;
 const HIGHLIGHT_RE = /==([^=]+)==/g;
 // Checked in this order: a lone "~" pattern would otherwise partially match
 // inside a "~~strikethrough~~" span, so the double-tilde form has to be
@@ -235,6 +236,20 @@ function processLine(
       items.push(HIDE.range(lineFrom + e - 1, lineFrom + e));
     }
     items.push(Decoration.mark({ class: "cm-italic" }).range(lineFrom + s + 1, lineFrom + e - 1));
+  }
+
+  // Underline
+  for (const m of lineText.matchAll(UNDERLINE_RE)) {
+    const s = m.index!;
+    const e = s + m[0].length;
+    if (!isFree(s, e)) continue;
+    markConsumed(s, e);
+    const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
+    if (!cursorHere) {
+      items.push(HIDE.range(lineFrom + s, lineFrom + s + 3));
+      items.push(HIDE.range(lineFrom + e - 4, lineFrom + e));
+    }
+    items.push(Decoration.mark({ class: "cm-underline" }).range(lineFrom + s + 3, lineFrom + e - 4));
   }
 
   // Highlight

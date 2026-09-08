@@ -195,6 +195,15 @@ export function ItalicIcon() {
   );
 }
 
+export function UnderlineIcon() {
+  return (
+    <Svg>
+      <path d="M6 4V12C6 15.3 8.7 18 12 18C15.3 18 18 15.3 18 12V4" />
+      <path d="M5 20H19" />
+    </Svg>
+  );
+}
+
 export function StrikethroughIcon() {
   return (
     <Svg>
