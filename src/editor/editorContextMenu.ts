@@ -12,7 +12,10 @@ import {
 import {
   bodySpec,
   boldSpec,
+  calloutSpec,
+  citationSpec,
   codeBlockSpec,
+  footnoteSpec,
   heading1Spec,
   heading2Spec,
   heading3Spec,
@@ -20,6 +23,7 @@ import {
   heading5Spec,
   heading6Spec,
   highlightSpec,
+  horizontalRuleSpec,
   inlineCodeSpec,
   inlineMathSpec,
   italicSpec,
@@ -67,6 +71,10 @@ export interface EditorContextMenuRequest {
   makeHighlight: () => void;
   makeInlineCode: () => void;
   makeInlineMath: () => void;
+  insertFootnote: () => void;
+  insertCitation: () => void;
+  insertCallout: () => void;
+  insertHorizontalRule: () => void;
   /** Present only when the right-click landed on a markdown link. */
   linkTitleAction?: { hasTitle: boolean; run: () => void };
   /** Present whenever the right-click landed on a wikilink or markdown link. */
@@ -408,6 +416,10 @@ export function editorContextMenu(
         makeHighlight: () => apply(highlightSpec(view.state)),
         makeInlineCode: () => apply(inlineCodeSpec(view.state)),
         makeInlineMath: () => apply(inlineMathSpec(view.state)),
+        insertFootnote: () => apply(footnoteSpec(view.state)),
+        insertCitation: () => apply(citationSpec(view.state)),
+        insertCallout: () => apply(calloutSpec(view.state)),
+        insertHorizontalRule: () => apply(horizontalRuleSpec(view.state)),
         linkTitleAction,
         linkDisplayAction,
         linkHeaderAction,

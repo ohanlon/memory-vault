@@ -215,3 +215,54 @@ export function unorderedListSpec(state: EditorState): TransactionSpec {
 export function taskListSpec(state: EditorState): TransactionSpec {
   return prefixLines(state, () => "- [ ] ");
 }
+
+export function citationSpec(state: EditorState): TransactionSpec {
+  return wrapSelectionSpec(state, "[@", "]");
+}
+
+/** Inserts a block-level "leaf" — hr/callout — after the current line if it has content, or right at it if empty; `insert` must end with the cursor-placement point already accounted for. */
+function insertBlockSpec(state: EditorState, insert: string, cursorOffset: number): TransactionSpec {
+  const sel = state.selection.main;
+  const line = state.doc.lineAt(sel.from);
+  if (line.length === 0) {
+    return { changes: { from: line.from, insert }, selection: { anchor: line.from + cursorOffset } };
+  }
+  const withBreak = `\n\n${insert}`;
+  return { changes: { from: line.to, insert: withBreak }, selection: { anchor: line.to + 2 + cursorOffset } };
+}
+
+export function horizontalRuleSpec(state: EditorState): TransactionSpec {
+  const insert = "---\n";
+  return insertBlockSpec(state, insert, insert.length);
+}
+
+export function calloutSpec(state: EditorState): TransactionSpec {
+  const insert = "> [!note]\n> ";
+  return insertBlockSpec(state, insert, insert.length);
+}
+
+const FOOTNOTE_REF_RE = /\[\^(\d+)\]/g;
+
+/** Inserts a "[^n]" reference at the cursor and appends its "[^n]: " definition at the end of the document, with the cursor left there ready to type. */
+export function footnoteSpec(state: EditorState): TransactionSpec {
+  const sel = state.selection.main;
+  let maxId = 0;
+  for (const m of state.doc.toString().matchAll(FOOTNOTE_REF_RE)) {
+    maxId = Math.max(maxId, parseInt(m[1], 10));
+  }
+  const ref = `[^${maxId + 1}]`;
+  const def = `\n\n[^${maxId + 1}]: `;
+  const docEnd = state.doc.length;
+  if (sel.to === docEnd) {
+    const insert = ref + def;
+    return { changes: { from: sel.from, to: sel.to, insert }, selection: { anchor: sel.from + insert.length } };
+  }
+  const shift = ref.length - (sel.to - sel.from);
+  return {
+    changes: [
+      { from: sel.from, to: sel.to, insert: ref },
+      { from: docEnd, insert: def },
+    ],
+    selection: { anchor: docEnd + shift + def.length },
+  };
+}

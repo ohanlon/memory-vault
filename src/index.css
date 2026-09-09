@@ -1668,6 +1668,10 @@ body {
   min-width: 0;
 }
 
+.context-menu-item-label {
+  white-space: nowrap;
+}
+
 .context-menu-item-icon {
   display: flex;
   align-items: center;
@@ -1681,6 +1685,7 @@ body {
 .context-menu-item-shortcut {
   color: var(--text-muted);
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .context-menu-item-caret {

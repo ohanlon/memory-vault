@@ -3,11 +3,15 @@ import { EditorState } from "@codemirror/state";
 import {
   bodySpec,
   boldSpec,
+  calloutSpec,
+  citationSpec,
   codeBlockSpec,
+  footnoteSpec,
   heading1Spec,
   heading2Spec,
   heading3Spec,
   highlightSpec,
+  horizontalRuleSpec,
   italicSpec,
   linkCommandSpec,
   mathBlockSpec,
@@ -365,6 +369,69 @@ describe("orderedListSpec", () => {
     const doc = "1. one\n1. two\n1. three";
     const state = apply(doc, 0, doc.length, orderedListSpec);
     expect(state.doc.toString()).toBe("1. one\n2. two\n3. three");
+  });
+});
+
+describe("citationSpec", () => {
+  it("wraps a selection in [@...]", () => {
+    const state = apply("hello world", 6, 11, citationSpec);
+    expect(state.doc.toString()).toBe("hello [@world]");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts an empty [@] with the cursor inside when nothing is selected", () => {
+    const state = apply("", 0, 0, citationSpec);
+    expect(state.doc.toString()).toBe("[@]");
+    expect(state.selection.main.head).toBe(2);
+  });
+});
+
+describe("horizontalRuleSpec", () => {
+  it("inserts the rule directly when the current line is empty", () => {
+    const state = apply("", 0, 0, horizontalRuleSpec);
+    expect(state.doc.toString()).toBe("---\n");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts the rule after the current line, separated by a blank line", () => {
+    const state = apply("Title", 5, 5, horizontalRuleSpec);
+    expect(state.doc.toString()).toBe("Title\n\n---\n");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+});
+
+describe("calloutSpec", () => {
+  it("inserts a note callout directly when the current line is empty", () => {
+    const state = apply("", 0, 0, calloutSpec);
+    expect(state.doc.toString()).toBe("> [!note]\n> ");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts the callout after the current line, separated by a blank line", () => {
+    const state = apply("Title", 5, 5, calloutSpec);
+    expect(state.doc.toString()).toBe("Title\n\n> [!note]\n> ");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+});
+
+describe("footnoteSpec", () => {
+  it("inserts a [^1] reference and its definition when the cursor is at the end of an empty document", () => {
+    const state = apply("", 0, 0, footnoteSpec);
+    expect(state.doc.toString()).toBe("[^1]\n\n[^1]: ");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("inserts the reference in place and appends the definition at the document end when the cursor isn't there", () => {
+    const state = apply("AB", 1, 1, footnoteSpec);
+    expect(state.doc.toString()).toBe("A[^1]B\n\n[^1]: ");
+    expect(state.selection.main.head).toBe(state.doc.length);
+  });
+
+  it("numbers a new footnote after the highest existing reference", () => {
+    const doc = "Ref [^2] here";
+    const state = apply(doc, doc.length, doc.length, footnoteSpec);
+    expect(state.doc.toString()).toBe("Ref [^2] here[^3]\n\n[^3]: ");
+    expect(state.selection.main.head).toBe(state.doc.length);
   });
 });
 

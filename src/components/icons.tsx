@@ -309,3 +309,83 @@ export function CloseOthersIcon() {
     </Svg>
   );
 }
+
+export function TextCursorIcon() {
+  return (
+    <Svg>
+      <path d="M9 5H15" />
+      <path d="M9 19H15" />
+      <path d="M12 5V19" />
+    </Svg>
+  );
+}
+
+/** Used for both header ids ({#id}) and links to a header (#Header) — same underlying "#" concept. */
+export function HashIcon() {
+  return (
+    <Svg>
+      <path d="M9 4L7 20" />
+      <path d="M17 4L15 20" />
+      <path d="M5 9H19" />
+      <path d="M4 15H18" />
+    </Svg>
+  );
+}
+
+/** Used for both block ids (^block-id) and links to a block — same underlying "^" concept. */
+export function CaretIcon() {
+  return (
+    <Svg>
+      <path d="M5 15L12 6L19 15" />
+    </Svg>
+  );
+}
+
+export function InsertIcon() {
+  return (
+    <Svg>
+      <path d="M12 5V19" />
+      <path d="M5 12H19" />
+    </Svg>
+  );
+}
+
+export function FootnoteIcon() {
+  return (
+    <Svg>
+      <path d="M12 6V14" />
+      <path d="M8.5 8L15.5 12" />
+      <path d="M15.5 8L8.5 12" />
+      <path d="M6 19H18" />
+    </Svg>
+  );
+}
+
+export function CitationIcon() {
+  return (
+    <Svg>
+      <circle cx="12" cy="13" r="4" />
+      <path d="M16 13V15.3C16 16.8 17.6 17.2 18.6 16.1C19.8 14.8 19.6 10.3 16.2 8.2C12.7 6 7 7.3 7 13C7 17.8 11.5 20.2 16 18.3" />
+    </Svg>
+  );
+}
+
+export function CalloutIcon() {
+  return (
+    <Svg>
+      <path d="M6 4V20" />
+      <path d="M13 9V13" />
+      <path d="M13 16.5H13.01" />
+    </Svg>
+  );
+}
+
+export function HorizontalRuleIcon() {
+  return (
+    <Svg>
+      <path d="M4 12H8" />
+      <path d="M10 12H14" />
+      <path d="M16 12H20" />
+    </Svg>
+  );
+}

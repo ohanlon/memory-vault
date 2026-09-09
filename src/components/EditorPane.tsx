@@ -17,11 +17,18 @@ import { shortcutLabel } from "../platform";
 import {
   BlockIcon,
   BoldIcon,
+  CalloutIcon,
+  CaretIcon,
+  CitationIcon,
   CopyIcon,
   CutIcon,
+  FootnoteIcon,
   FormatIcon,
+  HashIcon,
   HighlightIcon,
+  HorizontalRuleIcon,
   InlineCodeIcon,
+  InsertIcon,
   ItalicIcon,
   LinkIcon,
   ListIcon,
@@ -35,6 +42,7 @@ import {
   StrikethroughIcon,
   SubscriptIcon,
   SuperscriptIcon,
+  TextCursorIcon,
   UnderlineIcon,
 } from "./icons";
 import { MarkdownPreview } from "./MarkdownPreview";
@@ -311,7 +319,13 @@ export function EditorPane({
             { separator: true as const },
             { label: "Link", icon: <LinkIcon />, onClick: contextMenuRequest.insertLink },
             ...(contextMenuRequest.linkDisplayAction
-              ? [{ label: "Change Display Text", onClick: contextMenuRequest.linkDisplayAction.run }]
+              ? [
+                  {
+                    label: "Change Display Text",
+                    icon: <TextCursorIcon />,
+                    onClick: contextMenuRequest.linkDisplayAction.run,
+                  },
+                ]
               : []),
             ...(contextMenuRequest.linkTitleAction
               ? [
@@ -326,6 +340,7 @@ export function EditorPane({
               ? [
                   {
                     label: "Link to Header",
+                    icon: <HashIcon />,
                     children: contextMenuRequest.linkHeaderAction.options.map((opt) => ({
                       label: opt.label,
                       onClick: () => contextMenuRequest.linkHeaderAction!.onSelect(opt.value),
@@ -337,6 +352,7 @@ export function EditorPane({
               ? [
                   {
                     label: "Link to Block",
+                    icon: <CaretIcon />,
                     children: contextMenuRequest.linkBlockAction.options.map((opt) => ({
                       label: opt.label,
                       onClick: () => contextMenuRequest.linkBlockAction!.onSelect(opt.value),
@@ -348,6 +364,7 @@ export function EditorPane({
               ? [
                   {
                     label: contextMenuRequest.headerIdAction.hasId ? "Edit Header ID" : "Add Header ID",
+                    icon: <HashIcon />,
                     onClick: contextMenuRequest.headerIdAction.run,
                   },
                 ]
@@ -356,6 +373,7 @@ export function EditorPane({
               ? [
                   {
                     label: contextMenuRequest.blockIdAction.hasId ? "Edit Block ID" : "Add Block ID",
+                    icon: <CaretIcon />,
                     onClick: contextMenuRequest.blockIdAction.run,
                   },
                 ]
@@ -438,6 +456,20 @@ export function EditorPane({
                   ],
                 },
                 { label: "Maths", icon: <MathIcon />, onClick: contextMenuRequest.makeMathBlock },
+              ],
+            },
+            {
+              label: "Insert",
+              icon: <InsertIcon />,
+              children: [
+                { label: "Footnote", icon: <FootnoteIcon />, onClick: contextMenuRequest.insertFootnote },
+                { label: "Citation", icon: <CitationIcon />, onClick: contextMenuRequest.insertCitation },
+                { label: "Callout", icon: <CalloutIcon />, onClick: contextMenuRequest.insertCallout },
+                {
+                  label: "Horizontal Rule",
+                  icon: <HorizontalRuleIcon />,
+                  onClick: contextMenuRequest.insertHorizontalRule,
+                },
               ],
             },
           ]}
