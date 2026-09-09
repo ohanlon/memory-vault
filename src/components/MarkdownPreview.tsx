@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, MouseEvent } from "react";
 import { Marked, type Tokens } from "marked";
 import DOMPurify from "dompurify";
+import { CODE_LANGUAGES } from "@shared/codeLanguages";
 import { EXTERNAL_SCHEME_RE, titleFromHref } from "../editor/livePreview";
-import { ensureLanguagesLoaded, extractNeededLanguageIds, highlightCode } from "../editor/codeHighlight";
+import { ensureLanguagesLoaded, extractNeededLanguageIds, highlightCode, resolveLanguageId } from "../editor/codeHighlight";
 import { MATH_BLOCK_START_RE, renderMathToString } from "../editor/mathRender";
 
 interface Props {
@@ -20,6 +21,8 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+const CODE_LANGUAGE_NAMES: Record<string, string> = Object.fromEntries(CODE_LANGUAGES.map((l) => [l.id, l.name]));
 
 const HEADING_LINE_RE = /^#{1,6}[ \t]+.*$/gm;
 const HEADING_ID_SUFFIX_RE = /[ \t]+\{#([a-zA-Z][\w-]*)\}[ \t]*$/;
@@ -52,11 +55,15 @@ function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<s
       code({ text, lang }: Tokens.Code) {
         const content = text.replace(/\n$/, "") + "\n";
         const highlighted = highlightCode(content, lang, enabledLanguageIds);
+        const langToken = lang?.trim().split(/\s+/)[0];
+        const languageId = highlighted?.language ?? resolveLanguageId(langToken);
+        const badgeText = languageId ? CODE_LANGUAGE_NAMES[languageId] : langToken;
+        const badge = badgeText ? `<span class="md-code-lang-badge">${escapeHtml(badgeText)}</span>` : "";
         if (highlighted) {
-          return `<pre><code class="hljs language-${escapeHtml(highlighted.language)}">${highlighted.html}</code></pre>\n`;
+          return `<pre class="md-code-pre">${badge}<code class="hljs language-${escapeHtml(highlighted.language)}">${highlighted.html}</code></pre>\n`;
         }
-        const langClass = lang?.trim() ? ` class="language-${escapeHtml(lang.trim().split(/\s+/)[0])}"` : "";
-        return `<pre><code${langClass}>${escapeHtml(content)}</code></pre>\n`;
+        const langClass = langToken ? ` class="language-${escapeHtml(langToken)}"` : "";
+        return `<pre class="md-code-pre">${badge}<code${langClass}>${escapeHtml(content)}</code></pre>\n`;
       },
     },
     extensions: [

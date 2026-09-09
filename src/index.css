@@ -865,10 +865,26 @@ body {
 }
 
 .markdown-preview pre {
+  position: relative;
   background: var(--bg-surface);
   border-radius: 4px;
   padding: 10px;
   overflow: auto;
+}
+
+.md-code-lang-badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg-selected);
+  color: var(--text-muted);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  pointer-events: none;
+  user-select: none;
 }
 
 .markdown-preview .md-math-block {
