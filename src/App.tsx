@@ -875,6 +875,7 @@ export default function App() {
               slotProps={{
                 note: activeNote,
                 graph,
+                notes,
                 activeTitle: activeNote?.title ?? null,
                 onSaved: () => refresh(),
                 onSelectTitle: selectByTitle,

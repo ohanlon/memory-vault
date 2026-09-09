@@ -17,11 +17,14 @@ export interface LivePreviewHandlers {
 }
 
 export const EXTERNAL_SCHEME_RE = /^(https?:|mailto:)/i;
-const HEADING_RE = /^(#{1,6})(\s+)/;
+export const HEADING_RE = /^(#{1,6})(\s+)/;
+export const HEADING_ID_RE = /[ \t]+\{#([a-zA-Z][\w-]*)\}[ \t]*$/;
+/** Obsidian-style block reference, e.g. "some paragraph text ^block-id". */
+export const BLOCK_ID_RE = /[ \t]+\^([a-zA-Z0-9][\w-]*)[ \t]*$/;
 const INLINE_CODE_RE = /`([^`]+)`/g;
-const WIKILINK_RE = /\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
+export const WIKILINK_RE = /\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
 // eslint-disable-next-line no-useless-escape
-const MARKDOWN_LINK_RE = /(?<!!)\[([^\]]*)\]\(([^)]+)\)/g;
+export const MARKDOWN_LINK_RE = /(?<!!)\[([^\]]*)\]\(([^)\s]+)(?:[ \t]+"([^"]*)")?\)/g;
 const BOLD_RE = /\*\*([^*]+)\*\*|__([^_]+)__/g;
 const ITALIC_RE = /(?<!\*)\*([^*]+)\*(?!\*)|(?<!_)_([^_]+)_(?!_)/g;
 const UNDERLINE_RE = /<u>([^<]+)<\/u>/g;
@@ -48,20 +51,26 @@ class PillWidget extends WidgetType {
   constructor(
     private readonly text: string,
     private readonly className: string,
-    private readonly onClick?: () => void
+    private readonly onClick?: () => void,
+    private readonly hoverTitle?: string
   ) {
     super();
   }
   eq(other: PillWidget) {
-    return other.text === this.text && other.className === this.className;
+    return other.text === this.text && other.className === this.className && other.hoverTitle === this.hoverTitle;
   }
   toDOM() {
     const span = document.createElement("span");
     span.className = this.className;
     span.textContent = this.text;
+    if (this.hoverTitle) span.title = this.hoverTitle;
     if (this.onClick) {
       const handler = this.onClick;
+      // Only the left button should follow the link — a right-click here
+      // still needs to reach the contextmenu handler so it can show a
+      // link-aware menu instead of navigating.
       span.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
         e.preventDefault();
         handler();
       });
@@ -144,8 +153,25 @@ function processLine(
     const cursorOnLine = cursorOverlaps(state, lineFrom, lineTo);
     if (!cursorOnLine) {
       items.push(HIDE.range(lineFrom, lineFrom + markerLen));
+      const idMatch = HEADING_ID_RE.exec(lineText);
+      if (idMatch) {
+        items.push(HIDE.range(lineFrom + idMatch.index!, lineTo));
+      }
     }
     items.push(Decoration.mark({ class: `cm-heading cm-heading-${level}` }).range(lineFrom, lineTo));
+  }
+
+  // Block ids — Obsidian-style "^block-id" at the very end of a line, used
+  // to link to a specific paragraph. Hidden like other markup unless the
+  // cursor is on this line; consumed first so it can't be mistaken for a
+  // superscript span (SUPERSCRIPT_RE) below.
+  const blockIdMatch = BLOCK_ID_RE.exec(lineText);
+  if (blockIdMatch) {
+    const s = blockIdMatch.index!;
+    markConsumed(s, lineText.length);
+    if (!cursorOverlaps(state, lineFrom, lineTo)) {
+      items.push(HIDE.range(lineFrom + s, lineTo));
+    }
   }
 
   // Inline code
@@ -192,6 +218,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const href = m[2].trim();
+    const linkTitle = m[3];
     const display = m[1].trim() || href;
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
     if (cursorHere) {
@@ -202,7 +229,7 @@ function processLine(
         ? () => handlers.onOpenExternal(href)
         : () => handlers.onSelectTitle(titleFromHref(href));
       items.push(
-        Decoration.replace({ widget: new PillWidget(display, "cm-md-link-pill", onClick) }).range(
+        Decoration.replace({ widget: new PillWidget(display, "cm-md-link-pill", onClick, linkTitle) }).range(
           lineFrom + s,
           lineFrom + e
         )

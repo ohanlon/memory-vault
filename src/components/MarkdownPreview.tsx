@@ -21,8 +21,33 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+const HEADING_LINE_RE = /^#{1,6}[ \t]+.*$/gm;
+const HEADING_ID_SUFFIX_RE = /[ \t]+\{#([a-zA-Z][\w-]*)\}[ \t]*$/;
+const HEADING_ID_STRIP_RE = /^(#{1,6}[ \t]+.*?)[ \t]+\{#[a-zA-Z][\w-]*\}[ \t]*$/gm;
+
 function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<string>) {
+  // Populated by hooks.preprocess (one entry per heading line, in document
+  // order, null when that heading has no {#id}) and consumed by
+  // hooks.postprocess to stamp matching ids onto the rendered <h1>-<h6> tags.
+  const headingIds: (string | null)[] = [];
   return new Marked({
+    hooks: {
+      preprocess(markdown: string) {
+        headingIds.length = 0;
+        for (const m of markdown.matchAll(HEADING_LINE_RE)) {
+          const idMatch = HEADING_ID_SUFFIX_RE.exec(m[0]);
+          headingIds.push(idMatch ? idMatch[1] : null);
+        }
+        return markdown.replace(HEADING_ID_STRIP_RE, "$1");
+      },
+      postprocess(html: string) {
+        let i = 0;
+        return html.replace(/<h([1-6])>/g, (match, level) => {
+          const id = headingIds[i++];
+          return id ? `<h${level} id="${escapeHtml(id)}">` : match;
+        });
+      },
+    },
     renderer: {
       code({ text, lang }: Tokens.Code) {
         const content = text.replace(/\n$/, "") + "\n";

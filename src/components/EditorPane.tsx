@@ -44,6 +44,8 @@ import { PropertiesPanel } from "./PropertiesPanel";
 interface Props {
   note: Note | null;
   graph: GraphModel;
+  /** All notes in the current session, used to resolve link targets for the "Link to header"/"Link to block" menu. */
+  notes: Note[];
   settings: AppSettings;
   schema: PropertyDef[];
   onSaved: (absPath: string, content: string) => void;
@@ -89,6 +91,7 @@ function PropertyEditIcon() {
 export function EditorPane({
   note,
   graph,
+  notes,
   settings,
   schema,
   onSaved,
@@ -111,6 +114,11 @@ export function EditorPane({
     () => new Set(graph.nodes.filter((n) => !n.external && !n.isTag).map((n) => n.id.toLowerCase())),
     [graph]
   );
+
+  const resolveNoteByTitle = useMemo(() => {
+    const byTitle = new Map(notes.map((n) => [n.title.toLowerCase(), n]));
+    return (title: string) => byTitle.get(title.toLowerCase());
+  }, [notes]);
 
   const hasProperties = note ? Object.keys(note.frontmatter).length > 0 : false;
 
@@ -207,14 +215,14 @@ export function EditorPane({
       markdown({ codeLanguages: enabledCmLanguages }),
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
-      editorContextMenu(setContextMenuRequest),
+      editorContextMenu(setContextMenuRequest, resolveNoteByTitle),
       loremIpsumExpand(),
       noCurlyBraceAutoClose(),
       listIndentKeymap(),
       formatShortcutsKeymap(),
       fontTheme,
     ],
-    [onSelectTitle, onOpenExternal, noteTitles, fontTheme, enabledCmLanguages]
+    [onSelectTitle, onOpenExternal, noteTitles, resolveNoteByTitle, fontTheme, enabledCmLanguages]
   );
 
   if (!note) {
@@ -302,6 +310,56 @@ export function EditorPane({
             },
             { separator: true as const },
             { label: "Link", icon: <LinkIcon />, onClick: contextMenuRequest.insertLink },
+            ...(contextMenuRequest.linkDisplayAction
+              ? [{ label: "Change Display Text", onClick: contextMenuRequest.linkDisplayAction.run }]
+              : []),
+            ...(contextMenuRequest.linkTitleAction
+              ? [
+                  {
+                    label: contextMenuRequest.linkTitleAction.hasTitle ? "Edit Link Title" : "Add Link Title",
+                    icon: <LinkIcon />,
+                    onClick: contextMenuRequest.linkTitleAction.run,
+                  },
+                ]
+              : []),
+            ...(contextMenuRequest.linkHeaderAction
+              ? [
+                  {
+                    label: "Link to Header",
+                    children: contextMenuRequest.linkHeaderAction.options.map((opt) => ({
+                      label: opt.label,
+                      onClick: () => contextMenuRequest.linkHeaderAction!.onSelect(opt.value),
+                    })),
+                  },
+                ]
+              : []),
+            ...(contextMenuRequest.linkBlockAction
+              ? [
+                  {
+                    label: "Link to Block",
+                    children: contextMenuRequest.linkBlockAction.options.map((opt) => ({
+                      label: opt.label,
+                      onClick: () => contextMenuRequest.linkBlockAction!.onSelect(opt.value),
+                    })),
+                  },
+                ]
+              : []),
+            ...(contextMenuRequest.headerIdAction
+              ? [
+                  {
+                    label: contextMenuRequest.headerIdAction.hasId ? "Edit Header ID" : "Add Header ID",
+                    onClick: contextMenuRequest.headerIdAction.run,
+                  },
+                ]
+              : []),
+            ...(contextMenuRequest.blockIdAction
+              ? [
+                  {
+                    label: contextMenuRequest.blockIdAction.hasId ? "Edit Block ID" : "Add Block ID",
+                    onClick: contextMenuRequest.blockIdAction.run,
+                  },
+                ]
+              : []),
             {
               label: "Paragraph",
               icon: <ParagraphIcon />,
