@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ContextMenu } from "./ContextMenu";
-import { CloseAllIcon, CloseLeftIcon, CloseOthersIcon, CloseRightIcon, DeleteIcon, RenameIcon, TabIcon } from "./icons";
+import { CloseAllIcon, CloseLeftIcon, CloseOthersIcon, CloseRightIcon, DeleteIcon, RenameIcon } from "./icons";
 
 export interface TabItem {
   id: string;
@@ -136,16 +136,10 @@ export function TabBar({
                   { separator: true as const },
                 ]
               : []),
-            {
-              label: "Tab",
-              icon: <TabIcon />,
-              children: [
-                { label: "Close Left", icon: <CloseLeftIcon />, onClick: () => onCloseLeft(contextMenu.id) },
-                { label: "Close Right", icon: <CloseRightIcon />, onClick: () => onCloseRight(contextMenu.id) },
-                { label: "Close All", icon: <CloseAllIcon />, onClick: onCloseAll },
-                { label: "Close Others", icon: <CloseOthersIcon />, onClick: () => onCloseOthers(contextMenu.id) },
-              ],
-            },
+            { label: "Close Left", icon: <CloseLeftIcon />, onClick: () => onCloseLeft(contextMenu.id) },
+            { label: "Close Right", icon: <CloseRightIcon />, onClick: () => onCloseRight(contextMenu.id) },
+            { label: "Close All", icon: <CloseAllIcon />, onClick: onCloseAll },
+            { label: "Close Others", icon: <CloseOthersIcon />, onClick: () => onCloseOthers(contextMenu.id) },
           ]}
           onClose={() => setContextMenu(null)}
         />
