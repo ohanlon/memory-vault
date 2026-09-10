@@ -317,7 +317,6 @@ export function EditorPane({
               onClick: contextMenuRequest.pasteClipboard,
             },
             { separator: true as const },
-            { label: "Link", icon: <LinkIcon />, onClick: contextMenuRequest.insertLink },
             ...(contextMenuRequest.linkDisplayAction
               ? [
                   {
@@ -462,6 +461,7 @@ export function EditorPane({
               label: "Insert",
               icon: <InsertIcon />,
               children: [
+                { label: "Link", icon: <LinkIcon />, onClick: contextMenuRequest.insertLink },
                 { label: "Footnote", icon: <FootnoteIcon />, onClick: contextMenuRequest.insertFootnote },
                 { label: "Citation", icon: <CitationIcon />, onClick: contextMenuRequest.insertCitation },
                 { label: "Callout", icon: <CalloutIcon />, onClick: contextMenuRequest.insertCallout },
