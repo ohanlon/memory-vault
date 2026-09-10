@@ -48,7 +48,8 @@ export interface EditorContextMenuRequest {
   cutSelection: () => void;
   copySelection: () => void;
   pasteClipboard: () => void;
-  insertLink: () => void;
+  /** Opens the link picker; the text currently selected (if any) becomes the new link's display text. */
+  insertLinkAction: { selectedText: string; insertNote: (title: string) => void; insertExternal: (url: string) => void };
   makeHeading1: () => void;
   makeHeading2: () => void;
   makeHeading3: () => void;
@@ -445,7 +446,21 @@ export function editorContextMenu(
             view.focus();
           });
         },
-        insertLink: () => apply(linkCommandSpec(view.state)),
+        insertLinkAction: {
+          selectedText: view.state.sliceDoc(from, to),
+          insertNote: (title: string) => {
+            const selectedText = view.state.sliceDoc(from, to);
+            const text = selectedText ? `[[${title}|${selectedText}]]` : `[[${title}]]`;
+            view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
+            view.focus();
+          },
+          insertExternal: (url: string) => {
+            const selectedText = view.state.sliceDoc(from, to);
+            const text = `[${selectedText || url}](${url})`;
+            view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
+            view.focus();
+          },
+        },
         makeHeading1: () => apply(heading1Spec(view.state)),
         makeHeading2: () => apply(heading2Spec(view.state)),
         makeHeading3: () => apply(heading3Spec(view.state)),

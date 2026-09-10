@@ -34,15 +34,15 @@ export function BlockPickerModal({ blocks, onSelect, onCancel }: Props) {
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal-box modal-box-wide" onClick={(e) => e.stopPropagation()}>
         <h3>Link to Block</h3>
-        <ul className="block-picker-list">
+        <ul className="picker-list">
           {blocks.map((block, i) => (
             <li key={i}>
-              <button className="block-picker-row" onClick={() => onSelect(block)}>
-                <span className="block-picker-type">
-                  <span className="block-picker-type-icon">{TYPE_ICON[block.type]}</span>
+              <button className="picker-row" onClick={() => onSelect(block)}>
+                <span className="picker-type">
+                  <span className="picker-type-icon">{TYPE_ICON[block.type]}</span>
                   {TYPE_LABEL[block.type]}
                 </span>
-                <span className="block-picker-summary">{block.summary || "(empty)"}</span>
+                <span className="picker-summary">{block.summary || "(empty)"}</span>
               </button>
             </li>
           ))}

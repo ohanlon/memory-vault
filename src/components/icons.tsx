@@ -389,3 +389,24 @@ export function HorizontalRuleIcon() {
     </Svg>
   );
 }
+
+export function PageIcon() {
+  return (
+    <Svg>
+      <path d="M7 3.5H14L18 7.5V20.5H7V3.5Z" />
+      <path d="M14 3.5V7.5H18" />
+      <path d="M9.5 12H15.5" />
+      <path d="M9.5 15.5H15.5" />
+    </Svg>
+  );
+}
+
+export function ExternalLinkIcon() {
+  return (
+    <Svg>
+      <path d="M9 6H5.5C4.7 6 4 6.7 4 7.5V18.5C4 19.3 4.7 20 5.5 20H16.5C17.3 20 18 19.3 18 18.5V15" />
+      <path d="M13 4H20V11" />
+      <path d="M20 4L11 13" />
+    </Svg>
+  );
+}

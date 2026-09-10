@@ -49,6 +49,7 @@ import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { BlockPickerModal } from "./BlockPickerModal";
+import { LinkPickerModal } from "./LinkPickerModal";
 
 interface Props {
   note: Note | null;
@@ -114,6 +115,7 @@ export function EditorPane({
   const [previewMode, setPreviewMode] = useState(false);
   const [contextMenuRequest, setContextMenuRequest] = useState<EditorContextMenuRequest | null>(null);
   const [blockPicker, setBlockPicker] = useState<EditorContextMenuRequest["linkBlockAction"] | null>(null);
+  const [linkPicker, setLinkPicker] = useState<EditorContextMenuRequest["insertLinkAction"] | null>(null);
   const [propertiesVisible, setPropertiesVisible] = useState(!settings.hidePropertiesByDefault);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
@@ -123,6 +125,11 @@ export function EditorPane({
   const noteTitles = useMemo(
     () => new Set(graph.nodes.filter((n) => !n.external && !n.isTag).map((n) => n.id.toLowerCase())),
     [graph]
+  );
+
+  const allNoteTitles = useMemo(
+    () => Array.from(new Set(notes.map((n) => n.title))).sort((a, b) => a.localeCompare(b)),
+    [notes]
   );
 
   const resolveNoteByTitle = useMemo(() => {
@@ -464,7 +471,11 @@ export function EditorPane({
               label: "Insert",
               icon: <InsertIcon />,
               children: [
-                { label: "Link", icon: <LinkIcon />, onClick: contextMenuRequest.insertLink },
+                {
+                  label: "Link",
+                  icon: <LinkIcon />,
+                  onClick: () => setLinkPicker(contextMenuRequest.insertLinkAction),
+                },
                 { label: "Footnote", icon: <FootnoteIcon />, onClick: contextMenuRequest.insertFootnote },
                 { label: "Citation", icon: <CitationIcon />, onClick: contextMenuRequest.insertCitation },
                 { label: "Callout", icon: <CalloutIcon />, onClick: contextMenuRequest.insertCallout },
@@ -487,6 +498,20 @@ export function EditorPane({
             blockPicker.onSelect(block);
           }}
           onCancel={() => setBlockPicker(null)}
+        />
+      )}
+      {linkPicker && (
+        <LinkPickerModal
+          noteTitles={allNoteTitles}
+          onSelectNote={(title) => {
+            setLinkPicker(null);
+            linkPicker.insertNote(title);
+          }}
+          onSelectExternal={(url) => {
+            setLinkPicker(null);
+            linkPicker.insertExternal(url);
+          }}
+          onCancel={() => setLinkPicker(null)}
         />
       )}
     </div>

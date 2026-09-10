@@ -1487,7 +1487,7 @@ body {
   overflow-y: auto;
 }
 
-.block-picker-list {
+.picker-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1495,7 +1495,7 @@ body {
   overflow-y: auto;
 }
 
-.block-picker-row {
+.picker-row {
   width: 100%;
   display: flex;
   align-items: baseline;
@@ -1511,11 +1511,11 @@ body {
   cursor: pointer;
 }
 
-.block-picker-row:hover {
+.picker-row:hover {
   background: var(--bg-control-hover);
 }
 
-.block-picker-type {
+.picker-type {
   flex-shrink: 0;
   width: 84px;
   display: flex;
@@ -1526,7 +1526,7 @@ body {
   text-transform: uppercase;
 }
 
-.block-picker-type-icon {
+.picker-type-icon {
   display: flex;
   align-items: center;
   width: 14px;
@@ -1534,7 +1534,7 @@ body {
   color: var(--text-muted);
 }
 
-.block-picker-summary {
+.picker-summary {
   min-width: 0;
   font-size: 13px;
   color: var(--text-primary);
