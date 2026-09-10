@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
@@ -48,6 +48,7 @@ import {
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
 import { PropertiesPanel } from "./PropertiesPanel";
+import { BlockPickerModal } from "./BlockPickerModal";
 
 interface Props {
   note: Note | null;
@@ -112,6 +113,7 @@ export function EditorPane({
   const [content, setContent] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
   const [contextMenuRequest, setContextMenuRequest] = useState<EditorContextMenuRequest | null>(null);
+  const [blockPicker, setBlockPicker] = useState<EditorContextMenuRequest["linkBlockAction"] | null>(null);
   const [propertiesVisible, setPropertiesVisible] = useState(!settings.hidePropertiesByDefault);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
@@ -218,19 +220,23 @@ export function EditorPane({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [settings.enabledCodeLanguages]);
 
+  const writeNote = useCallback(async (path: string, content: string) => {
+    await window.memoryStack.saveNote(path, content);
+  }, []);
+
   const extensions = useMemo(
     () => [
       markdown({ codeLanguages: enabledCmLanguages }),
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
-      editorContextMenu(setContextMenuRequest, resolveNoteByTitle),
+      editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", writeNote),
       loremIpsumExpand(),
       noCurlyBraceAutoClose(),
       listIndentKeymap(),
       formatShortcutsKeymap(),
       fontTheme,
     ],
-    [onSelectTitle, onOpenExternal, noteTitles, resolveNoteByTitle, fontTheme, enabledCmLanguages]
+    [onSelectTitle, onOpenExternal, noteTitles, resolveNoteByTitle, note?.path, writeNote, fontTheme, enabledCmLanguages]
   );
 
   if (!note) {
@@ -352,10 +358,7 @@ export function EditorPane({
                   {
                     label: "Link to Block",
                     icon: <CaretIcon />,
-                    children: contextMenuRequest.linkBlockAction.options.map((opt) => ({
-                      label: opt.label,
-                      onClick: () => contextMenuRequest.linkBlockAction!.onSelect(opt.value),
-                    })),
+                    onClick: () => setBlockPicker(contextMenuRequest.linkBlockAction!),
                   },
                 ]
               : []),
@@ -474,6 +477,16 @@ export function EditorPane({
             },
           ]}
           onClose={() => setContextMenuRequest(null)}
+        />
+      )}
+      {blockPicker && (
+        <BlockPickerModal
+          blocks={blockPicker.blocks}
+          onSelect={(block) => {
+            setBlockPicker(null);
+            blockPicker.onSelect(block);
+          }}
+          onCancel={() => setBlockPicker(null)}
         />
       )}
     </div>

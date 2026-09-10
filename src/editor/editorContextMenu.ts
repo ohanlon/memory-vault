@@ -9,6 +9,7 @@ import {
   WIKILINK_RE,
   titleFromHref,
 } from "./livePreview";
+import { appendBlockId, nextBlockId, scanNoteBlocks, type NoteBlock } from "./noteBlocks";
 import {
   bodySpec,
   boldSpec,
@@ -81,8 +82,8 @@ export interface EditorContextMenuRequest {
   linkDisplayAction?: { run: () => void };
   /** Present only for a link that resolves to a note which has headings. */
   linkHeaderAction?: { options: LinkTargetOption[]; onSelect: (value: string) => void };
-  /** Present only for a link that resolves to a note which has block ids. */
-  linkBlockAction?: { options: LinkTargetOption[]; onSelect: (value: string) => void };
+  /** Present only for a link that resolves to a note which has at least one block (heading, paragraph, or code block). */
+  linkBlockAction?: { blocks: NoteBlock[]; onSelect: (block: NoteBlock) => Promise<void> };
   /** Present only when the right-click landed on a heading line. */
   headerIdAction?: { hasId: boolean; run: () => void };
   /** Present whenever the right-click landed on a non-blank line. */
@@ -96,23 +97,17 @@ export interface LinkTargetOption {
 
 const HEADING_LINE_RE = /^#{1,6}[ \t]+(.*)$/;
 
-/** Scans a note's raw content for headings and block ids it could be linked to. */
-function headingsAndBlocksOf(note: Note): { headers: LinkTargetOption[]; blocks: LinkTargetOption[] } {
+/** Scans a note's raw content for headings it could be linked to. */
+function headingsOf(note: Note): LinkTargetOption[] {
   const headers: LinkTargetOption[] = [];
-  const blocks: LinkTargetOption[] = [];
   for (const rawLine of note.content.split("\n")) {
     const headingMatch = HEADING_LINE_RE.exec(rawLine);
     if (headingMatch) {
       const text = headingMatch[1].replace(HEADING_ID_RE, "").trim();
       if (text) headers.push({ label: text, value: text });
     }
-    const blockMatch = BLOCK_ID_RE.exec(rawLine);
-    if (blockMatch) {
-      const label = rawLine.slice(0, blockMatch.index).replace(/^#{1,6}[ \t]+/, "").trim() || blockMatch[1];
-      blocks.push({ label, value: blockMatch[1] });
-    }
   }
-  return { headers, blocks };
+  return headers;
 }
 
 interface MarkdownLinkMatch {
@@ -202,28 +197,83 @@ function linkTitleActionAt(view: EditorView, line: { text: string; from: number 
   };
 }
 
-/** Rewrites a wikilink's "#header" segment (which also covers "#^block-id"), preserving target and alias. */
-function setWikilinkAnchor(view: EditorView, line: { from: number }, link: WikilinkMatch, anchor: string) {
+interface DocChange {
+  from: number;
+  to: number;
+  insert: string;
+}
+
+/** Builds the change that rewrites a wikilink's "#header" segment (which also covers "#^block-id"), preserving target and alias. */
+function wikilinkAnchorChange(line: { from: number }, link: WikilinkMatch, anchor: string): DocChange {
   const aliasPart = link.alias !== undefined ? `|${link.alias}` : "";
   const newText = `[[${link.target}#${anchor}${aliasPart}]]`;
-  view.dispatch({ changes: { from: line.from + link.start, to: line.from + link.end, insert: newText } });
+  return { from: line.from + link.start, to: line.from + link.end, insert: newText };
+}
+
+/** Builds the change that rewrites a markdown link's href anchor ("#header" or "#^block-id"), preserving the base href. */
+function markdownLinkAnchorChange(line: { from: number }, link: MarkdownLinkMatch, anchor: string): DocChange {
+  const base = link.href.split("#")[0];
+  return { from: line.from + link.hrefStart, to: line.from + link.hrefEnd, insert: `${base}#${anchor}` };
+}
+
+function setWikilinkAnchor(view: EditorView, line: { from: number }, link: WikilinkMatch, anchor: string) {
+  view.dispatch({ changes: wikilinkAnchorChange(line, link, anchor) });
   view.focus();
 }
 
-/** Rewrites a markdown link's href anchor ("#header" or "#^block-id"), preserving the base href. */
 function setMarkdownLinkAnchor(view: EditorView, line: { from: number }, link: MarkdownLinkMatch, anchor: string) {
-  const base = link.href.split("#")[0];
-  view.dispatch({
-    changes: { from: line.from + link.hrefStart, to: line.from + link.hrefEnd, insert: `${base}#${anchor}` },
-  });
+  view.dispatch({ changes: markdownLinkAnchorChange(line, link, anchor) });
   view.focus();
+}
+
+/**
+ * Builds the "Link to Block" action for a link that resolves to `target`: every
+ * heading/paragraph/code block in `target` is offered, in document order, even
+ * if it has no "^block-id" yet — picking one assigns it an id first (if needed)
+ * before rewriting the current link's anchor. When the target is the note
+ * currently open in `view`, both edits are folded into a single transaction on
+ * the live document instead of a separate disk write, so the in-memory editor
+ * state and the file never disagree about what was just typed.
+ */
+function linkBlockActionFor(
+  view: EditorView,
+  currentNotePath: string,
+  target: Note,
+  writeNote: (path: string, content: string) => Promise<void>,
+  buildAnchorChange: (anchor: string) => DocChange
+): EditorContextMenuRequest["linkBlockAction"] {
+  const isSelf = target.path === currentNotePath;
+  const targetContent = isSelf ? view.state.doc.toString() : target.content;
+  const blocks = scanNoteBlocks(targetContent);
+  if (blocks.length === 0) return undefined;
+  return {
+    blocks,
+    onSelect: async (block) => {
+      let id = block.blockId;
+      const changes: DocChange[] = [];
+      if (!id) {
+        id = nextBlockId(blocks);
+        if (isSelf) {
+          changes.push({ from: block.insertAt, to: block.insertAt, insert: ` ^${id}` });
+        } else {
+          await writeNote(target.path, appendBlockId(targetContent, block.insertAt, id));
+        }
+      }
+      changes.push(buildAnchorChange(`^${id}`));
+      changes.sort((a, b) => a.from - b.from);
+      view.dispatch({ changes });
+      view.focus();
+    },
+  };
 }
 
 function linkActionsAt(
   view: EditorView,
   line: { text: string; from: number },
   offset: number,
-  resolveNoteByTitle: (title: string) => Note | undefined
+  resolveNoteByTitle: (title: string) => Note | undefined,
+  currentNotePath: string,
+  writeNote: (path: string, content: string) => Promise<void>
 ): {
   linkDisplayAction?: EditorContextMenuRequest["linkDisplayAction"];
   linkHeaderAction?: EditorContextMenuRequest["linkHeaderAction"];
@@ -248,17 +298,16 @@ function linkActionsAt(
     };
     const target = resolveNoteByTitle(wikilink.target);
     if (!target) return { linkDisplayAction: displayAction };
-    const { headers, blocks } = headingsAndBlocksOf(target);
+    const headers = headingsOf(target);
     return {
       linkDisplayAction: displayAction,
       linkHeaderAction:
         headers.length > 0
           ? { options: headers, onSelect: (value) => setWikilinkAnchor(view, line, wikilink, value) }
           : undefined,
-      linkBlockAction:
-        blocks.length > 0
-          ? { options: blocks, onSelect: (value) => setWikilinkAnchor(view, line, wikilink, `^${value}`) }
-          : undefined,
+      linkBlockAction: linkBlockActionFor(view, currentNotePath, target, writeNote, (anchor) =>
+        wikilinkAnchorChange(line, wikilink, anchor)
+      ),
     };
   }
 
@@ -274,17 +323,16 @@ function linkActionsAt(
     if (EXTERNAL_SCHEME_RE.test(base)) return { linkDisplayAction: displayAction };
     const target = resolveNoteByTitle(titleFromHref(base));
     if (!target) return { linkDisplayAction: displayAction };
-    const { headers, blocks } = headingsAndBlocksOf(target);
+    const headers = headingsOf(target);
     return {
       linkDisplayAction: displayAction,
       linkHeaderAction:
         headers.length > 0
           ? { options: headers, onSelect: (value) => setMarkdownLinkAnchor(view, line, mdLink, value) }
           : undefined,
-      linkBlockAction:
-        blocks.length > 0
-          ? { options: blocks, onSelect: (value) => setMarkdownLinkAnchor(view, line, mdLink, `^${value}`) }
-          : undefined,
+      linkBlockAction: linkBlockActionFor(view, currentNotePath, target, writeNote, (anchor) =>
+        markdownLinkAnchorChange(line, mdLink, anchor)
+      ),
     };
   }
 
@@ -340,7 +388,9 @@ function blockIdActionAt(view: EditorView, line: { text: string; from: number; t
  */
 export function editorContextMenu(
   onRequest: (req: EditorContextMenuRequest) => void,
-  resolveNoteByTitle: (title: string) => Note | undefined
+  resolveNoteByTitle: (title: string) => Note | undefined,
+  currentNotePath: string,
+  writeNote: (path: string, content: string) => Promise<void>
 ) {
   return EditorView.domEventHandlers({
     contextmenu(event, view) {
@@ -367,7 +417,9 @@ export function editorContextMenu(
           view,
           line,
           offset,
-          resolveNoteByTitle
+          resolveNoteByTitle,
+          currentNotePath,
+          writeNote
         ));
       }
       onRequest({
