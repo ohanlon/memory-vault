@@ -1,21 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { ExternalLinkIcon, PageIcon } from "./icons";
 
+type LinkTarget = { kind: "note"; title: string } | { kind: "external"; url: string };
+
 interface Props {
   noteTitles: string[];
-  onSelectNote: (title: string) => void;
-  onSelectExternal: (url: string) => void;
+  /** Pre-fills the display-text field — typically the text selected in the editor when the picker was opened. */
+  initialDisplayText: string;
+  onSelectNote: (title: string, displayText: string) => void;
+  onSelectExternal: (url: string, displayText: string) => void;
   onCancel: () => void;
 }
 
-export function LinkPickerModal({ noteTitles, onSelectNote, onSelectExternal, onCancel }: Props) {
-  const [query, setQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
+function sameTarget(a: LinkTarget | null, b: LinkTarget): boolean {
+  if (!a) return false;
+  return a.kind === "note" && b.kind === "note" ? a.title === b.title : a.kind === "external" && b.kind === "external" && a.url === b.url;
+}
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+export function LinkPickerModal({ noteTitles, initialDisplayText, onSelectNote, onSelectExternal, onCancel }: Props) {
+  const [query, setQuery] = useState("");
+  const [displayText, setDisplayText] = useState(initialDisplayText);
+  const [target, setTarget] = useState<LinkTarget | null>(null);
 
   const trimmedQuery = query.trim();
 
@@ -27,8 +33,9 @@ export function LinkPickerModal({ noteTitles, onSelectNote, onSelectExternal, on
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (filtered.length > 0) onSelectNote(filtered[0]);
-    else if (trimmedQuery) onSelectExternal(trimmedQuery);
+    if (!target) return;
+    if (target.kind === "note") onSelectNote(target.title, displayText.trim());
+    else onSelectExternal(target.url, displayText.trim());
   }
 
   return (
@@ -36,7 +43,15 @@ export function LinkPickerModal({ noteTitles, onSelectNote, onSelectExternal, on
       <form className="modal-box modal-box-wide" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <h3>Insert Link</h3>
         <input
-          ref={inputRef}
+          placeholder="Link text (optional — defaults to the page title or URL)"
+          value={displayText}
+          onChange={(e) => setDisplayText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") onCancel();
+          }}
+        />
+        <input
+          autoFocus
           placeholder="Search pages, or type a URL…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -47,7 +62,11 @@ export function LinkPickerModal({ noteTitles, onSelectNote, onSelectExternal, on
         <ul className="picker-list">
           {trimmedQuery && (
             <li>
-              <button type="button" className="picker-row" onClick={() => onSelectExternal(trimmedQuery)}>
+              <button
+                type="button"
+                className={`picker-row${sameTarget(target, { kind: "external", url: trimmedQuery }) ? " picker-row-selected" : ""}`}
+                onClick={() => setTarget({ kind: "external", url: trimmedQuery })}
+              >
                 <span className="picker-type">
                   <span className="picker-type-icon">
                     <ExternalLinkIcon />
@@ -60,7 +79,11 @@ export function LinkPickerModal({ noteTitles, onSelectNote, onSelectExternal, on
           )}
           {filtered.map((title) => (
             <li key={title}>
-              <button type="button" className="picker-row" onClick={() => onSelectNote(title)}>
+              <button
+                type="button"
+                className={`picker-row${sameTarget(target, { kind: "note", title }) ? " picker-row-selected" : ""}`}
+                onClick={() => setTarget({ kind: "note", title })}
+              >
                 <span className="picker-type">
                   <span className="picker-type-icon">
                     <PageIcon />
@@ -76,6 +99,9 @@ export function LinkPickerModal({ noteTitles, onSelectNote, onSelectExternal, on
         <div className="modal-actions">
           <button type="button" onClick={onCancel}>
             Cancel
+          </button>
+          <button type="submit" disabled={!target}>
+            Insert
           </button>
         </div>
       </form>

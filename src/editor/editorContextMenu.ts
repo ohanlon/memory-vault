@@ -48,8 +48,12 @@ export interface EditorContextMenuRequest {
   cutSelection: () => void;
   copySelection: () => void;
   pasteClipboard: () => void;
-  /** Opens the link picker; the text currently selected (if any) becomes the new link's display text. */
-  insertLinkAction: { selectedText: string; insertNote: (title: string) => void; insertExternal: (url: string) => void };
+  /** Opens the link picker; the text currently selected (if any) seeds the editable display-text field. */
+  insertLinkAction: {
+    selectedText: string;
+    insertNote: (title: string, displayText: string) => void;
+    insertExternal: (url: string, displayText: string) => void;
+  };
   makeHeading1: () => void;
   makeHeading2: () => void;
   makeHeading3: () => void;
@@ -448,15 +452,13 @@ export function editorContextMenu(
         },
         insertLinkAction: {
           selectedText: view.state.sliceDoc(from, to),
-          insertNote: (title: string) => {
-            const selectedText = view.state.sliceDoc(from, to);
-            const text = selectedText ? `[[${title}|${selectedText}]]` : `[[${title}]]`;
+          insertNote: (title: string, displayText: string) => {
+            const text = displayText && displayText !== title ? `[[${title}|${displayText}]]` : `[[${title}]]`;
             view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
             view.focus();
           },
-          insertExternal: (url: string) => {
-            const selectedText = view.state.sliceDoc(from, to);
-            const text = `[${selectedText || url}](${url})`;
+          insertExternal: (url: string, displayText: string) => {
+            const text = `[${displayText || url}](${url})`;
             view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
             view.focus();
           },

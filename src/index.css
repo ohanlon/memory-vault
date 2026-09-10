@@ -1515,6 +1515,11 @@ body {
   background: var(--bg-control-hover);
 }
 
+.picker-row-selected,
+.picker-row-selected:hover {
+  background: var(--bg-selected);
+}
+
 .picker-type {
   flex-shrink: 0;
   width: 84px;

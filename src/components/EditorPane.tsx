@@ -503,13 +503,14 @@ export function EditorPane({
       {linkPicker && (
         <LinkPickerModal
           noteTitles={allNoteTitles}
-          onSelectNote={(title) => {
+          initialDisplayText={linkPicker.selectedText}
+          onSelectNote={(title, displayText) => {
             setLinkPicker(null);
-            linkPicker.insertNote(title);
+            linkPicker.insertNote(title, displayText);
           }}
-          onSelectExternal={(url) => {
+          onSelectExternal={(url, displayText) => {
             setLinkPicker(null);
-            linkPicker.insertExternal(url);
+            linkPicker.insertExternal(url, displayText);
           }}
           onCancel={() => setLinkPicker(null)}
         />
