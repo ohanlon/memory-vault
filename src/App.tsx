@@ -221,6 +221,15 @@ export default function App() {
     [notes, activePath]
   );
 
+  // Not just activeNote.title — in an open Cairn, a note whose title
+  // collides with another stack's gets a "sourceStack/Title" graph node id
+  // instead (see buildGraph.ts), and edges/backlinks/tags are keyed on that
+  // id, not the bare title.
+  const activeGraphNodeId = useMemo(
+    () => (activeNote ? graph.nodes.find((n) => n.path === activeNote.path)?.id ?? activeNote.title : null),
+    [activeNote, graph]
+  );
+
   // Which stack root the active note's properties live under — a single
   // stack's own root in a plain session, or the matching member stack when
   // notes are merged from an open Cairn (see noteRootFor).
@@ -876,7 +885,7 @@ export default function App() {
                 note: activeNote,
                 graph,
                 notes,
-                activeTitle: activeNote?.title ?? null,
+                activeTitle: activeGraphNodeId,
                 onSaved: () => refresh(),
                 onSelectTitle: selectByTitle,
                 onOpenExternal: openExternal,
@@ -910,7 +919,7 @@ export default function App() {
               note: activeNote,
               graph,
               schema: activeNoteSchema,
-              activeTitle: activeNote?.title ?? null,
+              activeTitle: activeGraphNodeId,
               onSelectTitle: selectByTitle,
               onOpenExternal: openExternal,
               onSaveProperties: saveNoteProperties,

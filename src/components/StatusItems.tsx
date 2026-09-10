@@ -12,7 +12,11 @@ function plural(count: number, singular: string, pluralForm: string): string {
 }
 
 export function BacklinksStat({ note, graph }: Props) {
-  const count = backlinkTitles(graph, note.title).length;
+  // Not just note.title — in an open Cairn, a note whose title collides with
+  // another stack's gets a "sourceStack/Title" graph node id instead (see
+  // buildGraph.ts), and edges target that id, not the bare title.
+  const nodeId = graph.nodes.find((n) => n.path === note.path)?.id ?? note.title;
+  const count = backlinkTitles(graph, nodeId).length;
   return (
     <span>
       {count} {plural(count, "backlink", "backlinks")}
