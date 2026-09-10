@@ -1,24 +1,31 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import type { PickableNote } from "../editor/editorContextMenu";
 import { ExternalLinkIcon, PageIcon } from "./icons";
 
-type LinkTarget = { kind: "note"; title: string } | { kind: "external"; url: string };
+type LinkTarget = { kind: "note"; note: PickableNote } | { kind: "external"; url: string };
 
 interface Props {
-  noteTitles: string[];
+  notes: PickableNote[];
   /** Pre-fills the display-text field — typically the text selected in the editor when the picker was opened. */
   initialDisplayText: string;
-  onSelectNote: (title: string, displayText: string) => void;
+  onSelectNote: (note: PickableNote, displayText: string) => void;
   onSelectExternal: (url: string, displayText: string) => void;
   onCancel: () => void;
 }
 
 function sameTarget(a: LinkTarget | null, b: LinkTarget): boolean {
   if (!a) return false;
-  return a.kind === "note" && b.kind === "note" ? a.title === b.title : a.kind === "external" && b.kind === "external" && a.url === b.url;
+  if (a.kind === "note" && b.kind === "note") return a.note.title === b.note.title && a.note.sourceStack === b.note.sourceStack;
+  return a.kind === "external" && b.kind === "external" && a.url === b.url;
 }
 
-export function LinkPickerModal({ noteTitles, initialDisplayText, onSelectNote, onSelectExternal, onCancel }: Props) {
+/** "Title (Stack)" when the note came from a specific stack (an open Cairn merges more than one), otherwise just "Title". */
+function noteLabel(note: PickableNote): string {
+  return note.sourceStack ? `${note.title} (${note.sourceStack})` : note.title;
+}
+
+export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSelectExternal, onCancel }: Props) {
   const [query, setQuery] = useState("");
   const [displayText, setDisplayText] = useState(initialDisplayText);
   const [target, setTarget] = useState<LinkTarget | null>(null);
@@ -26,15 +33,15 @@ export function LinkPickerModal({ noteTitles, initialDisplayText, onSelectNote, 
   const trimmedQuery = query.trim();
 
   const filtered = useMemo(() => {
-    if (!trimmedQuery) return noteTitles;
+    if (!trimmedQuery) return notes;
     const q = trimmedQuery.toLowerCase();
-    return noteTitles.filter((t) => t.toLowerCase().includes(q));
-  }, [noteTitles, trimmedQuery]);
+    return notes.filter((n) => n.title.toLowerCase().includes(q));
+  }, [notes, trimmedQuery]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!target) return;
-    if (target.kind === "note") onSelectNote(target.title, displayText.trim());
+    if (target.kind === "note") onSelectNote(target.note, displayText.trim());
     else onSelectExternal(target.url, displayText.trim());
   }
 
@@ -77,12 +84,12 @@ export function LinkPickerModal({ noteTitles, initialDisplayText, onSelectNote, 
               </button>
             </li>
           )}
-          {filtered.map((title) => (
-            <li key={title}>
+          {filtered.map((note) => (
+            <li key={`${note.sourceStack ?? ""}/${note.title}`}>
               <button
                 type="button"
-                className={`picker-row${sameTarget(target, { kind: "note", title }) ? " picker-row-selected" : ""}`}
-                onClick={() => setTarget({ kind: "note", title })}
+                className={`picker-row${sameTarget(target, { kind: "note", note }) ? " picker-row-selected" : ""}`}
+                onClick={() => setTarget({ kind: "note", note })}
               >
                 <span className="picker-type">
                   <span className="picker-type-icon">
@@ -90,7 +97,7 @@ export function LinkPickerModal({ noteTitles, initialDisplayText, onSelectNote, 
                   </span>
                   Page
                 </span>
-                <span className="picker-summary">{title}</span>
+                <span className="picker-summary">{noteLabel(note)}</span>
               </button>
             </li>
           ))}

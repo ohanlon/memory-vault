@@ -10,7 +10,7 @@ import { CODE_LANGUAGES, CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
 import { livePreview } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { listIndentKeymap } from "../editor/listIndent";
-import { editorContextMenu, type EditorContextMenuRequest } from "../editor/editorContextMenu";
+import { editorContextMenu, type EditorContextMenuRequest, type PickableNote } from "../editor/editorContextMenu";
 import { formatShortcutsKeymap } from "../editor/formatShortcuts";
 import { registerPendingSave, unregisterPendingSave } from "../editor/pendingSave";
 import { shortcutLabel } from "../platform";
@@ -127,10 +127,16 @@ export function EditorPane({
     [graph]
   );
 
-  const allNoteTitles = useMemo(
-    () => Array.from(new Set(notes.map((n) => n.title))).sort((a, b) => a.localeCompare(b)),
-    [notes]
-  );
+  const pickableNotes = useMemo(() => {
+    const byKey = new Map<string, PickableNote>();
+    for (const n of notes) {
+      const key = `${n.sourceStack ?? ""} ${n.title.toLowerCase()}`;
+      if (!byKey.has(key)) byKey.set(key, { title: n.title, sourceStack: n.sourceStack });
+    }
+    return Array.from(byKey.values()).sort(
+      (a, b) => a.title.localeCompare(b.title) || (a.sourceStack ?? "").localeCompare(b.sourceStack ?? "")
+    );
+  }, [notes]);
 
   const resolveNoteByTitle = useMemo(() => {
     const byTitle = new Map(notes.map((n) => [n.title.toLowerCase(), n]));
@@ -236,14 +242,24 @@ export function EditorPane({
       markdown({ codeLanguages: enabledCmLanguages }),
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
-      editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", writeNote),
+      editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", note?.sourceStack, writeNote),
       loremIpsumExpand(),
       noCurlyBraceAutoClose(),
       listIndentKeymap(),
       formatShortcutsKeymap(),
       fontTheme,
     ],
-    [onSelectTitle, onOpenExternal, noteTitles, resolveNoteByTitle, note?.path, writeNote, fontTheme, enabledCmLanguages]
+    [
+      onSelectTitle,
+      onOpenExternal,
+      noteTitles,
+      resolveNoteByTitle,
+      note?.path,
+      note?.sourceStack,
+      writeNote,
+      fontTheme,
+      enabledCmLanguages,
+    ]
   );
 
   if (!note) {
@@ -502,11 +518,11 @@ export function EditorPane({
       )}
       {linkPicker && (
         <LinkPickerModal
-          noteTitles={allNoteTitles}
+          notes={pickableNotes}
           initialDisplayText={linkPicker.selectedText}
-          onSelectNote={(title, displayText) => {
+          onSelectNote={(note, displayText) => {
             setLinkPicker(null);
-            linkPicker.insertNote(title, displayText);
+            linkPicker.insertNote(note, displayText);
           }}
           onSelectExternal={(url, displayText) => {
             setLinkPicker(null);

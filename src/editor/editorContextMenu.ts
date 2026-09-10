@@ -51,7 +51,7 @@ export interface EditorContextMenuRequest {
   /** Opens the link picker; the text currently selected (if any) seeds the editable display-text field. */
   insertLinkAction: {
     selectedText: string;
-    insertNote: (title: string, displayText: string) => void;
+    insertNote: (note: PickableNote, displayText: string) => void;
     insertExternal: (url: string, displayText: string) => void;
   };
   makeHeading1: () => void;
@@ -98,6 +98,12 @@ export interface EditorContextMenuRequest {
 export interface LinkTargetOption {
   label: string;
   value: string;
+}
+
+/** A note offered by the link picker — enough to build an unambiguous wikilink target even when merged from more than one stack (an open Cairn). */
+export interface PickableNote {
+  title: string;
+  sourceStack?: string;
 }
 
 const HEADING_LINE_RE = /^#{1,6}[ \t]+(.*)$/;
@@ -395,6 +401,7 @@ export function editorContextMenu(
   onRequest: (req: EditorContextMenuRequest) => void,
   resolveNoteByTitle: (title: string) => Note | undefined,
   currentNotePath: string,
+  currentSourceStack: string | undefined,
   writeNote: (path: string, content: string) => Promise<void>
 ) {
   return EditorView.domEventHandlers({
@@ -452,8 +459,14 @@ export function editorContextMenu(
         },
         insertLinkAction: {
           selectedText: view.state.sliceDoc(from, to),
-          insertNote: (title: string, displayText: string) => {
-            const text = displayText && displayText !== title ? `[[${title}|${displayText}]]` : `[[${title}]]`;
+          insertNote: (note: PickableNote, displayText: string) => {
+            // Qualify with the source stack whenever the picked note comes from a
+            // different stack than the one being edited — otherwise an open Cairn's
+            // title collisions could make an unqualified [[Title]] resolve to the
+            // wrong note (see resolveWikilinkTarget in shared/buildGraph.ts).
+            const target =
+              note.sourceStack && note.sourceStack !== currentSourceStack ? `${note.sourceStack}/${note.title}` : note.title;
+            const text = displayText && displayText !== note.title ? `[[${target}|${displayText}]]` : `[[${target}]]`;
             view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
             view.focus();
           },
