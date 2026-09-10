@@ -381,26 +381,44 @@ export default function App() {
   }, []);
 
   const selectByTitle = useCallback(
-    (title: string) => {
-      const found = notes.find((n) => n.title.toLowerCase() === title.toLowerCase());
+    (rawTitle: string) => {
+      // A qualified "StackName/Title" (see buildGraph.ts) names a specific
+      // member stack explicitly; strip it off so lookups/creation use the
+      // bare title either way.
+      const slash = rawTitle.lastIndexOf("/");
+      const qualifiedStack = slash > -1 ? rawTitle.slice(0, slash) : undefined;
+      const title = slash > -1 ? rawTitle.slice(slash + 1) : rawTitle;
+
+      const found = qualifiedStack
+        ? (notes.find(
+            (n) => n.sourceStack?.toLowerCase() === qualifiedStack.toLowerCase() && n.title.toLowerCase() === title.toLowerCase()
+          ) ?? notes.find((n) => n.title.toLowerCase() === title.toLowerCase()))
+        : notes.find((n) => n.title.toLowerCase() === title.toLowerCase());
       if (found) {
         openTab(found.path);
         return;
       }
       if (!activeSession) return;
-      // Clicking an unresolved wikilink to create it: for a Cairn this
-      // defaults to the first member stack rather than prompting — this
-      // one flow keeps its immediacy instead of interrupting the click
-      // with a stack picker (New Note/New Daily Note still always ask).
+      // Clicking an unresolved wikilink to create it: prefer the stack the
+      // link explicitly named, else the stack the linking note itself lives
+      // in (so it lands next to the note that referenced it), else — with
+      // no note open at all — the first member stack. This flow keeps its
+      // immediacy instead of interrupting the click with a stack picker
+      // (New Note/New Daily Note still always ask).
       const targetRoot =
-        activeSession.kind === "cairn" ? activeSession.memberStacks[0]?.root : activeSession.entry.root;
+        activeSession.kind === "cairn"
+          ? (qualifiedStack &&
+              activeSession.memberStacks.find((s) => s.name.toLowerCase() === qualifiedStack.toLowerCase())?.root) ??
+            activeNoteRoot ??
+            activeSession.memberStacks[0]?.root
+          : activeSession.entry.root;
       if (!targetRoot) return;
       window.memoryStack.createNote(targetRoot, title).then(async (newPath) => {
         await refresh();
         openTab(newPath);
       });
     },
-    [notes, openTab, activeSession, refresh]
+    [notes, openTab, activeSession, activeNoteRoot, refresh]
   );
 
   const openExternal = useCallback((url: string) => {
