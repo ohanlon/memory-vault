@@ -10,6 +10,7 @@ import {
   titleFromHref,
 } from "./livePreview";
 import { appendBlockId, nextBlockId, scanNoteBlocks, type NoteBlock } from "./noteBlocks";
+import { htmlToMarkdown } from "./htmlToMarkdown";
 import {
   bodySpec,
   boldSpec,
@@ -47,9 +48,13 @@ export interface EditorContextMenuRequest {
   hasSelection: boolean;
   /** False when the clipboard has no text — Paste would have nothing to insert. */
   canPaste: boolean;
+  /** True only when the clipboard carries HTML — there's nothing to convert otherwise. */
+  canPasteFormatted: boolean;
   cutSelection: () => void;
   copySelection: () => void;
   pasteClipboard: () => void;
+  /** Converts the clipboard's HTML to Markdown and inserts that instead of the plain-text paste. */
+  pasteWithFormatting: () => void;
   /** Opens the link picker; the text currently selected (if any) seeds the editable display-text field. */
   insertLinkAction: {
     selectedText: string;
@@ -395,6 +400,35 @@ function blockIdActionAt(view: EditorView, line: { text: string; from: number; t
 }
 
 /**
+ * Checks whether the clipboard currently has anything to paste, and whether
+ * it carries HTML (for "Paste with Formatting"). Falls back to a plain
+ * readText() check — enabling Paste but not formatted-paste — if the richer
+ * `clipboard.read()` API is unavailable or its permission is denied, and
+ * defaults to "paste is possible" (rather than disabling it) if even that fails.
+ */
+async function readClipboardState(): Promise<{ canPaste: boolean; html?: string }> {
+  try {
+    const items = await navigator.clipboard.read();
+    let hasText = false;
+    let html: string | undefined;
+    for (const item of items) {
+      if (item.types.includes("text/plain")) hasText = true;
+      if (item.types.includes("text/html")) {
+        html = await (await item.getType("text/html")).text();
+      }
+    }
+    return { canPaste: hasText || !!html, html };
+  } catch {
+    try {
+      const text = await navigator.clipboard.readText();
+      return { canPaste: text.length > 0 };
+    } catch {
+      return { canPaste: true };
+    }
+  }
+}
+
+/**
  * Replaces the browser's native context menu with ours whenever right-clicking
  * inside the editor (in edit mode — this extension is only attached to the
  * CodeMirror instance, not the read-only preview), regardless of selection state.
@@ -436,12 +470,13 @@ export function editorContextMenu(
           writeNote
         ));
       }
-      const send = (canPaste: boolean) =>
+      const send = (canPaste: boolean, clipboardHtml?: string) =>
         onRequest({
           x: event.clientX,
           y: event.clientY,
           hasSelection: from !== to,
           canPaste,
+          canPasteFormatted: !!clipboardHtml,
           cutSelection: () => {
             const text = view.state.sliceDoc(from, to);
             if (!text) return;
@@ -460,6 +495,12 @@ export function editorContextMenu(
               view.dispatch(view.state.replaceSelection(text));
               view.focus();
             });
+          },
+          pasteWithFormatting: () => {
+            if (!clipboardHtml) return;
+            const markdown = htmlToMarkdown(clipboardHtml);
+            view.dispatch(view.state.replaceSelection(markdown));
+            view.focus();
           },
           insertLinkAction: {
             selectedText: view.state.sliceDoc(from, to),
@@ -515,10 +556,7 @@ export function editorContextMenu(
           headerIdAction,
           blockIdAction,
         });
-      navigator.clipboard
-        .readText()
-        .then((text) => send(text.length > 0))
-        .catch(() => send(true));
+      readClipboardState().then(({ canPaste, html }) => send(canPaste, html));
       return true;
     },
   });

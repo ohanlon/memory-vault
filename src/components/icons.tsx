@@ -69,6 +69,17 @@ export function PasteIcon() {
   );
 }
 
+export function PasteSpecialIcon() {
+  return (
+    <Svg>
+      <rect x="6" y="4" width="12" height="17" rx="1.5" />
+      <path d="M9.5 4V3C9.5 2.4 10 2 10.5 2H13.5C14 2 14.5 2.4 14.5 3V4" />
+      <path d="M9 12H12.5" strokeWidth="3" />
+      <path d="M9 16L14 16" />
+    </Svg>
+  );
+}
+
 export function OpenInExplorerIcon() {
   return (
     <Svg>

@@ -38,6 +38,7 @@ import {
   MathIcon,
   ParagraphIcon,
   PasteIcon,
+  PasteSpecialIcon,
   QuoteIcon,
   StrikethroughIcon,
   SubscriptIcon,
@@ -343,6 +344,12 @@ export function EditorPane({
               icon: <PasteIcon />,
               disabled: !contextMenuRequest.canPaste,
               onClick: contextMenuRequest.pasteClipboard,
+            },
+            {
+              label: "Paste with Formatting",
+              icon: <PasteSpecialIcon />,
+              disabled: !contextMenuRequest.canPasteFormatted,
+              onClick: contextMenuRequest.pasteWithFormatting,
             },
             { separator: true as const },
             ...(contextMenuRequest.linkDisplayAction
