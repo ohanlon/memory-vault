@@ -7,7 +7,6 @@ describe("normalizeAppSettings", () => {
     expect(
       normalizeAppSettings({
         tabFolderDisplay: "always",
-        dailyNotesFolder: "Journal",
         theme: "light",
         addHeadingToNewNotes: false,
         hidePropertiesByDefault: false,
@@ -19,7 +18,6 @@ describe("normalizeAppSettings", () => {
       })
     ).toEqual({
       tabFolderDisplay: "always",
-      dailyNotesFolder: "Journal",
       theme: "light",
       addHeadingToNewNotes: false,
       hidePropertiesByDefault: false,
@@ -32,7 +30,6 @@ describe("normalizeAppSettings", () => {
     expect(
       normalizeAppSettings({
         tabFolderDisplay: "never",
-        dailyNotesFolder: "Journal",
         theme: "system",
         addHeadingToNewNotes: true,
         hidePropertiesByDefault: true,
@@ -44,7 +41,6 @@ describe("normalizeAppSettings", () => {
       })
     ).toEqual({
       tabFolderDisplay: "never",
-      dailyNotesFolder: "Journal",
       theme: "system",
       addHeadingToNewNotes: true,
       hidePropertiesByDefault: true,
@@ -65,12 +61,6 @@ describe("normalizeAppSettings", () => {
   it("falls back to the default for an invalid tabFolderDisplay value", () => {
     expect(normalizeAppSettings({ tabFolderDisplay: "sometimes" })).toEqual(DEFAULT_APP_SETTINGS);
     expect(normalizeAppSettings({})).toEqual(DEFAULT_APP_SETTINGS);
-  });
-
-  it("falls back to the default for a missing, non-string, or blank dailyNotesFolder", () => {
-    expect(normalizeAppSettings({ dailyNotesFolder: "" })).toEqual(DEFAULT_APP_SETTINGS);
-    expect(normalizeAppSettings({ dailyNotesFolder: "   " })).toEqual(DEFAULT_APP_SETTINGS);
-    expect(normalizeAppSettings({ dailyNotesFolder: 42 })).toEqual(DEFAULT_APP_SETTINGS);
   });
 
   it("falls back to the default for an invalid theme value", () => {

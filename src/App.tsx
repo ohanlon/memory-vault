@@ -503,7 +503,7 @@ export default function App() {
   }
 
   async function handleOpenDailyNote(stackRoot: string) {
-    const result = await window.memoryStack.openOrCreateDailyNote(settings.dailyNotesFolder, stackRoot);
+    const result = await window.memoryStack.openOrCreateDailyNote(stackRoot);
     if (result.created) await refresh();
     openTab(result.path);
   }

@@ -487,8 +487,8 @@ ipcMain.handle("window:setTitleBarOverlay", async (_event, theme: "dark" | "ligh
   return true;
 });
 
-ipcMain.handle("stack:openOrCreateDailyNote", async (_event, folder: string, stackRoot: string) => {
-  return openOrCreateDailyNote(stackRoot, folder, app.getLocale(), new Date());
+ipcMain.handle("stack:openOrCreateDailyNote", async (_event, stackRoot: string) => {
+  return openOrCreateDailyNote(stackRoot, app.getLocale(), new Date());
 });
 
 ipcMain.handle(

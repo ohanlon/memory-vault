@@ -4,7 +4,6 @@ import { CODE_LANGUAGES, DEFAULT_ENABLED_CODE_LANGUAGES } from "./codeLanguages"
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   tabFolderDisplay: "hover",
-  dailyNotesFolder: "Daily Notes",
   theme: "dark",
   addHeadingToNewNotes: true,
   hidePropertiesByDefault: true,
@@ -42,10 +41,6 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     tabFolderDisplay: VALID_TAB_FOLDER_DISPLAY.includes(raw.tabFolderDisplay as TabFolderDisplay)
       ? (raw.tabFolderDisplay as TabFolderDisplay)
       : DEFAULT_APP_SETTINGS.tabFolderDisplay,
-    dailyNotesFolder:
-      typeof raw.dailyNotesFolder === "string" && raw.dailyNotesFolder.trim() !== ""
-        ? raw.dailyNotesFolder
-        : DEFAULT_APP_SETTINGS.dailyNotesFolder,
     theme: VALID_THEME.includes(raw.theme as ThemeSetting) ? (raw.theme as ThemeSetting) : DEFAULT_APP_SETTINGS.theme,
     addHeadingToNewNotes:
       typeof raw.addHeadingToNewNotes === "boolean"

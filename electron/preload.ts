@@ -97,8 +97,8 @@ const api = {
   saveAppSettings: (settings: AppSettings): Promise<boolean> => ipcRenderer.invoke("settings:save", settings),
   setTitleBarOverlay: (theme: "dark" | "light"): Promise<boolean> =>
     ipcRenderer.invoke("window:setTitleBarOverlay", theme),
-  openOrCreateDailyNote: (folder: string, stackRoot: string): Promise<DailyNoteResult> =>
-    ipcRenderer.invoke("stack:openOrCreateDailyNote", folder, stackRoot),
+  openOrCreateDailyNote: (stackRoot: string): Promise<DailyNoteResult> =>
+    ipcRenderer.invoke("stack:openOrCreateDailyNote", stackRoot),
   listPlugins: (): Promise<PluginManifest[]> => ipcRenderer.invoke("plugin:list"),
   getPluginPermissions: (): Promise<PluginPermissionsFile> =>
     ipcRenderer.invoke("plugin:getPermissions"),

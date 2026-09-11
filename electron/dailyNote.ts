@@ -1,16 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { formatDailyNoteFilename, formatDailyNoteHeading } from "../shared/dailyNote";
+import { DAILY_NOTES_FOLDER, formatDailyNoteFilename, formatDailyNoteHeading } from "../shared/dailyNote";
 import type { DailyNoteResult } from "../shared/types";
 
 /** Opens today's daily note, creating it (and its folder) on first use. */
-export function openOrCreateDailyNote(
-  root: string,
-  folder: string,
-  locale: string,
-  now: Date
-): DailyNoteResult {
-  const folderAbs = path.join(root, folder);
+export function openOrCreateDailyNote(root: string, locale: string, now: Date): DailyNoteResult {
+  const folderAbs = path.join(root, DAILY_NOTES_FOLDER);
   const fileName = `${formatDailyNoteFilename(now, locale)}.md`;
   const fullPath = path.join(folderAbs, fileName);
 

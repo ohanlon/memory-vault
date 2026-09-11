@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent, ReactNode } from "react";
 import type { Note, StackEntry } from "@shared/types";
 import { findDuplicateTitles } from "@shared/duplicateTitles";
+import { isDailyNote } from "@shared/dailyNote";
 import { pluginRegistry } from "../plugins/registry";
 import { pushToPlugin } from "../plugins/pluginFrameRegistry";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
@@ -26,6 +27,9 @@ interface Props {
 type ContextMenuState = { note: Note; x: number; y: number };
 
 const NOTE_DRAG_TYPE = "application/x-cairn-note";
+// Key into the same collapsedStacks Set as real stack names — namespaced so
+// it can't collide with a user-chosen stack name.
+const DAILY_GROUP_KEY = "__daily__";
 
 // Plugin-contributed context-menu entries for a note, hidden entirely when
 // the owning plugin has no live iframe mounted (see pluginFrameRegistry.ts)
@@ -124,6 +128,15 @@ export function FileTree({
   // path as a disambiguating hint, since the list is otherwise flat.
   const duplicateTitles = useMemo(() => findDuplicateTitles(notes), [notes]);
 
+  // Every member stack's daily notes are rolled up into one combined
+  // section instead of being scattered across per-stack groups — pulled out
+  // here so groupedByStack below doesn't also list them.
+  const dailyNotes = useMemo(
+    () => sorted.filter((n) => n.sourceStack !== undefined && isDailyNote(n.relativePath)),
+    [sorted]
+  );
+  const dailyNotePaths = useMemo(() => new Set(dailyNotes.map((n) => n.path)), [dailyNotes]);
+
   // An open Cairn stamps every note with its origin stack — group by that
   // to simulate the folder-like separation a single stack no longer has,
   // one collapsible section per member stack. A plain single-stack session
@@ -132,13 +145,13 @@ export function FileTree({
   const groupedByStack = useMemo(() => {
     const groups = new Map<string, Note[]>();
     for (const note of sorted) {
-      if (!note.sourceStack) continue;
+      if (!note.sourceStack || dailyNotePaths.has(note.path)) continue;
       const group = groups.get(note.sourceStack);
       if (group) group.push(note);
       else groups.set(note.sourceStack, [note]);
     }
     return groups;
-  }, [sorted]);
+  }, [sorted, dailyNotePaths]);
 
   // Every note carries a sourceStack in an open Cairn, none does in a plain
   // single-stack session — this is enough to tell the two apart.
@@ -185,7 +198,11 @@ export function FileTree({
     ];
   }
 
-  function renderNoteRow(note: Note, indented: boolean): ReactNode {
+  // `stackLabel` shows which stack a note came from on its own row — used
+  // for the daily-notes rollup, where notes from every member stack are
+  // mixed together and the usual per-stack group heading isn't enough to
+  // tell them apart.
+  function renderNoteRow(note: Note, indented: boolean, stackLabel?: string): ReactNode {
     if (note.path === renamingPath) {
       return (
         <li key={note.path} className={note.path === activePath ? "active" : ""}>
@@ -225,12 +242,49 @@ export function FileTree({
           }}
         >
           <span className="file-tree-item-title">{note.title}</span>
-          {duplicateTitles.has(note.title) && (
-            <span className="file-tree-item-hint">
-              {note.sourceStack ? `${note.sourceStack}/${note.relativePath}` : note.relativePath}
-            </span>
+          {stackLabel ? (
+            <span className="file-tree-item-hint">{stackLabel}</span>
+          ) : (
+            duplicateTitles.has(note.title) && (
+              <span className="file-tree-item-hint">
+                {note.sourceStack ? `${note.sourceStack}/${note.relativePath}` : note.relativePath}
+              </span>
+            )
           )}
         </button>
+      </li>
+    );
+  }
+
+  // The daily-notes rollup: one combined section merging every member
+  // stack's "daily" folder together, styled distinctly (a calendar icon
+  // instead of a plain folder) to set it apart as a special, cross-stack
+  // group rather than another member stack.
+  function renderDailyGroup(): ReactNode {
+    const collapsed = collapsedStacks.has(DAILY_GROUP_KEY);
+    return (
+      <li key={DAILY_GROUP_KEY} className="file-tree-group file-tree-group-daily">
+        <div
+          className="file-tree-group-header"
+          tabIndex={0}
+          onClick={() => toggleStack(DAILY_GROUP_KEY)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleStack(DAILY_GROUP_KEY);
+            }
+          }}
+        >
+          <span className="file-tree-group-icon" aria-hidden="true">
+            {collapsed ? "🗓️" : "📆"}
+          </span>
+          <span className="file-tree-group-name">Daily</span>
+        </div>
+        {!collapsed && (
+          <ul className="file-tree-group-children">
+            {dailyNotes.map((note) => renderNoteRow(note, true, note.sourceStack))}
+          </ul>
+        )}
       </li>
     );
   }
@@ -239,9 +293,9 @@ export function FileTree({
     <>
       <ul className="file-tree" tabIndex={0}>
         {isGrouped
-          ? [...groupedByStack.entries()]
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([stackName, stackNotes]) => {
+          ? [
+              ...(dailyNotes.length > 0 ? [renderDailyGroup()] : []),
+              ...[...groupedByStack.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([stackName, stackNotes]) => {
                 const collapsed = collapsedStacks.has(stackName);
                 return (
                   <li
@@ -286,7 +340,8 @@ export function FileTree({
                     )}
                   </li>
                 );
-              })
+              }),
+            ]
           : sorted.map((note) => renderNoteRow(note, false))}
         {sorted.length === 0 && <li className="file-tree-empty">No notes yet</li>}
       </ul>

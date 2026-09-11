@@ -469,6 +469,17 @@ body {
   color: var(--text-strong);
 }
 
+/* Distinguishes the cross-stack daily-notes rollup from a plain per-stack
+   group — same layout, different accent so it reads as a special section. */
+.file-tree-group-daily > .file-tree-group-header {
+  color: var(--accent-violet);
+}
+
+.file-tree-group-daily > .file-tree-group-header:hover {
+  color: var(--accent-violet);
+  opacity: 0.85;
+}
+
 .file-tree-group-icon {
   flex-shrink: 0;
   font-size: 13px;
