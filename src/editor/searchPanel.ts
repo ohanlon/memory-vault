@@ -78,6 +78,12 @@ export function requestReplaceOnOpen(view: EditorView) {
   else pendingReplaceOpen.add(view);
 }
 
+/** Hides the replace row on an already-open panel (a no-op if it's not open, since a freshly created panel already starts find-only). */
+export function requestFindOnly(view: EditorView) {
+  pendingReplaceOpen.delete(view);
+  panelInstances.get(view)?.hideReplace();
+}
+
 /**
  * A from-scratch find/replace panel — built on top of @codemirror/search's
  * public query/cursor primitives (SearchQuery, SearchCursor, RegExpCursor)
@@ -198,6 +204,12 @@ class CairnSearchPanel implements Panel {
   showReplace() {
     this.replaceRow.style.display = "";
     this.replaceField.focus();
+  }
+
+  /** Hides the replace row (a no-op if already hidden) and focuses the search field. */
+  hideReplace() {
+    this.replaceRow.style.display = "none";
+    this.searchField.focus();
   }
 
   destroy() {

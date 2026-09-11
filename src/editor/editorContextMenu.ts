@@ -10,7 +10,7 @@ import {
 } from "./livePreview";
 import { appendBlockId, nextBlockId, scanNoteBlocks, type NoteBlock } from "./noteBlocks";
 import { htmlToMarkdown } from "./htmlToMarkdown";
-import { openSearchPanel, openSearchPanelForReplace } from "./editorSearch";
+import { openSearchPanelForFind, openSearchPanelForReplace } from "./editorSearch";
 import {
   bodySpec,
   boldSpec,
@@ -454,7 +454,7 @@ export function editorContextMenu(
           hasSelection: from !== to,
           canPaste,
           canPasteFormatted: !!clipboardHtml,
-          openFind: () => openSearchPanel(view),
+          openFind: () => openSearchPanelForFind(view),
           openFindReplace: () => openSearchPanelForReplace(view),
           cutSelection: () => {
             const text = view.state.sliceDoc(from, to);
