@@ -1,7 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import type { Note } from "@shared/types";
 import {
-  BLOCK_ID_RE,
   EXTERNAL_SCHEME_RE,
   HEADING_ID_RE,
   HEADING_RE,
@@ -98,8 +97,6 @@ export interface EditorContextMenuRequest {
   linkBlockAction?: { blocks: NoteBlock[]; onSelect: (block: NoteBlock) => Promise<void> };
   /** Present only when the right-click landed on a heading line. */
   headerIdAction?: { hasId: boolean; run: () => void };
-  /** Present whenever the right-click landed on a non-blank line. */
-  blockIdAction?: { hasId: boolean; run: () => void };
 }
 
 export interface LinkTargetOption {
@@ -378,27 +375,6 @@ function headerIdActionAt(view: EditorView, line: { text: string; from: number; 
   };
 }
 
-function blockIdActionAt(view: EditorView, line: { text: string; from: number; to: number }) {
-  if (!line.text.trim()) return undefined;
-  const idMatch = BLOCK_ID_RE.exec(line.text);
-  return {
-    hasId: !!idMatch,
-    run: () => {
-      if (idMatch) {
-        const idStart = line.from + idMatch.index! + idMatch[0].indexOf("^") + 1;
-        view.dispatch({ selection: { anchor: idStart, head: idStart + idMatch[1].length } });
-      } else {
-        const insertAt = line.to;
-        view.dispatch({
-          changes: { from: insertAt, to: insertAt, insert: " ^" },
-          selection: { anchor: insertAt + 2, head: insertAt + 2 },
-        });
-      }
-      view.focus();
-    },
-  };
-}
-
 /**
  * Checks whether the clipboard currently has anything to paste, and whether
  * it carries HTML (for "Paste with Formatting"). Falls back to a plain
@@ -451,7 +427,6 @@ export function editorContextMenu(
       const clickPos = view.posAtCoords({ x: event.clientX, y: event.clientY });
       let linkTitleAction: EditorContextMenuRequest["linkTitleAction"];
       let headerIdAction: EditorContextMenuRequest["headerIdAction"];
-      let blockIdAction: EditorContextMenuRequest["blockIdAction"];
       let linkDisplayAction: EditorContextMenuRequest["linkDisplayAction"];
       let linkHeaderAction: EditorContextMenuRequest["linkHeaderAction"];
       let linkBlockAction: EditorContextMenuRequest["linkBlockAction"];
@@ -460,7 +435,6 @@ export function editorContextMenu(
         const offset = clickPos - line.from;
         linkTitleAction = linkTitleActionAt(view, line, offset);
         headerIdAction = headerIdActionAt(view, line);
-        blockIdAction = blockIdActionAt(view, line);
         ({ linkDisplayAction, linkHeaderAction, linkBlockAction } = linkActionsAt(
           view,
           line,
@@ -554,7 +528,6 @@ export function editorContextMenu(
           linkHeaderAction,
           linkBlockAction,
           headerIdAction,
-          blockIdAction,
         });
       readClipboardState().then(({ canPaste, html }) => send(canPaste, html));
       return true;

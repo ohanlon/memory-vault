@@ -400,15 +400,6 @@ export function EditorPane({
                   },
                 ]
               : []),
-            ...(contextMenuRequest.blockIdAction
-              ? [
-                  {
-                    label: contextMenuRequest.blockIdAction.hasId ? "Edit Block ID" : "Add Block ID",
-                    icon: <CaretIcon />,
-                    onClick: contextMenuRequest.blockIdAction.run,
-                  },
-                ]
-              : []),
             {
               label: "Paragraph",
               icon: <ParagraphIcon />,
