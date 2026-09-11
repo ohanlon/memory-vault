@@ -40,6 +40,7 @@ export function TabBar({
   isFileTab,
 }: Props) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const tabRefs = useRef(new Map<string, HTMLDivElement>());
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -54,6 +55,14 @@ export function TabBar({
   useEffect(() => {
     updateScrollState();
   }, [tabs, updateScrollState]);
+
+  // Whenever the active tab changes (or the tab list changes shape around
+  // it — closing tabs to its left, say), make sure it's fully in view
+  // rather than left clipped at either edge of the scroller.
+  useEffect(() => {
+    if (activeId == null) return;
+    tabRefs.current.get(activeId)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeId, tabs]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -86,6 +95,10 @@ export function TabBar({
         {tabs.map((t) => (
           <div
             key={t.id}
+            ref={(el) => {
+              if (el) tabRefs.current.set(t.id, el);
+              else tabRefs.current.delete(t.id);
+            }}
             tabIndex={0}
             className={`tab${t.id === activeId ? " active" : ""}`}
             onClick={() => onSelect(t.id)}
