@@ -777,6 +777,144 @@ body {
   overflow: auto;
 }
 
+/* The custom find/replace panel (src/editor/searchPanel.ts, built on
+   @codemirror/search's public query/cursor API) — a small floating widget in
+   the editor's top-right corner, VS Code-style: match-case/whole-word/regexp/
+   in-selection as compact toggle pills next to the search field, Next/
+   Previous as up/down icon buttons, and Replace on its own row. Colors come
+   from the app's own theme variables so this follows dark/light
+   automatically. Not included: a live match-count ("3 of 12") and a
+   Replace-row "preserve case" toggle. */
+.cm-panels.cm-panels-top {
+  position: absolute !important;
+  top: 8px;
+  right: 8px;
+  left: auto;
+  width: auto;
+  /* Higher-specificity &dark/&light .cm-panels rules from the library's own
+     base theme would otherwise still paint their background/color behind
+     this now content-sized, floating wrapper. */
+  background: none !important;
+  color: inherit !important;
+  border: none !important;
+  z-index: 20;
+}
+
+.cairn-search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 320px;
+  padding: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px var(--shadow-menu);
+  position: relative;
+}
+
+.cairn-search-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cairn-search-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 8px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.cairn-search-field:focus {
+  outline: none;
+  border-color: var(--accent-violet);
+}
+
+.cairn-search-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.cairn-search-toggle:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
+.cairn-search-toggle[aria-pressed="true"] {
+  background: var(--bg-selected);
+  border-color: var(--accent-violet);
+  color: var(--accent-violet);
+}
+
+.cairn-search-icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cairn-search-icon-btn:hover {
+  background: var(--bg-control-hover);
+}
+
+.cairn-search-text-btn {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cairn-search-text-btn:hover {
+  background: var(--bg-control-hover);
+}
+
+.cairn-search-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cairn-search-close:hover {
+  color: var(--text-primary);
+}
+
 /* Live preview: rendered markdown styling (CodeMirror decorations from src/editor/livePreview.ts) */
 .cm-heading {
   font-weight: 700;
