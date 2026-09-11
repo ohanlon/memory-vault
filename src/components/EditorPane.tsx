@@ -11,6 +11,7 @@ import { livePreview } from "../editor/livePreview";
 import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest, type PickableNote } from "../editor/editorContextMenu";
+import { editorSearchKeymap, searchExtension } from "../editor/editorSearch";
 import { formatShortcutsKeymap } from "../editor/formatShortcuts";
 import { registerPendingSave, unregisterPendingSave } from "../editor/pendingSave";
 import { shortcutLabel } from "../platform";
@@ -22,6 +23,7 @@ import {
   CitationIcon,
   CopyIcon,
   CutIcon,
+  FindReplaceIcon,
   FootnoteIcon,
   FormatIcon,
   HashIcon,
@@ -40,6 +42,7 @@ import {
   PasteIcon,
   PasteSpecialIcon,
   QuoteIcon,
+  SearchIcon,
   StrikethroughIcon,
   SubscriptIcon,
   SuperscriptIcon,
@@ -244,6 +247,8 @@ export function EditorPane({
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
       editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", note?.sourceStack, writeNote),
+      searchExtension(),
+      editorSearchKeymap(),
       loremIpsumExpand(),
       noCurlyBraceAutoClose(),
       listIndentKeymap(),
@@ -324,6 +329,19 @@ export function EditorPane({
           x={contextMenuRequest.x}
           y={contextMenuRequest.y}
           items={[
+            {
+              label: "Find",
+              shortcut: shortcutLabel("F"),
+              icon: <SearchIcon />,
+              onClick: contextMenuRequest.openFind,
+            },
+            {
+              label: "Find and Replace",
+              shortcut: shortcutLabel("R"),
+              icon: <FindReplaceIcon />,
+              onClick: contextMenuRequest.openFindReplace,
+            },
+            { separator: true as const },
             {
               label: "Cut",
               shortcut: shortcutLabel("X"),

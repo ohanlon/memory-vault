@@ -10,6 +10,7 @@ import {
 } from "./livePreview";
 import { appendBlockId, nextBlockId, scanNoteBlocks, type NoteBlock } from "./noteBlocks";
 import { htmlToMarkdown } from "./htmlToMarkdown";
+import { openSearchPanel, openSearchPanelForReplace } from "./editorSearch";
 import {
   bodySpec,
   boldSpec,
@@ -49,6 +50,8 @@ export interface EditorContextMenuRequest {
   canPaste: boolean;
   /** True only when the clipboard carries HTML — there's nothing to convert otherwise. */
   canPasteFormatted: boolean;
+  openFind: () => void;
+  openFindReplace: () => void;
   cutSelection: () => void;
   copySelection: () => void;
   pasteClipboard: () => void;
@@ -451,6 +454,8 @@ export function editorContextMenu(
           hasSelection: from !== to,
           canPaste,
           canPasteFormatted: !!clipboardHtml,
+          openFind: () => openSearchPanel(view),
+          openFindReplace: () => openSearchPanelForReplace(view),
           cutSelection: () => {
             const text = view.state.sliceDoc(from, to);
             if (!text) return;

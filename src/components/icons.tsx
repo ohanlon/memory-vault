@@ -421,3 +421,23 @@ export function ExternalLinkIcon() {
     </Svg>
   );
 }
+
+export function SearchIcon() {
+  return (
+    <Svg>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M15.5 15.5L20 20" />
+    </Svg>
+  );
+}
+
+export function FindReplaceIcon() {
+  return (
+    <Svg>
+      <circle cx="9" cy="9" r="5.5" />
+      <path d="M13 13L17 17" />
+      <path d="M13.5 19H20" />
+      <path d="M17.5 16.5L20.5 19L17.5 21.5" />
+    </Svg>
+  );
+}
