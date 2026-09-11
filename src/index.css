@@ -811,7 +811,6 @@ body {
   border: 1px solid var(--border-control);
   border-radius: 6px;
   box-shadow: 0 4px 12px var(--shadow-menu);
-  position: relative;
 }
 
 .cairn-search-row {
@@ -845,7 +844,7 @@ body {
   height: 24px;
   padding: 0 6px;
   background: none;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-control);
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
@@ -899,20 +898,8 @@ body {
 }
 
 .cairn-search-close {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
-  cursor: pointer;
-  padding: 0;
-}
-
-.cairn-search-close:hover {
-  color: var(--text-primary);
 }
 
 /* Live preview: rendered markdown styling (CodeMirror decorations from src/editor/livePreview.ts) */

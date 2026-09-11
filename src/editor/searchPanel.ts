@@ -141,10 +141,20 @@ class CairnSearchPanel implements Panel {
     const replaceAllButton = el("button", { type: "button", class: "cairn-search-text-btn" }, ["Replace All"]);
     replaceAllButton.addEventListener("click", () => this.replaceAllMatches());
 
-    const closeButton = el("button", { type: "button", class: "cairn-search-close", "aria-label": "Close" }, ["×"]);
+    const closeButton = el("button", {
+      type: "button",
+      class: "cairn-search-icon-btn cairn-search-close",
+      "aria-label": "Close",
+    });
+    closeButton.textContent = "×";
     closeButton.addEventListener("click", () => closeSearchPanel(view));
 
+    // The close button is a normal flex item at the start of the search row
+    // (not absolutely positioned over it) so it sits at the dialog's
+    // top-left and can never overlap the other buttons regardless of how
+    // many of them there are.
     const searchRow = el("div", { class: "cairn-search-row" }, [
+      closeButton,
       this.searchField,
       this.caseToggle,
       this.wordToggle,
@@ -155,7 +165,7 @@ class CairnSearchPanel implements Panel {
     ]);
     const replaceRow = el("div", { class: "cairn-search-row" }, [this.replaceField, replaceOneButton, replaceAllButton]);
 
-    this.dom = el("div", { class: "cairn-search-panel" }, [searchRow, replaceRow, closeButton]);
+    this.dom = el("div", { class: "cairn-search-panel" }, [searchRow, replaceRow]);
     this.dom.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
