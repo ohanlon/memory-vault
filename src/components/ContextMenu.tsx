@@ -10,6 +10,8 @@ export interface ContextMenuItem {
   children?: ContextMenuEntry[];
   /** A 16x16 icon (see src/components/icons.tsx). Omit for items that don't warrant one (e.g. per-language leaves) — the icon column still reserves its space so labels stay aligned. */
   icon?: ReactNode;
+  /** Shown but inert — e.g. Copy with nothing selected. Ignored for a submenu trigger (has children). */
+  disabled?: boolean;
 }
 
 export interface ContextMenuSeparator {
@@ -112,8 +114,9 @@ function MenuEntries({ entries, onItemClick }: { entries: ContextMenuEntry[]; on
           >
             <button
               className="context-menu-item"
+              disabled={!entry.children && entry.disabled}
               onClick={() => {
-                if (entry.children) return;
+                if (entry.children || entry.disabled) return;
                 entry.onClick?.();
                 onItemClick();
               }}

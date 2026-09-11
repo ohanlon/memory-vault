@@ -45,6 +45,8 @@ export interface EditorContextMenuRequest {
   y: number;
   /** False when the selection is empty — Cut/Copy have nothing to act on. */
   hasSelection: boolean;
+  /** False when the clipboard has no text — Paste would have nothing to insert. */
+  canPaste: boolean;
   cutSelection: () => void;
   copySelection: () => void;
   pasteClipboard: () => void;
@@ -434,81 +436,89 @@ export function editorContextMenu(
           writeNote
         ));
       }
-      onRequest({
-        x: event.clientX,
-        y: event.clientY,
-        hasSelection: from !== to,
-        cutSelection: () => {
-          const text = view.state.sliceDoc(from, to);
-          if (!text) return;
-          navigator.clipboard.writeText(text).then(() => {
-            view.dispatch({ changes: { from, to, insert: "" } });
-            view.focus();
-          });
-        },
-        copySelection: () => {
-          const text = view.state.sliceDoc(from, to);
-          if (!text) return;
-          navigator.clipboard.writeText(text).then(() => view.focus());
-        },
-        pasteClipboard: () => {
-          navigator.clipboard.readText().then((text) => {
-            view.dispatch(view.state.replaceSelection(text));
-            view.focus();
-          });
-        },
-        insertLinkAction: {
-          selectedText: view.state.sliceDoc(from, to),
-          insertNote: (note: PickableNote, displayText: string) => {
-            // Qualify with the source stack whenever the picked note comes from a
-            // different stack than the one being edited — otherwise an open Cairn's
-            // title collisions could make an unqualified [[Title]] resolve to the
-            // wrong note (see resolveWikilinkTarget in shared/buildGraph.ts).
-            const target =
-              note.sourceStack && note.sourceStack !== currentSourceStack ? `${note.sourceStack}/${note.title}` : note.title;
-            const text = displayText && displayText !== note.title ? `[[${target}|${displayText}]]` : `[[${target}]]`;
-            view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
-            view.focus();
+      const send = (canPaste: boolean) =>
+        onRequest({
+          x: event.clientX,
+          y: event.clientY,
+          hasSelection: from !== to,
+          canPaste,
+          cutSelection: () => {
+            const text = view.state.sliceDoc(from, to);
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+              view.dispatch({ changes: { from, to, insert: "" } });
+              view.focus();
+            });
           },
-          insertExternal: (url: string, displayText: string) => {
-            const text = `[${displayText || url}](${url})`;
-            view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
-            view.focus();
+          copySelection: () => {
+            const text = view.state.sliceDoc(from, to);
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => view.focus());
           },
-        },
-        makeHeading1: () => apply(heading1Spec(view.state)),
-        makeHeading2: () => apply(heading2Spec(view.state)),
-        makeHeading3: () => apply(heading3Spec(view.state)),
-        makeHeading4: () => apply(heading4Spec(view.state)),
-        makeHeading5: () => apply(heading5Spec(view.state)),
-        makeHeading6: () => apply(heading6Spec(view.state)),
-        makeBody: () => apply(bodySpec(view.state)),
-        makeCodeBlock: (language?: string) => apply(codeBlockSpec(view.state, language)),
-        makeMathBlock: () => apply(mathBlockSpec(view.state)),
-        makeQuote: () => apply(quoteSpec(view.state)),
-        makeOrderedList: () => apply(orderedListSpec(view.state)),
-        makeUnorderedList: () => apply(unorderedListSpec(view.state)),
-        makeTaskList: () => apply(taskListSpec(view.state)),
-        makeBold: () => apply(boldSpec(view.state)),
-        makeItalic: () => apply(italicSpec(view.state)),
-        makeUnderline: () => apply(underlineSpec(view.state)),
-        makeStrikethrough: () => apply(strikethroughSpec(view.state)),
-        makeSuperscript: () => apply(superscriptSpec(view.state)),
-        makeSubscript: () => apply(subscriptSpec(view.state)),
-        makeHighlight: () => apply(highlightSpec(view.state)),
-        makeInlineCode: () => apply(inlineCodeSpec(view.state)),
-        makeInlineMath: () => apply(inlineMathSpec(view.state)),
-        insertFootnote: () => apply(footnoteSpec(view.state)),
-        insertCitation: () => apply(citationSpec(view.state)),
-        insertCallout: () => apply(calloutSpec(view.state)),
-        insertHorizontalRule: () => apply(horizontalRuleSpec(view.state)),
-        linkTitleAction,
-        linkDisplayAction,
-        linkHeaderAction,
-        linkBlockAction,
-        headerIdAction,
-        blockIdAction,
-      });
+          pasteClipboard: () => {
+            navigator.clipboard.readText().then((text) => {
+              view.dispatch(view.state.replaceSelection(text));
+              view.focus();
+            });
+          },
+          insertLinkAction: {
+            selectedText: view.state.sliceDoc(from, to),
+            insertNote: (note: PickableNote, displayText: string) => {
+              // Qualify with the source stack whenever the picked note comes from a
+              // different stack than the one being edited — otherwise an open Cairn's
+              // title collisions could make an unqualified [[Title]] resolve to the
+              // wrong note (see resolveWikilinkTarget in shared/buildGraph.ts).
+              const target =
+                note.sourceStack && note.sourceStack !== currentSourceStack
+                  ? `${note.sourceStack}/${note.title}`
+                  : note.title;
+              const text = displayText && displayText !== note.title ? `[[${target}|${displayText}]]` : `[[${target}]]`;
+              view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
+              view.focus();
+            },
+            insertExternal: (url: string, displayText: string) => {
+              const text = `[${displayText || url}](${url})`;
+              view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
+              view.focus();
+            },
+          },
+          makeHeading1: () => apply(heading1Spec(view.state)),
+          makeHeading2: () => apply(heading2Spec(view.state)),
+          makeHeading3: () => apply(heading3Spec(view.state)),
+          makeHeading4: () => apply(heading4Spec(view.state)),
+          makeHeading5: () => apply(heading5Spec(view.state)),
+          makeHeading6: () => apply(heading6Spec(view.state)),
+          makeBody: () => apply(bodySpec(view.state)),
+          makeCodeBlock: (language?: string) => apply(codeBlockSpec(view.state, language)),
+          makeMathBlock: () => apply(mathBlockSpec(view.state)),
+          makeQuote: () => apply(quoteSpec(view.state)),
+          makeOrderedList: () => apply(orderedListSpec(view.state)),
+          makeUnorderedList: () => apply(unorderedListSpec(view.state)),
+          makeTaskList: () => apply(taskListSpec(view.state)),
+          makeBold: () => apply(boldSpec(view.state)),
+          makeItalic: () => apply(italicSpec(view.state)),
+          makeUnderline: () => apply(underlineSpec(view.state)),
+          makeStrikethrough: () => apply(strikethroughSpec(view.state)),
+          makeSuperscript: () => apply(superscriptSpec(view.state)),
+          makeSubscript: () => apply(subscriptSpec(view.state)),
+          makeHighlight: () => apply(highlightSpec(view.state)),
+          makeInlineCode: () => apply(inlineCodeSpec(view.state)),
+          makeInlineMath: () => apply(inlineMathSpec(view.state)),
+          insertFootnote: () => apply(footnoteSpec(view.state)),
+          insertCitation: () => apply(citationSpec(view.state)),
+          insertCallout: () => apply(calloutSpec(view.state)),
+          insertHorizontalRule: () => apply(horizontalRuleSpec(view.state)),
+          linkTitleAction,
+          linkDisplayAction,
+          linkHeaderAction,
+          linkBlockAction,
+          headerIdAction,
+          blockIdAction,
+        });
+      navigator.clipboard
+        .readText()
+        .then((text) => send(text.length > 0))
+        .catch(() => send(true));
       return true;
     },
   });

@@ -323,26 +323,25 @@ export function EditorPane({
           x={contextMenuRequest.x}
           y={contextMenuRequest.y}
           items={[
-            ...(contextMenuRequest.hasSelection
-              ? [
-                  {
-                    label: "Cut",
-                    shortcut: shortcutLabel("X"),
-                    icon: <CutIcon />,
-                    onClick: contextMenuRequest.cutSelection,
-                  },
-                  {
-                    label: "Copy",
-                    shortcut: shortcutLabel("C"),
-                    icon: <CopyIcon />,
-                    onClick: contextMenuRequest.copySelection,
-                  },
-                ]
-              : []),
+            {
+              label: "Cut",
+              shortcut: shortcutLabel("X"),
+              icon: <CutIcon />,
+              disabled: !contextMenuRequest.hasSelection,
+              onClick: contextMenuRequest.cutSelection,
+            },
+            {
+              label: "Copy",
+              shortcut: shortcutLabel("C"),
+              icon: <CopyIcon />,
+              disabled: !contextMenuRequest.hasSelection,
+              onClick: contextMenuRequest.copySelection,
+            },
             {
               label: "Paste",
               shortcut: shortcutLabel("V"),
               icon: <PasteIcon />,
+              disabled: !contextMenuRequest.canPaste,
               onClick: contextMenuRequest.pasteClipboard,
             },
             { separator: true as const },
