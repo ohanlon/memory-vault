@@ -67,6 +67,17 @@ function isPressed(button: HTMLButtonElement): boolean {
   return button.getAttribute("aria-pressed") === "true";
 }
 
+/** Set right before opening the panel to have it start with the replace row visible; consumed (and cleared) on construction. */
+const pendingReplaceOpen = new WeakSet<EditorView>();
+/** Tracks the live panel per view so a second Find & Replace request can reveal the replace row on an already-open panel instead of re-creating it. */
+const panelInstances = new WeakMap<EditorView, CairnSearchPanel>();
+
+export function requestReplaceOnOpen(view: EditorView) {
+  const panel = panelInstances.get(view);
+  if (panel) panel.showReplace();
+  else pendingReplaceOpen.add(view);
+}
+
 /**
  * A from-scratch find/replace panel — built on top of @codemirror/search's
  * public query/cursor primitives (SearchQuery, SearchCursor, RegExpCursor)
@@ -86,6 +97,7 @@ class CairnSearchPanel implements Panel {
 
   private searchField: HTMLInputElement;
   private replaceField: HTMLInputElement;
+  private replaceRow: HTMLElement;
   private caseToggle: HTMLButtonElement;
   private wordToggle: HTMLButtonElement;
   private regexToggle: HTMLButtonElement;
@@ -163,15 +175,33 @@ class CairnSearchPanel implements Panel {
       nextButton,
       closeButton,
     ]);
-    const replaceRow = el("div", { class: "cairn-search-row" }, [this.replaceField, replaceOneButton, replaceAllButton]);
+    this.replaceRow = el("div", { class: "cairn-search-row" }, [this.replaceField, replaceOneButton, replaceAllButton]);
 
-    this.dom = el("div", { class: "cairn-search-panel" }, [searchRow, replaceRow]);
+    this.dom = el("div", { class: "cairn-search-panel" }, [searchRow, this.replaceRow]);
     this.dom.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
         closeSearchPanel(view);
       }
     });
+
+    panelInstances.set(view, this);
+    if (pendingReplaceOpen.has(view)) {
+      pendingReplaceOpen.delete(view);
+      this.showReplace();
+    } else {
+      this.replaceRow.style.display = "none";
+    }
+  }
+
+  /** Reveals the replace row (a no-op if already visible) and focuses its field. */
+  showReplace() {
+    this.replaceRow.style.display = "";
+    this.replaceField.focus();
+  }
+
+  destroy() {
+    panelInstances.delete(this.view);
   }
 
   update(update: ViewUpdate) {
