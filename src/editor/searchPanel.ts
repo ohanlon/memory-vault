@@ -154,7 +154,6 @@ class CairnSearchPanel implements Panel {
     // top-left and can never overlap the other buttons regardless of how
     // many of them there are.
     const searchRow = el("div", { class: "cairn-search-row" }, [
-      closeButton,
       this.searchField,
       this.caseToggle,
       this.wordToggle,
@@ -162,6 +161,7 @@ class CairnSearchPanel implements Panel {
       this.selectionToggle,
       previousButton,
       nextButton,
+      closeButton,
     ]);
     const replaceRow = el("div", { class: "cairn-search-row" }, [this.replaceField, replaceOneButton, replaceAllButton]);
 
