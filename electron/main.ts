@@ -7,7 +7,8 @@ import { loadStack, reconcileStackCache, readNote, uniqueNotePath, watchStack } 
 import { readStackCache, writeStackCache } from "./stackCache";
 import { runReplaceAll, runSearch } from "./search";
 import { convertToTemplate, listAllFileTemplates } from "./templates";
-import { formatTemplateDate, formatTemplateTime, renderTemplate } from "../shared/templateRender";
+import { formatTemplateTime, renderTemplate } from "../shared/templateRender";
+import { formatDateWithPattern } from "../shared/dateFormat";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import {
   addCairn,
@@ -532,11 +533,13 @@ ipcMain.handle(
     const fullPath = uniqueNotePath(dir, safeTitle);
     const raw = await fs.promises.readFile(templatePath, "utf-8");
     const now = new Date();
+    const appSettings = readAppSettingsFile(appSettingsFilePath());
     const context = {
       ...values,
       title: safeTitle,
-      date: formatTemplateDate(now, app.getLocale()),
+      date: formatDateWithPattern(now, appSettings.dateFormat),
       time: formatTemplateTime(now, app.getLocale()),
+      datetime: formatDateWithPattern(now, appSettings.datetimeFormat),
     };
     fs.writeFileSync(fullPath, renderTemplate(raw, context), "utf-8");
     return fullPath;

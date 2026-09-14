@@ -2,7 +2,7 @@ import Mustache from "mustache";
 import type { TemplateSpans } from "mustache";
 
 /** Built-in template variables the app fills in automatically — never prompted for. */
-export const BUILT_IN_TEMPLATE_VARS = ["title", "date", "time"];
+export const BUILT_IN_TEMPLATE_VARS = ["title", "date", "time", "datetime"];
 
 /**
  * Every plain {{variable}} placeholder in `template`, in first-appearance
@@ -36,12 +36,7 @@ export function renderTemplate(template: string, values: Record<string, string>)
   return Mustache.render(template, values, undefined, { escape: (v: unknown) => String(v) });
 }
 
-/** {{date}}, in the given locale's long form (e.g. "August 27, 2026"). */
-export function formatTemplateDate(date: Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(date);
-}
-
-/** {{time}}, in the given locale's short form (e.g. "3:45 PM"). */
+/** {{time}}, in the given locale's short form (e.g. "3:45 PM") — there's no dedicated time-format setting, unlike {{date}}/{{datetime}} (see shared/dateFormat.ts). */
 export function formatTemplateTime(date: Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(date);
 }

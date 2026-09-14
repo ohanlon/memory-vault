@@ -11,7 +11,9 @@ describe("templatePlaceholders", () => {
   });
 
   it("excludes built-in variables", () => {
-    expect(templatePlaceholders("# {{title}}\n\n{{date}} at {{time}}\n\n{{topic}}")).toEqual(["topic"]);
+    expect(
+      templatePlaceholders("# {{title}}\n\n{{date}} at {{time}} ({{datetime}})\n\n{{topic}}")
+    ).toEqual(["topic"]);
   });
 
   it("doesn't treat a section tag itself as a placeholder, but scans inside it", () => {
