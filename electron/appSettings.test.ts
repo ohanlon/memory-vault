@@ -35,6 +35,8 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
       editorFontSize: 18,
       enabledCodeLanguages: ["python", "rust"],
       hasSeenTour: true,
+      dateFormat: "DD/MM/YYYY",
+      datetimeFormat: "DD/MM/YYYY HH:mm",
     };
     writeAppSettingsFile(tmpFile, settings);
     expect(readAppSettingsFile(tmpFile)).toEqual(settings);

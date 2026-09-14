@@ -1,6 +1,7 @@
 import type { AppSettings, EditorFontFamily, TabFolderDisplay, ThemeSetting } from "./types";
 import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "./editorFonts";
 import { CODE_LANGUAGES, DEFAULT_ENABLED_CODE_LANGUAGES } from "./codeLanguages";
+import { isValidDateFormat } from "./dateFormat";
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   tabFolderDisplay: "hover",
@@ -12,6 +13,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   editorFontSize: 14,
   enabledCodeLanguages: DEFAULT_ENABLED_CODE_LANGUAGES,
   hasSeenTour: false,
+  dateFormat: "YYYY-MM-DD",
+  datetimeFormat: "YYYY-MM-DD HH:mm",
 };
 
 const VALID_TAB_FOLDER_DISPLAY: TabFolderDisplay[] = ["never", "hover", "always"];
@@ -58,5 +61,13 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     editorFontSize: clampFontSize(raw.editorFontSize, DEFAULT_APP_SETTINGS.editorFontSize),
     enabledCodeLanguages: normalizeEnabledCodeLanguages(raw.enabledCodeLanguages),
     hasSeenTour: typeof raw.hasSeenTour === "boolean" ? raw.hasSeenTour : DEFAULT_APP_SETTINGS.hasSeenTour,
+    dateFormat:
+      typeof raw.dateFormat === "string" && isValidDateFormat(raw.dateFormat)
+        ? raw.dateFormat
+        : DEFAULT_APP_SETTINGS.dateFormat,
+    datetimeFormat:
+      typeof raw.datetimeFormat === "string" && isValidDateFormat(raw.datetimeFormat)
+        ? raw.datetimeFormat
+        : DEFAULT_APP_SETTINGS.datetimeFormat,
   };
 }

@@ -1334,6 +1334,23 @@ body {
   font-size: 13px;
 }
 
+.settings-date-format-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.settings-date-format-preview {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.settings-date-format-invalid {
+  color: var(--accent-red);
+}
+
 .settings-hint {
   margin: 0 0 8px;
   font-size: 12px;

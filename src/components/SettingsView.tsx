@@ -9,6 +9,7 @@ import type {
 } from "@shared/types";
 import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "@shared/editorFonts";
 import { CODE_LANGUAGES } from "@shared/codeLanguages";
+import { formatDateWithPattern, isValidDateFormat } from "@shared/dateFormat";
 
 interface Props {
   settings: AppSettings;
@@ -120,6 +121,57 @@ function CodeLanguagesSection({ settings, onChange }: Props) {
   );
 }
 
+/**
+ * A text field for a token-based date/datetime pattern (see
+ * shared/dateFormat.ts) — keeps its own draft state so the user can type
+ * freely, only committing (and persisting) a change once the pattern is
+ * valid; an invalid draft shows an error instead of being saved.
+ */
+function DateFormatField({
+  id,
+  label,
+  value,
+  onCommit,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onCommit: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  // Picks up an externally-loaded value (settings are read asynchronously
+  // after mount) without clobbering the user's own in-progress edit.
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const valid = isValidDateFormat(draft);
+
+  function handleChange(next: string) {
+    setDraft(next);
+    if (isValidDateFormat(next)) onCommit(next);
+  }
+
+  return (
+    <div className="settings-row">
+      <label htmlFor={id}>{label}</label>
+      <div className="settings-date-format-field">
+        <input
+          id={id}
+          type="text"
+          value={draft}
+          onChange={(e) => handleChange(e.target.value)}
+          aria-invalid={!valid}
+        />
+        <p className={valid ? "settings-date-format-preview" : "settings-date-format-preview settings-date-format-invalid"}>
+          {valid ? formatDateWithPattern(new Date(), draft) : "Enter a valid format (e.g. YYYY-MM-DD)"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsView({ settings, onChange }: Props) {
   return (
     <div className="settings-view">
@@ -202,6 +254,22 @@ export function SettingsView({ settings, onChange }: Props) {
             onChange={(e) => onChange({ ...settings, editorFontSize: Number(e.target.value) })}
           />
         </div>
+        <p className="settings-hint">
+          Date format tokens: YYYY/YY, MMMM/MMM/MM/M, dddd/ddd, DD/D, HH/H, hh/h, mm/m, ss/s, A/a. Wrap literal text
+          in [brackets] (e.g. "[Daily] YYYY-MM-DD").
+        </p>
+        <DateFormatField
+          id="setting-date-format"
+          label="Date format"
+          value={settings.dateFormat}
+          onCommit={(dateFormat) => onChange({ ...settings, dateFormat })}
+        />
+        <DateFormatField
+          id="setting-datetime-format"
+          label="Datetime format"
+          value={settings.datetimeFormat}
+          onCommit={(datetimeFormat) => onChange({ ...settings, datetimeFormat })}
+        />
       </section>
 
       <section className="settings-section">
