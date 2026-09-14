@@ -162,6 +162,7 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
 
       {showReplace && (
         <div className="cairn-search-row">
+          <div className="search-input-row-spacer" aria-hidden="true" />
           <input
             type="text"
             className="search-input"

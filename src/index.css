@@ -1452,6 +1452,13 @@ body {
   gap: 8px;
 }
 
+/* Matches the width of the expand-arrow button in .search-input-row, so the
+   replace row's input lines up under the search input rather than the arrow. */
+.search-input-row-spacer {
+  flex-shrink: 0;
+  width: 24px;
+}
+
 .search-input-row {
   display: flex;
   align-items: center;
