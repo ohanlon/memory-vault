@@ -23,7 +23,7 @@ export function openOrCreateDailyNote(root: string, dateFormat: string, now: Dat
   }
 
   fs.mkdirSync(folderAbs, { recursive: true });
-  const scaffold = `---\ntags: []\n---\n\n# ${formatted}\n`;
+  const scaffold = `---\ntags: []\n---\n# ${formatted}\n`;
   fs.writeFileSync(fullPath, scaffold, "utf-8");
   return { path: fullPath, created: true };
 }

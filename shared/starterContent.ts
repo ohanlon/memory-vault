@@ -14,7 +14,6 @@ export const STARTER_NOTES: StarterNote[] = [
     content: `---
 tags: [example]
 ---
-
 # Welcome to Cairn
 
 This is a folder of plain markdown files — nothing here is stored in a
@@ -41,7 +40,6 @@ shape of things.
     content: `---
 tags: [example]
 ---
-
 # Example Note
 
 Linked back to [[Welcome]] — click the link, or check its Links panel, to

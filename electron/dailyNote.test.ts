@@ -21,6 +21,13 @@ describe("openOrCreateDailyNote", () => {
     expect(fs.readFileSync(result.path, "utf-8")).toContain("2026-08-27");
   });
 
+  it("doesn't leave a blank line at the top of the note body, after frontmatter is stripped", () => {
+    const result = openOrCreateDailyNote(root, "YYYY-MM-DD", DATE);
+    const raw = fs.readFileSync(result.path, "utf-8");
+    const body = raw.replace(/^---\n[\s\S]*?\n---\n/, "");
+    expect(body.startsWith("\n")).toBe(false);
+  });
+
   it("opens the existing note instead of overwriting it on a second call", () => {
     const first = openOrCreateDailyNote(root, "YYYY-MM-DD", DATE);
     fs.appendFileSync(first.path, "\nmy notes for today");

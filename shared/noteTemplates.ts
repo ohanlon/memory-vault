@@ -9,7 +9,7 @@ export interface NoteTemplate {
 }
 
 function frontmatter(tags: string[]): string {
-  return `---\ntags: [${tags.join(", ")}]\n---\n\n`;
+  return `---\ntags: [${tags.join(", ")}]\n---\n`;
 }
 
 function heading(title: string, addHeading: boolean): string {

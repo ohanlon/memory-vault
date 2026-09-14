@@ -4,8 +4,18 @@ import { findNoteTemplate, NOTE_TEMPLATES } from "./noteTemplates";
 describe("NOTE_TEMPLATES", () => {
   it("blank template matches the historical no-template scaffold", () => {
     const blank = findNoteTemplate("blank");
-    expect(blank.build("My Note", false)).toBe("---\ntags: []\n---\n\n");
-    expect(blank.build("My Note", true)).toBe("---\ntags: []\n---\n\n# My Note\n");
+    expect(blank.build("My Note", false)).toBe("---\ntags: []\n---\n");
+    expect(blank.build("My Note", true)).toBe("---\ntags: []\n---\n# My Note\n");
+  });
+
+  it("doesn't leave a blank line at the top of the note body, after frontmatter is stripped", () => {
+    for (const template of NOTE_TEMPLATES) {
+      for (const addHeading of [true, false]) {
+        const content = template.build("Title", addHeading);
+        const body = content.replace(/^---\n[\s\S]*?\n---\n/, "");
+        expect(body.startsWith("\n")).toBe(false);
+      }
+    }
   });
 
   it("meeting template includes structured sections and the meeting tag", () => {
