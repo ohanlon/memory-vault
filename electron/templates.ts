@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { uniqueNotePath } from "./stack";
-import type { FileTemplate } from "../shared/types";
+import type { FileTemplate, StackEntry } from "../shared/types";
 
 /** Hidden so it's excluded from the note graph/search/watcher by the same
  *  dotfolder rule listMarkdownFiles and watchStack already apply. */
@@ -24,6 +24,19 @@ export async function listFileTemplates(root: string): Promise<FileTemplate[]> {
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".md"))
     .map((e) => ({ path: path.join(dir, e.name), name: e.name.slice(0, -3) }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Every template across every registered stack, tagged with its owning
+ *  stack's name — so a template created in one stack is available when
+ *  creating a note in any other, not just the stack (or Cairn) currently open. */
+export async function listAllFileTemplates(stacks: StackEntry[]): Promise<FileTemplate[]> {
+  const perStack = await Promise.all(
+    stacks.map(async (stack) => {
+      const templates = await listFileTemplates(stack.root);
+      return templates.map((t) => ({ ...t, sourceStack: stack.name }));
+    })
+  );
+  return perStack.flat().sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Copies a note's raw content into root's .templates folder under its own title, numbering around name collisions. */

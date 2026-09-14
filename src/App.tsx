@@ -136,10 +136,10 @@ export default function App() {
   // handleNewNoteContextMenu); for an open Cairn, a left-click opens it too,
   // since there's no single implicit target stack to ask "always ask" about.
   const [templateMenu, setTemplateMenu] = useState<{ x: number; y: number } | null>(null);
-  // File templates (from each stack's .templates folder) available for the
-  // stack root(s) the template picker above is currently showing, keyed by
-  // root — refreshed each time the picker is opened (see loadFileTemplates).
-  const [fileTemplatesByRoot, setFileTemplatesByRoot] = useState<Record<string, FileTemplate[]>>({});
+  // Every file template across every registered stack (not just the
+  // currently open one) — so a template created in one stack is available
+  // when creating a note in any other. See loadFileTemplates.
+  const [allTemplates, setAllTemplates] = useState<FileTemplate[]>([]);
   // Stack-picker menu for "New Daily Note" in an open Cairn (same "always
   // ask" reasoning as templateMenu; a plain stack never shows this).
   const [dailyNoteMenu, setDailyNoteMenu] = useState<{ x: number; y: number } | null>(null);
@@ -536,14 +536,13 @@ export default function App() {
       handleCreateNote(activeSession.entry.root);
       return;
     }
-    await loadFileTemplates(activeSession.memberStacks.map((s) => s.root));
+    await loadFileTemplates();
     setTemplateMenu({ x, y });
   }
 
   async function handleNewNoteContextMenu(x: number, y: number) {
     if (!activeSession) return;
-    const roots = activeSession.kind === "cairn" ? activeSession.memberStacks.map((s) => s.root) : [activeSession.entry.root];
-    await loadFileTemplates(roots);
+    await loadFileTemplates();
     setTemplateMenu({ x, y });
   }
 
@@ -635,45 +634,25 @@ export default function App() {
       // reads the file, and the template would capture the stale pre-edit content.
       await flushPendingSave(note.path);
       await window.memoryStack.convertToTemplate(root, note.path);
-      await loadFileTemplates(activeSessionRoots());
+      await loadFileTemplates();
       window.alert(`Saved "${note.title}" as a template — see it under Templates in the sidebar.`);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function loadFileTemplates(roots: string[]) {
-    const entries = await Promise.all(
-      roots.map(async (root) => [root, await window.memoryStack.listFileTemplates(root)] as const)
-    );
-    setFileTemplatesByRoot(Object.fromEntries(entries));
-  }
-
-  function activeSessionRoots(): string[] {
-    if (!activeSession) return [];
-    return activeSession.kind === "cairn" ? activeSession.memberStacks.map((s) => s.root) : [activeSession.entry.root];
-  }
-
-  // Keeps the Templates group in the file tree (see templateEntries below)
-  // up to date — the .templates folder is excluded from the file watcher
+  // Every template across every registered stack — not scoped to the
+  // currently open stack/Cairn, so one created anywhere is available
+  // everywhere. The .templates folder is excluded from the file watcher
   // (same dotfolder rule as everything else under it), so nothing else
   // refreshes this automatically.
-  useEffect(() => {
-    loadFileTemplates(activeSessionRoots());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSession]);
+  async function loadFileTemplates() {
+    setAllTemplates(await window.memoryStack.listFileTemplates());
+  }
 
-  // Every template available in the current session, flattened into one
-  // list for the file tree's "Templates" group — tagged with its owning
-  // stack's name (mirroring Note.sourceStack) only when there's more than
-  // one stack to disambiguate between (an open Cairn).
-  const templateEntries = useMemo<FileTemplate[]>(() => {
-    if (!activeSession) return [];
-    if (activeSession.kind === "stack") return fileTemplatesByRoot[activeSession.entry.root] ?? [];
-    return activeSession.memberStacks.flatMap((stack) =>
-      (fileTemplatesByRoot[stack.root] ?? []).map((t) => ({ ...t, sourceStack: stack.name }))
-    );
-  }, [activeSession, fileTemplatesByRoot]);
+  useEffect(() => {
+    loadFileTemplates();
+  }, []);
 
   async function openTemplateTab(template: FileTemplate) {
     setSidebarCollapsed(false);
@@ -691,21 +670,24 @@ export default function App() {
       delete next[template.path];
       return next;
     });
-    await loadFileTemplates(activeSessionRoots());
+    await loadFileTemplates();
   }
 
+  // Every registered stack's templates are offered regardless of which
+  // stack `root` (the note's destination) belongs to — a template created
+  // in one stack should be usable in any other. Labeled with its source
+  // stack so it's clear where each one came from.
   function templatePickerEntries(root: string): ContextMenuEntry[] {
     const builtIns: ContextMenuEntry[] = NOTE_TEMPLATES.map((template) => ({
       label: template.label,
       onClick: () => handleCreateNote(root, template.id),
     }));
-    const fileTemplates = fileTemplatesByRoot[root] ?? [];
-    if (fileTemplates.length === 0) return builtIns;
+    if (allTemplates.length === 0) return builtIns;
     return [
       ...builtIns,
       { separator: true as const },
-      ...fileTemplates.map((template) => ({
-        label: template.name,
+      ...allTemplates.map((template) => ({
+        label: template.sourceStack ? `${template.name} (${template.sourceStack})` : template.name,
         onClick: () => handleCreateNoteFromTemplate(root, template),
       })),
     ];
@@ -990,7 +972,7 @@ export default function App() {
               onSeedStarterContent: activeSession.kind === "stack" ? handleSeedStarterContent : undefined,
               memberStacks: activeSession.kind === "cairn" ? activeSession.memberStacks : undefined,
               onMoveNoteToStack: (n: Note, destRoot: string) => handleMoveNoteToStack(n, destRoot),
-              templates: templateEntries,
+              templates: allTemplates,
               onSelectTemplate: (t: FileTemplate) => openTemplateTab(t),
               onDeleteTemplate: (t: FileTemplate) => handleDeleteTemplate(t),
             }}

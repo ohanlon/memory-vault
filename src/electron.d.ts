@@ -43,7 +43,7 @@ export interface MemoryStackAPI {
   saveNote(absPath: string, content: string): Promise<boolean>;
   createNote(dir: string, title: string, templateId?: string): Promise<string>;
   seedStarterContent(): Promise<string[]>;
-  listFileTemplates(root: string): Promise<FileTemplate[]>;
+  listFileTemplates(): Promise<FileTemplate[]>;
   convertToTemplate(root: string, absPath: string): Promise<string>;
   createNoteFromTemplate(
     dir: string,

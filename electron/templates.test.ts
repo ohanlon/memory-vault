@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { convertToTemplate, listFileTemplates, templatesDirFor } from "./templates";
+import { convertToTemplate, listAllFileTemplates, listFileTemplates, templatesDirFor } from "./templates";
 
 describe("listFileTemplates", () => {
   const root = path.join(os.tmpdir(), `templates-list-test-${process.pid}`);
@@ -28,6 +28,37 @@ describe("listFileTemplates", () => {
       { path: path.join(dir, "Daily.md"), name: "Daily" },
       { path: path.join(dir, "Meeting.md"), name: "Meeting" },
     ]);
+  });
+});
+
+describe("listAllFileTemplates", () => {
+  const rootA = path.join(os.tmpdir(), `templates-all-a-test-${process.pid}`);
+  const rootB = path.join(os.tmpdir(), `templates-all-b-test-${process.pid}`);
+
+  afterEach(() => {
+    fs.rmSync(rootA, { recursive: true, force: true });
+    fs.rmSync(rootB, { recursive: true, force: true });
+  });
+
+  it("merges templates from every stack, tagged with their owning stack's name", async () => {
+    fs.mkdirSync(templatesDirFor(rootA), { recursive: true });
+    fs.writeFileSync(path.join(templatesDirFor(rootA), "Meeting.md"), "a", "utf-8");
+    fs.mkdirSync(templatesDirFor(rootB), { recursive: true });
+    fs.writeFileSync(path.join(templatesDirFor(rootB), "Daily.md"), "b", "utf-8");
+
+    const templates = await listAllFileTemplates([
+      { name: "Stack A", root: rootA },
+      { name: "Stack B", root: rootB },
+    ]);
+
+    expect(templates).toEqual([
+      { path: path.join(templatesDirFor(rootB), "Daily.md"), name: "Daily", sourceStack: "Stack B" },
+      { path: path.join(templatesDirFor(rootA), "Meeting.md"), name: "Meeting", sourceStack: "Stack A" },
+    ]);
+  });
+
+  it("returns an empty list when no stack has any templates", async () => {
+    expect(await listAllFileTemplates([{ name: "Stack A", root: rootA }])).toEqual([]);
   });
 });
 

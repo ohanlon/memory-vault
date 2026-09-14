@@ -6,7 +6,7 @@ import type { FSWatcher } from "chokidar";
 import { loadStack, reconcileStackCache, readNote, uniqueNotePath, watchStack } from "./stack";
 import { readStackCache, writeStackCache } from "./stackCache";
 import { runReplaceAll, runSearch } from "./search";
-import { convertToTemplate, listFileTemplates } from "./templates";
+import { convertToTemplate, listAllFileTemplates } from "./templates";
 import { formatTemplateDate, formatTemplateTime, renderTemplate } from "../shared/templateRender";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import {
@@ -515,8 +515,8 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("templates:list", async (_event, root: string) => {
-  return listFileTemplates(root);
+ipcMain.handle("templates:list", async () => {
+  return listAllFileTemplates(readStacksFile(stacksFilePath()));
 });
 
 ipcMain.handle("templates:convert", async (_event, root: string, absPath: string) => {
