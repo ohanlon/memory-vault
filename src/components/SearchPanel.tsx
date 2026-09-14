@@ -71,14 +71,14 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
 
   return (
     <div className="search-panel">
-      <input
-        type="text"
-        className="search-input"
-        placeholder="Search notes..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <div className="search-options">
+      <div className="search-input-row">
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search notes..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
         <button
           type="button"
           className="cairn-search-toggle"

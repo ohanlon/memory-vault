@@ -1443,18 +1443,21 @@ body {
   gap: 8px;
 }
 
+.search-input-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .search-input {
+  flex: 1 1 auto;
+  min-width: 0;
   background: var(--bg-base);
   color: var(--text-primary);
   border: 1px solid var(--border-control);
   border-radius: 4px;
   padding: 6px 8px;
   font-size: 13px;
-}
-
-.search-options {
-  display: flex;
-  gap: 4px;
 }
 
 .search-summary {
