@@ -299,6 +299,7 @@ export interface SearchOptions {
   mode: SearchMode;
   /** Only applies when mode is "plain" — regex mode expects users to write their own \b. */
   wholeWord: boolean;
+  caseSensitive?: boolean;
 }
 
 export interface SearchMatch {

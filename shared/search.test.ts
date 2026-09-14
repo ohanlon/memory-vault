@@ -24,6 +24,16 @@ describe("buildSearchRegExp", () => {
     const re = buildSearchRegExp({ query: "ca+t", mode: "regex", wholeWord: false });
     expect(re?.source).toBe("ca+t");
   });
+
+  it("is case-insensitive by default", () => {
+    const re = buildSearchRegExp({ query: "cat", mode: "plain", wholeWord: false });
+    expect(re?.flags).toBe("gi");
+  });
+
+  it("drops the case-insensitive flag when caseSensitive is set", () => {
+    const re = buildSearchRegExp({ query: "cat", mode: "plain", wholeWord: false, caseSensitive: true });
+    expect(re?.flags).toBe("g");
+  });
 });
 
 describe("searchContent", () => {
@@ -64,5 +74,15 @@ describe("searchContent", () => {
   it("returns no matches for an invalid regex", () => {
     const matches = searchContent("foo", { query: "[", mode: "regex", wholeWord: false });
     expect(matches).toEqual([]);
+  });
+
+  it("matches regardless of case by default", () => {
+    const matches = searchContent("Cat", { query: "cat", mode: "plain", wholeWord: false });
+    expect(matches).toEqual([{ line: 1, lineText: "Cat", start: 0, end: 3 }]);
+  });
+
+  it("respects case sensitivity when set", () => {
+    const matches = searchContent("Cat\ncat", { query: "cat", mode: "plain", wholeWord: false, caseSensitive: true });
+    expect(matches).toEqual([{ line: 2, lineText: "cat", start: 0, end: 3 }]);
   });
 });

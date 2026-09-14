@@ -6,18 +6,19 @@ function escapeRegExp(s: string): string {
 
 /** Returns null for an empty query or an invalid regex pattern. */
 export function buildSearchRegExp(options: SearchOptions): RegExp | null {
-  const { query, mode, wholeWord } = options;
+  const { query, mode, wholeWord, caseSensitive } = options;
   if (!query) return null;
+  const flags = caseSensitive ? "g" : "gi";
   if (mode === "regex") {
     try {
-      return new RegExp(query, "gi");
+      return new RegExp(query, flags);
     } catch {
       return null;
     }
   }
   const escaped = escapeRegExp(query);
   const pattern = wholeWord ? `\\b${escaped}\\b` : escaped;
-  return new RegExp(pattern, "gi");
+  return new RegExp(pattern, flags);
 }
 
 export function searchContent(content: string, options: SearchOptions): SearchMatch[] {

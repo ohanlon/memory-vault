@@ -16,6 +16,7 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<SearchMode>("plain");
   const [wholeWord, setWholeWord] = useState(false);
+  const [caseSensitive, setCaseSensitive] = useState(false);
   const [results, setResults] = useState<SearchFileResult[]>([]);
   const [searching, setSearching] = useState(false);
 
@@ -44,7 +45,8 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
     searchIdRef.current = null;
   }, [sessionKey]);
 
-  const invalidRegex = mode === "regex" && buildSearchRegExp({ query, mode, wholeWord }) === null && query !== "";
+  const invalidRegex =
+    mode === "regex" && buildSearchRegExp({ query, mode, wholeWord, caseSensitive }) === null && query !== "";
 
   useEffect(() => {
     const prevSearchId = searchIdRef.current;
@@ -56,14 +58,14 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
     if (!query || invalidRegex) return;
 
     const timer = window.setTimeout(async () => {
-      const searchId = await window.memoryStack.startSearch({ query, mode, wholeWord });
+      const searchId = await window.memoryStack.startSearch({ query, mode, wholeWord, caseSensitive });
       searchIdRef.current = searchId;
       setSearching(true);
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, mode, wholeWord]);
+  }, [query, mode, wholeWord, caseSensitive]);
 
   const totalMatches = results.reduce((sum, r) => sum + r.matches.length, 0);
 
@@ -77,23 +79,37 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
         onChange={(e) => setQuery(e.target.value)}
       />
       <div className="search-options">
-        <label className="search-option">
-          <input
-            type="checkbox"
-            checked={mode === "regex"}
-            onChange={(e) => setMode(e.target.checked ? "regex" : "plain")}
-          />
-          Regex
-        </label>
-        <label className="search-option">
-          <input
-            type="checkbox"
-            checked={wholeWord}
-            disabled={mode === "regex"}
-            onChange={(e) => setWholeWord(e.target.checked)}
-          />
-          Whole word
-        </label>
+        <button
+          type="button"
+          className="cairn-search-toggle"
+          aria-pressed={caseSensitive}
+          aria-label="Match case"
+          title="Match case"
+          onClick={() => setCaseSensitive((v) => !v)}
+        >
+          Aa
+        </button>
+        <button
+          type="button"
+          className="cairn-search-toggle"
+          aria-pressed={wholeWord}
+          aria-label="Whole word"
+          title="Whole word"
+          disabled={mode === "regex"}
+          onClick={() => setWholeWord((v) => !v)}
+        >
+          ab
+        </button>
+        <button
+          type="button"
+          className="cairn-search-toggle"
+          aria-pressed={mode === "regex"}
+          aria-label="Regular expression"
+          title="Regular expression"
+          onClick={() => setMode((m) => (m === "regex" ? "plain" : "regex"))}
+        >
+          .*
+        </button>
       </div>
 
       {invalidRegex && <p className="backlinks-empty">Invalid regular expression</p>}

@@ -862,6 +862,11 @@ body {
   color: var(--accent-violet);
 }
 
+.cairn-search-toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .cairn-search-icon-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -1449,15 +1454,7 @@ body {
 
 .search-options {
   display: flex;
-  gap: 14px;
-}
-
-.search-option {
-  display: flex;
-  align-items: center;
   gap: 4px;
-  font-size: 12px;
-  color: var(--text-secondary);
 }
 
 .search-summary {
