@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepare": "husky"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",
@@ -50,6 +51,7 @@
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
     "happy-dom": "^20.14.3",
+    "husky": "^9.1.7",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vite-plugin-electron": "^0.28.8",
