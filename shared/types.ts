@@ -323,3 +323,13 @@ export interface ReplaceAllResult {
   filesChanged: number;
   replacements: number;
 }
+
+/** A user-created template file living in a stack's hidden .templates folder. */
+export interface FileTemplate {
+  /** Absolute path to the template .md file on disk. */
+  path: string;
+  /** Filename without the .md extension — display label and lookup key. */
+  name: string;
+  /** Owning stack's name — set client-side (mirrors Note.sourceStack) when templates are merged from more than one stack (an open Cairn). */
+  sourceStack?: string;
+}

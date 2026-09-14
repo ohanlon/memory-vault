@@ -25,6 +25,19 @@ export async function listMarkdownFiles(root: string): Promise<string[]> {
   return out;
 }
 
+/** dir/title.md, or dir/title 2.md, dir/title 3.md, ... incrementing past whatever already exists. */
+export function uniqueNotePath(dir: string, title: string): string {
+  let fileName = `${title}.md`;
+  let fullPath = path.join(dir, fileName);
+  let n = 0;
+  while (fs.existsSync(fullPath)) {
+    n += 1;
+    fileName = `${title} ${n}.md`;
+    fullPath = path.join(dir, fileName);
+  }
+  return fullPath;
+}
+
 export async function readNote(root: string, absPath: string): Promise<Note> {
   const [raw, stat] = await Promise.all([
     fs.promises.readFile(absPath, "utf-8"),

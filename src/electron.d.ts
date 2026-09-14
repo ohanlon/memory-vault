@@ -4,6 +4,7 @@ import type {
   CairnIndex,
   DailyNoteResult,
   FileChangeEvent,
+  FileTemplate,
   LayoutPrefs,
   Note,
   PluginManifest,
@@ -42,6 +43,14 @@ export interface MemoryStackAPI {
   saveNote(absPath: string, content: string): Promise<boolean>;
   createNote(dir: string, title: string, templateId?: string): Promise<string>;
   seedStarterContent(): Promise<string[]>;
+  listFileTemplates(root: string): Promise<FileTemplate[]>;
+  convertToTemplate(root: string, absPath: string): Promise<string>;
+  createNoteFromTemplate(
+    dir: string,
+    title: string,
+    templatePath: string,
+    values: Record<string, string>
+  ): Promise<string>;
   deleteNote(absPath: string): Promise<boolean>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
   moveNoteToStack(absPath: string, destRoot: string): Promise<string>;

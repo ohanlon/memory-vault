@@ -480,6 +480,17 @@ body {
   opacity: 0.85;
 }
 
+/* Same treatment as the daily-notes rollup — templates are also a special,
+   cross-stack section rather than a regular per-stack group. */
+.file-tree-group-templates > .file-tree-group-header {
+  color: var(--accent-violet);
+}
+
+.file-tree-group-templates > .file-tree-group-header:hover {
+  color: var(--accent-violet);
+  opacity: 0.85;
+}
+
 .file-tree-group-icon {
   flex-shrink: 0;
   font-size: 13px;
@@ -1722,6 +1733,14 @@ body {
 }
 
 .property-schema-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text-label);
+}
+
+.template-placeholder-field {
   display: flex;
   flex-direction: column;
   gap: 2px;

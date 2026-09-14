@@ -5,6 +5,7 @@ import type {
   CairnIndex,
   DailyNoteResult,
   FileChangeEvent,
+  FileTemplate,
   LayoutPrefs,
   Note,
   PluginManifest,
@@ -64,6 +65,16 @@ const api = {
   createNote: (dir: string, title: string, templateId?: string): Promise<string> =>
     ipcRenderer.invoke("stack:createNote", dir, title, templateId),
   seedStarterContent: (): Promise<string[]> => ipcRenderer.invoke("stack:seedStarterContent"),
+  listFileTemplates: (root: string): Promise<FileTemplate[]> =>
+    ipcRenderer.invoke("templates:list", root),
+  convertToTemplate: (root: string, absPath: string): Promise<string> =>
+    ipcRenderer.invoke("templates:convert", root, absPath),
+  createNoteFromTemplate: (
+    dir: string,
+    title: string,
+    templatePath: string,
+    values: Record<string, string>
+  ): Promise<string> => ipcRenderer.invoke("templates:createNote", dir, title, templatePath, values),
   deleteNote: (absPath: string): Promise<boolean> =>
     ipcRenderer.invoke("stack:deleteNote", absPath),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent, ReactNode } from "react";
-import type { Note, StackEntry } from "@shared/types";
+import type { FileTemplate, Note, StackEntry } from "@shared/types";
 import { findDuplicateTitles } from "@shared/duplicateTitles";
 import { isDailyNote } from "@shared/dailyNote";
 import { pluginRegistry } from "../plugins/registry";
 import { pushToPlugin } from "../plugins/pluginFrameRegistry";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
-import { DeleteIcon, OpenInExplorerIcon, RenameIcon } from "./icons";
+import { DeleteIcon, OpenInExplorerIcon, PageIcon, RenameIcon } from "./icons";
 
 interface Props {
   notes: Note[];
@@ -15,6 +15,7 @@ interface Props {
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
   onRename: (note: Note) => void;
+  onConvertToTemplate: (note: Note) => void;
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
   onShowInExplorer: (absPath: string) => void;
@@ -22,14 +23,22 @@ interface Props {
    *  plain single-stack session (nothing to move a note to). */
   memberStacks?: StackEntry[];
   onMoveNoteToStack?: (note: Note, destRoot: string) => void;
+  /** Every template file available in the current session (rolled up across
+   *  every member stack for an open Cairn) — shown in their own "Templates"
+   *  group, separate from the regular note list they're deliberately excluded from. */
+  templates: FileTemplate[];
+  onSelectTemplate: (template: FileTemplate) => void;
+  onDeleteTemplate: (template: FileTemplate) => void;
 }
 
 type ContextMenuState = { note: Note; x: number; y: number };
+type TemplateContextMenuState = { template: FileTemplate; x: number; y: number };
 
 const NOTE_DRAG_TYPE = "application/x-cairn-note";
 // Key into the same collapsedStacks Set as real stack names — namespaced so
 // it can't collide with a user-chosen stack name.
 const DAILY_GROUP_KEY = "__daily__";
+const TEMPLATES_GROUP_KEY = "__templates__";
 
 // Plugin-contributed context-menu entries for a note, hidden entirely when
 // the owning plugin has no live iframe mounted (see pluginFrameRegistry.ts)
@@ -108,13 +117,18 @@ export function FileTree({
   onSelect,
   onDelete,
   onRename,
+  onConvertToTemplate,
   onCommitNoteRename,
   onCancelRename,
   onShowInExplorer,
   memberStacks,
   onMoveNoteToStack,
+  templates,
+  onSelectTemplate,
+  onDeleteTemplate,
 }: Props) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [templateContextMenu, setTemplateContextMenu] = useState<TemplateContextMenuState | null>(null);
   // Which source-stack groups are collapsed — only relevant for an open
   // Cairn (see groupedByStack below); session-local, not persisted.
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(new Set());
@@ -289,9 +303,56 @@ export function FileTree({
     );
   }
 
+  function renderTemplateRow(template: FileTemplate): ReactNode {
+    return (
+      <li key={template.path} className={template.path === activePath ? "active" : ""}>
+        <button
+          className="file-tree-item file-tree-item-indented"
+          onClick={() => onSelectTemplate(template)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setTemplateContextMenu({ template, x: e.clientX, y: e.clientY });
+          }}
+        >
+          <span className="file-tree-item-title">{template.name}</span>
+          {template.sourceStack && <span className="file-tree-item-hint">{template.sourceStack}</span>}
+        </button>
+      </li>
+    );
+  }
+
+  // Templates never enter the regular notes array (they're deliberately
+  // excluded from the graph/search/watcher — see electron/templates.ts), so
+  // they get their own special group instead of folding into groupedByStack.
+  function renderTemplateGroup(): ReactNode {
+    const collapsed = collapsedStacks.has(TEMPLATES_GROUP_KEY);
+    return (
+      <li key={TEMPLATES_GROUP_KEY} className="file-tree-group file-tree-group-templates">
+        <div
+          className="file-tree-group-header"
+          tabIndex={0}
+          onClick={() => toggleStack(TEMPLATES_GROUP_KEY)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleStack(TEMPLATES_GROUP_KEY);
+            }
+          }}
+        >
+          <span className="file-tree-group-icon" aria-hidden="true">
+            {collapsed ? "📁" : "📑"}
+          </span>
+          <span className="file-tree-group-name">Templates</span>
+        </div>
+        {!collapsed && <ul className="file-tree-group-children">{templates.map((template) => renderTemplateRow(template))}</ul>}
+      </li>
+    );
+  }
+
   return (
     <>
       <ul className="file-tree" tabIndex={0}>
+        {templates.length > 0 && renderTemplateGroup()}
         {isGrouped
           ? [
               ...(dailyNotes.length > 0 ? [renderDailyGroup()] : []),
@@ -356,12 +417,31 @@ export function FileTree({
             ...pluginContextMenuEntries(contextMenu.note.relativePath),
             { separator: true as const },
             {
+              label: "Convert to template",
+              icon: <PageIcon />,
+              onClick: () => onConvertToTemplate(contextMenu.note),
+            },
+            {
               label: "Open in explorer",
               icon: <OpenInExplorerIcon />,
               onClick: () => onShowInExplorer(contextMenu.note.path),
             },
           ]}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+      {templateContextMenu && (
+        <ContextMenu
+          x={templateContextMenu.x}
+          y={templateContextMenu.y}
+          items={[
+            {
+              label: "Delete",
+              icon: <DeleteIcon />,
+              onClick: () => onDeleteTemplate(templateContextMenu.template),
+            },
+          ]}
+          onClose={() => setTemplateContextMenu(null)}
         />
       )}
     </>

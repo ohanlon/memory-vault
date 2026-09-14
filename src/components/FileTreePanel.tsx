@@ -1,5 +1,5 @@
 import { FileTree } from "./FileTree";
-import type { Note, StackEntry } from "@shared/types";
+import type { FileTemplate, Note, StackEntry } from "@shared/types";
 
 interface Props {
   loading: boolean;
@@ -10,6 +10,7 @@ interface Props {
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
   onRename: (note: Note) => void;
+  onConvertToTemplate: (note: Note) => void;
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
   /** Omitted for an open Cairn — seeding starter content only applies to a
@@ -19,6 +20,9 @@ interface Props {
    *  plain single-stack session (nothing to move a note to). */
   memberStacks?: StackEntry[];
   onMoveNoteToStack?: (note: Note, destRoot: string) => void;
+  templates: FileTemplate[];
+  onSelectTemplate: (template: FileTemplate) => void;
+  onDeleteTemplate: (template: FileTemplate) => void;
 }
 
 export function FileTreePanel({
@@ -30,11 +34,15 @@ export function FileTreePanel({
   onSelect,
   onDelete,
   onRename,
+  onConvertToTemplate,
   onCommitNoteRename,
   onCancelRename,
   onSeedStarterContent,
   memberStacks,
   onMoveNoteToStack,
+  templates,
+  onSelectTemplate,
+  onDeleteTemplate,
 }: Props) {
   return (
     <>
@@ -55,10 +63,14 @@ export function FileTreePanel({
         onSelect={onSelect}
         onDelete={onDelete}
         onRename={onRename}
+        onConvertToTemplate={onConvertToTemplate}
         onCommitNoteRename={onCommitNoteRename}
         onCancelRename={onCancelRename}
         memberStacks={memberStacks}
         onMoveNoteToStack={onMoveNoteToStack}
+        templates={templates}
+        onSelectTemplate={onSelectTemplate}
+        onDeleteTemplate={onDeleteTemplate}
       />
     </>
   );

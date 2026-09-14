@@ -5,7 +5,8 @@ import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
 import { PromptModal } from "./components/PromptModal";
 import { ConfirmModal } from "./components/ConfirmModal";
-import { ContextMenu } from "./components/ContextMenu";
+import { ContextMenu, type ContextMenuEntry } from "./components/ContextMenu";
+import { TemplatePlaceholdersModal } from "./components/TemplatePlaceholdersModal";
 import { ShortcutsPanel } from "./components/ShortcutsPanel";
 import { OnboardingTour } from "./components/OnboardingTour";
 import { DeleteIcon, RenameIcon } from "./components/icons";
@@ -37,7 +38,8 @@ import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layout
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
 import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
 import { NOTE_TEMPLATES } from "@shared/noteTemplates";
-import type { AppSettings, CairnEntry, LayoutRegionName, Note, StackEntry } from "@shared/types";
+import { templatePlaceholders } from "@shared/templateRender";
+import type { AppSettings, CairnEntry, FileTemplate, LayoutRegionName, Note, StackEntry } from "@shared/types";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -72,6 +74,7 @@ type DialogState =
   | { kind: "confirm-delete"; note: Note }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
   | { kind: "shortcuts" }
+  | { kind: "fill-template"; dir: string; templatePath: string; placeholders: string[] }
   | null;
 
 type StackContextMenuState = { target: { type: "stack"; stack: StackEntry } | { type: "cairn"; cairn: CairnEntry }; x: number; y: number };
@@ -103,6 +106,12 @@ export default function App() {
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  // Note-shaped data for any template currently open as a tab — templates
+  // are deliberately excluded from the main `notes` array (see
+  // electron/templates.ts), so this is a small parallel lookup rather than
+  // folding them into `notes` and having to filter them back out of the
+  // graph/search/backlinks/link-picker everywhere that array is consumed.
+  const [templateNotesByPath, setTemplateNotesByPath] = useState<Record<string, Note>>({});
   // Which session (a stack's root, or "cairn:<name>") a workspace-state
   // restore has been kicked off for, so a refresh() of the same session
   // doesn't retrigger it — reset to null when the session closes so
@@ -127,6 +136,10 @@ export default function App() {
   // handleNewNoteContextMenu); for an open Cairn, a left-click opens it too,
   // since there's no single implicit target stack to ask "always ask" about.
   const [templateMenu, setTemplateMenu] = useState<{ x: number; y: number } | null>(null);
+  // File templates (from each stack's .templates folder) available for the
+  // stack root(s) the template picker above is currently showing, keyed by
+  // root — refreshed each time the picker is opened (see loadFileTemplates).
+  const [fileTemplatesByRoot, setFileTemplatesByRoot] = useState<Record<string, FileTemplate[]>>({});
   // Stack-picker menu for "New Daily Note" in an open Cairn (same "always
   // ask" reasoning as templateMenu; a plain stack never shows this).
   const [dailyNoteMenu, setDailyNoteMenu] = useState<{ x: number; y: number } | null>(null);
@@ -217,8 +230,8 @@ export default function App() {
   const regionId = (name: LayoutRegionName) => getRegion(layout, name)?.id;
 
   const activeNote = useMemo(
-    () => notes.find((n) => n.path === activePath) ?? null,
-    [notes, activePath]
+    () => notes.find((n) => n.path === activePath) ?? (activePath ? templateNotesByPath[activePath] ?? null : null),
+    [notes, activePath, templateNotesByPath]
   );
 
   // Not just activeNote.title — in an open Cairn, a note whose title
@@ -248,7 +261,11 @@ export default function App() {
             return kind ? { id: p, label: kind.title } : null;
           }
           const note = notes.find((n) => n.path === p);
-          if (!note) return null;
+          if (!note) {
+            const templateNote = templateNotesByPath[p];
+            if (templateNote) return { id: p, label: `${templateNote.title} (Template)` };
+            return null;
+          }
           const inSubfolder = /[\\/]/.test(note.relativePath);
           if (!inSubfolder || settings.tabFolderDisplay === "never") {
             return { id: p, label: note.title };
@@ -260,17 +277,18 @@ export default function App() {
           return { id: p, label: note.title, fullLabel: fullPath };
         })
         .filter((t): t is TabItem => t !== null),
-    [openPaths, notes, settings.tabFolderDisplay]
+    [openPaths, notes, templateNotesByPath, settings.tabFolderDisplay]
   );
 
   // Drop tabs (and clear the active tab) for notes that no longer exist —
   // e.g. deleted or renamed externally, outside the app's own delete/rename flows.
-  // The graph tab is never dropped this way — it isn't a note.
+  // The graph tab is never dropped this way — it isn't a note. Open template
+  // tabs are kept alive the same way, via templateNotesByPath.
   useEffect(() => {
-    const existing = new Set(notes.map((n) => n.path));
+    const existing = new Set([...notes.map((n) => n.path), ...Object.keys(templateNotesByPath)]);
     setOpenPaths((paths) => reconcileTabs(paths, existing));
     setActivePath((path) => (path === null || path === GRAPH_TAB_ID || existing.has(path) ? path : null));
-  }, [notes]);
+  }, [notes, templateNotesByPath]);
 
   // Reads workspace.json for the currently open session — a plain stack's
   // own <stack>/.cairn/workspace.json, or an open Cairn's
@@ -512,17 +530,20 @@ export default function App() {
   // implicit target stack once notes are merged, so both open a
   // stack-picker menu instead of acting immediately. A plain single-stack
   // session keeps today's one-click behavior.
-  function handleNewNoteClick(x: number, y: number) {
+  async function handleNewNoteClick(x: number, y: number) {
     if (!activeSession) return;
     if (activeSession.kind === "stack") {
       handleCreateNote(activeSession.entry.root);
       return;
     }
+    await loadFileTemplates(activeSession.memberStacks.map((s) => s.root));
     setTemplateMenu({ x, y });
   }
 
-  function handleNewNoteContextMenu(x: number, y: number) {
+  async function handleNewNoteContextMenu(x: number, y: number) {
     if (!activeSession) return;
+    const roots = activeSession.kind === "cairn" ? activeSession.memberStacks.map((s) => s.root) : [activeSession.entry.root];
+    await loadFileTemplates(roots);
     setTemplateMenu({ x, y });
   }
 
@@ -604,6 +625,110 @@ export default function App() {
     } catch (err) {
       window.alert(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  async function handleConvertToTemplate(note: Note) {
+    const root = noteRootFor(note, activeSession);
+    if (!root) return;
+    try {
+      // Otherwise a just-edited note's debounced save could land after this
+      // reads the file, and the template would capture the stale pre-edit content.
+      await flushPendingSave(note.path);
+      await window.memoryStack.convertToTemplate(root, note.path);
+      await loadFileTemplates(activeSessionRoots());
+      window.alert(`Saved "${note.title}" as a template — see it under Templates in the sidebar.`);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function loadFileTemplates(roots: string[]) {
+    const entries = await Promise.all(
+      roots.map(async (root) => [root, await window.memoryStack.listFileTemplates(root)] as const)
+    );
+    setFileTemplatesByRoot(Object.fromEntries(entries));
+  }
+
+  function activeSessionRoots(): string[] {
+    if (!activeSession) return [];
+    return activeSession.kind === "cairn" ? activeSession.memberStacks.map((s) => s.root) : [activeSession.entry.root];
+  }
+
+  // Keeps the Templates group in the file tree (see templateEntries below)
+  // up to date — the .templates folder is excluded from the file watcher
+  // (same dotfolder rule as everything else under it), so nothing else
+  // refreshes this automatically.
+  useEffect(() => {
+    loadFileTemplates(activeSessionRoots());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession]);
+
+  // Every template available in the current session, flattened into one
+  // list for the file tree's "Templates" group — tagged with its owning
+  // stack's name (mirroring Note.sourceStack) only when there's more than
+  // one stack to disambiguate between (an open Cairn).
+  const templateEntries = useMemo<FileTemplate[]>(() => {
+    if (!activeSession) return [];
+    if (activeSession.kind === "stack") return fileTemplatesByRoot[activeSession.entry.root] ?? [];
+    return activeSession.memberStacks.flatMap((stack) =>
+      (fileTemplatesByRoot[stack.root] ?? []).map((t) => ({ ...t, sourceStack: stack.name }))
+    );
+  }, [activeSession, fileTemplatesByRoot]);
+
+  async function openTemplateTab(template: FileTemplate) {
+    setSidebarCollapsed(false);
+    const note = await window.memoryStack.readNote(template.path);
+    setTemplateNotesByPath((prev) => ({ ...prev, [template.path]: note }));
+    openTab(template.path);
+  }
+
+  async function handleDeleteTemplate(template: FileTemplate) {
+    if (!window.confirm(`Delete template "${template.name}"? This can't be undone.`)) return;
+    await window.memoryStack.deleteNote(template.path);
+    closeTab(template.path);
+    setTemplateNotesByPath((prev) => {
+      const next = { ...prev };
+      delete next[template.path];
+      return next;
+    });
+    await loadFileTemplates(activeSessionRoots());
+  }
+
+  function templatePickerEntries(root: string): ContextMenuEntry[] {
+    const builtIns: ContextMenuEntry[] = NOTE_TEMPLATES.map((template) => ({
+      label: template.label,
+      onClick: () => handleCreateNote(root, template.id),
+    }));
+    const fileTemplates = fileTemplatesByRoot[root] ?? [];
+    if (fileTemplates.length === 0) return builtIns;
+    return [
+      ...builtIns,
+      { separator: true as const },
+      ...fileTemplates.map((template) => ({
+        label: template.name,
+        onClick: () => handleCreateNoteFromTemplate(root, template),
+      })),
+    ];
+  }
+
+  // Prompts for any {{placeholder}} the template has (skipping the modal
+  // entirely when there are none) before actually writing the new note.
+  async function handleCreateNoteFromTemplate(dir: string, template: FileTemplate) {
+    const raw = await window.memoryStack.readRaw(template.path);
+    const placeholders = templatePlaceholders(raw);
+    if (placeholders.length === 0) {
+      await finishCreateNoteFromTemplate(dir, template.path, {});
+      return;
+    }
+    setDialog({ kind: "fill-template", dir, templatePath: template.path, placeholders });
+  }
+
+  async function finishCreateNoteFromTemplate(dir: string, templatePath: string, values: Record<string, string>) {
+    setSidebarCollapsed(false);
+    const newPath = await window.memoryStack.createNoteFromTemplate(dir, "", templatePath, values);
+    await refresh();
+    openTab(newPath);
+    setRenamingPath(newPath);
   }
 
   async function handleCommitNoteRename(note: Note, newTitle: string) {
@@ -859,11 +984,15 @@ export default function App() {
               onSelect: (n: Note) => openTab(n.path),
               onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
               onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),
+              onConvertToTemplate: (n: Note) => handleConvertToTemplate(n),
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
               onCancelRename: () => setRenamingPath(null),
               onSeedStarterContent: activeSession.kind === "stack" ? handleSeedStarterContent : undefined,
               memberStacks: activeSession.kind === "cairn" ? activeSession.memberStacks : undefined,
               onMoveNoteToStack: (n: Note, destRoot: string) => handleMoveNoteToStack(n, destRoot),
+              templates: templateEntries,
+              onSelectTemplate: (t: FileTemplate) => openTemplateTab(t),
+              onDeleteTemplate: (t: FileTemplate) => handleDeleteTemplate(t),
             }}
           />
         )}
@@ -1012,17 +1141,21 @@ export default function App() {
               activeSession.kind === "cairn"
                 ? activeSession.memberStacks.map((stack) => ({
                     label: stack.name,
-                    children: NOTE_TEMPLATES.map((template) => ({
-                      label: template.label,
-                      onClick: () => handleCreateNote(stack.root, template.id),
-                    })),
+                    children: templatePickerEntries(stack.root),
                   }))
-                : NOTE_TEMPLATES.map((template) => ({
-                    label: template.label,
-                    onClick: () => handleCreateNote(activeSession.entry.root, template.id),
-                  }))
+                : templatePickerEntries(activeSession.entry.root)
             }
             onClose={() => setTemplateMenu(null)}
+          />
+        )}
+        {dialog?.kind === "fill-template" && (
+          <TemplatePlaceholdersModal
+            placeholders={dialog.placeholders}
+            onSubmit={async (values) => {
+              setDialog(null);
+              await finishCreateNoteFromTemplate(dialog.dir, dialog.templatePath, values);
+            }}
+            onCancel={() => setDialog(null)}
           />
         )}
         {dailyNoteMenu && activeSession.kind === "cairn" && (

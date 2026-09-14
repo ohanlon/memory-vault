@@ -3,9 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
-import { loadStack, reconcileStackCache, readNote, watchStack } from "./stack";
+import { loadStack, reconcileStackCache, readNote, uniqueNotePath, watchStack } from "./stack";
 import { readStackCache, writeStackCache } from "./stackCache";
 import { runReplaceAll, runSearch } from "./search";
+import { convertToTemplate, listFileTemplates } from "./templates";
+import { formatTemplateDate, formatTemplateTime, renderTemplate } from "../shared/templateRender";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import {
   addCairn,
@@ -505,17 +507,37 @@ ipcMain.handle(
   async (_event, dir: string, title: string, templateId?: string) => {
     if (activeRoots.length === 0) throw new Error("No stack loaded");
     const safeTitle = title.trim() || "New File";
-    let fileName = `${safeTitle}.md`;
-    let fullPath = path.join(dir, fileName);
-    let n = 0;
-    while (fs.existsSync(fullPath)) {
-      n += 1;
-      fileName = `${safeTitle} ${n}.md`;
-      fullPath = path.join(dir, fileName);
-    }
+    const fullPath = uniqueNotePath(dir, safeTitle);
     const addHeading = readAppSettingsFile(appSettingsFilePath()).addHeadingToNewNotes;
     const scaffold = findNoteTemplate(templateId).build(safeTitle, addHeading);
     fs.writeFileSync(fullPath, scaffold, "utf-8");
+    return fullPath;
+  }
+);
+
+ipcMain.handle("templates:list", async (_event, root: string) => {
+  return listFileTemplates(root);
+});
+
+ipcMain.handle("templates:convert", async (_event, root: string, absPath: string) => {
+  return convertToTemplate(root, absPath);
+});
+
+ipcMain.handle(
+  "templates:createNote",
+  async (_event, dir: string, title: string, templatePath: string, values: Record<string, string>) => {
+    if (activeRoots.length === 0) throw new Error("No stack loaded");
+    const safeTitle = title.trim() || "New File";
+    const fullPath = uniqueNotePath(dir, safeTitle);
+    const raw = await fs.promises.readFile(templatePath, "utf-8");
+    const now = new Date();
+    const context = {
+      ...values,
+      title: safeTitle,
+      date: formatTemplateDate(now, app.getLocale()),
+      time: formatTemplateTime(now, app.getLocale()),
+    };
+    fs.writeFileSync(fullPath, renderTemplate(raw, context), "utf-8");
     return fullPath;
   }
 );
