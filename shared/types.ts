@@ -179,8 +179,20 @@ export interface WorkspaceState {
 /** How a note's parent folder path is shown in its tab header. */
 export type TabFolderDisplay = "never" | "hover" | "always";
 
-/** "system" follows the OS light/dark preference. */
-export type ThemeSetting = "dark" | "light" | "system";
+/** "system" follows the OS light/dark preference. "custom" uses AppSettings.activeCustomThemeId. */
+export type ThemeSetting = "dark" | "light" | "system" | "custom";
+
+/** A user-defined color theme — full control over every themeable CSS variable (see shared/themeColors.ts). */
+export interface CustomTheme {
+  id: string;
+  name: string;
+  /** Which built-in preset this theme is based on — drives the CodeMirror
+   *  editor theme (only dark/light presets exist) and the data-theme
+   *  attribute fallback. Chosen once, when the theme is created. */
+  baseMode: "dark" | "light";
+  /** Keyed by CSS variable name without the "--" prefix, e.g. "bg-base". */
+  colors: Record<string, string>;
+}
 
 /** Font choices for the editing pane — a curated set so every option renders consistently. */
 export type EditorFontFamily =
@@ -216,6 +228,10 @@ export interface AppSettings {
   timeFormat: string;
   /** Token-based date+time pattern, e.g. "YYYY-MM-DD HH:mm" — the default for {{datetime}} in templates. */
   datetimeFormat: string;
+  /** User-defined color themes, selectable from the theme dropdown when theme === "custom". */
+  customThemes: CustomTheme[];
+  /** Which entry of customThemes is active — only meaningful when theme === "custom". */
+  activeCustomThemeId: string | null;
 }
 
 export interface DailyNoteResult {

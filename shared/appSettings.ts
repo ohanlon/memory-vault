@@ -1,7 +1,8 @@
-import type { AppSettings, EditorFontFamily, TabFolderDisplay, ThemeSetting } from "./types";
+import type { AppSettings, CustomTheme, EditorFontFamily, TabFolderDisplay, ThemeSetting } from "./types";
 import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "./editorFonts";
 import { CODE_LANGUAGES, DEFAULT_ENABLED_CODE_LANGUAGES } from "./codeLanguages";
 import { isValidDateFormat } from "./dateFormat";
+import { THEME_COLOR_VAR_NAMES, defaultColorsFor, isValidCssColor } from "./themeColors";
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   tabFolderDisplay: "hover",
@@ -16,10 +17,12 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   dateFormat: "YYYY-MM-DD",
   timeFormat: "HH:mm",
   datetimeFormat: "YYYY-MM-DD HH:mm",
+  customThemes: [],
+  activeCustomThemeId: null,
 };
 
 const VALID_TAB_FOLDER_DISPLAY: TabFolderDisplay[] = ["never", "hover", "always"];
-const VALID_THEME: ThemeSetting[] = ["dark", "light", "system"];
+const VALID_THEME: ThemeSetting[] = ["dark", "light", "system", "custom"];
 const VALID_EDITOR_FONT_FAMILY: EditorFontFamily[] = EDITOR_FONT_OPTIONS.map((opt) => opt.value);
 const VALID_CODE_LANGUAGE_IDS = new Set(CODE_LANGUAGES.map((l) => l.id));
 
@@ -36,6 +39,37 @@ function normalizeEnabledCodeLanguages(value: unknown): string[] {
 function clampFontSize(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(MAX_EDITOR_FONT_SIZE, Math.max(MIN_EDITOR_FONT_SIZE, Math.round(value)));
+}
+
+/**
+ * Validates a single custom theme, filling in any missing/invalid color
+ * from its own baseMode's default palette rather than dropping the whole
+ * theme over one bad field. Returns null only when the entry isn't
+ * salvageable at all (not an object, or an invalid/missing baseMode — there's
+ * no sensible palette to fall back to without knowing which one).
+ */
+export function normalizeCustomTheme(value: unknown): CustomTheme | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Partial<CustomTheme>;
+  if (raw.baseMode !== "dark" && raw.baseMode !== "light") return null;
+  const defaults = defaultColorsFor(raw.baseMode);
+  const rawColors = (raw.colors && typeof raw.colors === "object" ? raw.colors : {}) as Record<string, unknown>;
+  const colors: Record<string, string> = {};
+  for (const name of THEME_COLOR_VAR_NAMES) {
+    const candidate = rawColors[name];
+    colors[name] = typeof candidate === "string" && isValidCssColor(candidate) ? candidate : defaults[name];
+  }
+  return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : crypto.randomUUID(),
+    name: typeof raw.name === "string" && raw.name.trim() ? raw.name : "Untitled theme",
+    baseMode: raw.baseMode,
+    colors,
+  };
+}
+
+export function normalizeCustomThemes(value: unknown): CustomTheme[] {
+  if (!Array.isArray(value)) return DEFAULT_APP_SETTINGS.customThemes;
+  return value.map(normalizeCustomTheme).filter((t): t is CustomTheme => t !== null);
 }
 
 /** Fills in missing/invalid fields with defaults. */
@@ -74,5 +108,10 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof raw.datetimeFormat === "string" && isValidDateFormat(raw.datetimeFormat)
         ? raw.datetimeFormat
         : DEFAULT_APP_SETTINGS.datetimeFormat,
+    customThemes: normalizeCustomThemes(raw.customThemes),
+    // Existence against customThemes is checked at apply-time (not here) so
+    // a theme deleted later degrades gracefully instead of needing this to
+    // run in a specific order relative to the customThemes field above.
+    activeCustomThemeId: typeof raw.activeCustomThemeId === "string" ? raw.activeCustomThemeId : null,
   };
 }

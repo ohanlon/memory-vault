@@ -1,6 +1,10 @@
 /* Color tokens — dark is the default (no [data-theme] attribute yet, e.g.
    before settings load, or when "Dark" is selected). Light overrides below.
-   Every hardcoded color in this file should route through one of these. */
+   Every hardcoded color in this file should route through one of these. A
+   third source of these same variables exists at runtime: a user's custom
+   theme (see shared/themeColors.ts, src/applyCustomTheme.ts) is applied as
+   inline styles on <html>, which override both blocks below via normal CSS
+   specificity — no CSS changes are needed here to support that. */
 :root {
   --bg-base: #1e1f24;
   --bg-recessed: #1a1b20;
@@ -1763,6 +1767,42 @@ body {
   gap: 2px;
   font-size: 12px;
   color: var(--text-label);
+}
+
+.theme-color-group {
+  border: 1px solid var(--border-divider);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 0;
+}
+
+.theme-color-group legend {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 0 4px;
+}
+
+.theme-color-row {
+  padding: 3px 0;
+}
+
+.theme-color-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.theme-color-swatch {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--border-control);
+}
+
+.theme-color-field input[type="text"] {
+  width: 160px;
 }
 
 .modal-box-wide {

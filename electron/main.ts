@@ -42,6 +42,7 @@ import {
   revokePermission,
   writePluginPermissionsFile,
 } from "./pluginPermissions";
+import { defaultColorsFor } from "../shared/themeColors";
 import type {
   AppSettings,
   LayoutPrefs,
@@ -49,21 +50,28 @@ import type {
   PluginPermission,
   PropertyDef,
   SearchOptions,
-  ThemeSetting,
   WorkspaceState,
 } from "../shared/types";
 
-// Kept in step with the --bg-base/--text-primary custom properties in
-// src/index.css for each theme, since the native titleBarOverlay buttons
-// can't be styled with CSS.
-const TITLE_BAR_OVERLAY_COLORS: Record<"dark" | "light", { color: string; symbolColor: string }> = {
-  dark: { color: "#1e1f24", symbolColor: "#e6e6e6" },
-  light: { color: "#ffffff", symbolColor: "#1f2328" },
-};
-
-function resolveTheme(theme: ThemeSetting): "dark" | "light" {
+function resolveTheme(theme: AppSettings["theme"]): "dark" | "light" {
   if (theme === "system") return nativeTheme.shouldUseDarkColors ? "dark" : "light";
+  // "custom" is resolved separately (see initialTitleBarColors) since it
+  // needs the matching CustomTheme's own colors, not a dark/light palette.
+  if (theme === "custom") return "dark";
   return theme;
+}
+
+// The renderer computes/sends title-bar colors for every post-load update
+// (see the "window:setTitleBarOverlay" IPC handler below) — this is only
+// for the one moment before the renderer/DOM exists at all: the window's
+// initial construction in createWindow().
+function initialTitleBarColors(settings: AppSettings): { color: string; symbolColor: string } {
+  if (settings.theme === "custom") {
+    const custom = settings.customThemes.find((t) => t.id === settings.activeCustomThemeId);
+    if (custom) return { color: custom.colors["bg-base"], symbolColor: custom.colors["text-primary"] };
+  }
+  const palette = defaultColorsFor(resolveTheme(settings.theme));
+  return { color: palette["bg-base"], symbolColor: palette["text-primary"] };
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -143,7 +151,7 @@ function pluginsDirPath(): string {
 function createWindow() {
   Menu.setApplicationMenu(null);
 
-  const initialTheme = resolveTheme(readAppSettingsFile(appSettingsFilePath()).theme);
+  const titleBarColors = initialTitleBarColors(readAppSettingsFile(appSettingsFilePath()));
 
   const iconPath = VITE_DEV_SERVER_URL
     ? path.join(process.env.APP_ROOT!, "public", "icon.png")
@@ -157,7 +165,7 @@ function createWindow() {
     // minimize/maximize/close buttons via the overlay.
     titleBarStyle: "hidden",
     titleBarOverlay: {
-      ...TITLE_BAR_OVERLAY_COLORS[initialTheme],
+      ...titleBarColors,
       height: 32,
     },
     webPreferences: {
@@ -488,15 +496,18 @@ ipcMain.handle("settings:save", async (_event, settings: AppSettings) => {
   return true;
 });
 
-ipcMain.handle("window:setTitleBarOverlay", async (_event, theme: "dark" | "light") => {
-  // setTitleBarOverlay is Windows-only; no-op (and possibly a throw) elsewhere.
-  try {
-    win?.setTitleBarOverlay({ ...TITLE_BAR_OVERLAY_COLORS[theme], height: 32 });
-  } catch {
-    // unsupported platform — the window just keeps its native chrome
+ipcMain.handle(
+  "window:setTitleBarOverlay",
+  async (_event, colors: { color: string; symbolColor: string }) => {
+    // setTitleBarOverlay is Windows-only; no-op (and possibly a throw) elsewhere.
+    try {
+      win?.setTitleBarOverlay({ ...colors, height: 32 });
+    } catch {
+      // unsupported platform — the window just keeps its native chrome
+    }
+    return true;
   }
-  return true;
-});
+);
 
 ipcMain.handle("stack:openOrCreateDailyNote", async (_event, stackRoot: string) => {
   const dateFormat = readAppSettingsFile(appSettingsFilePath()).dateFormat;

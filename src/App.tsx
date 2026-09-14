@@ -39,7 +39,9 @@ import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@sha
 import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
 import { NOTE_TEMPLATES } from "@shared/noteTemplates";
 import { templatePlaceholders } from "@shared/templateRender";
+import { defaultColorsFor } from "@shared/themeColors";
 import type { AppSettings, CairnEntry, FileTemplate, LayoutRegionName, Note, StackEntry } from "@shared/types";
+import { applyCustomThemeProperties, clearCustomThemeProperties } from "./applyCustomTheme";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -157,23 +159,47 @@ export default function App() {
   // latest value without waiting for a re-render to read fresh state.
   const widthsRef = useRef(DEFAULT_LAYOUT_PREFS);
 
-  // Resolves the "system" theme setting against the OS preference and
-  // reflects the result on <html> so index.css's [data-theme] rules apply.
-  // Also stays in sync if the OS preference changes while "system" is active.
+  // Resolves the theme setting (built-in, "system", or a user's custom
+  // theme) against the OS preference where relevant, reflects the result on
+  // <html> so index.css's [data-theme] rules apply, and — for "custom" —
+  // layers the theme's own colors on top as inline CSS variables (highest
+  // specificity, so they cleanly override whichever built-in block is
+  // otherwise in effect). Also stays in sync if the OS preference changes
+  // while "system" is active, or if the active custom theme is edited.
   useEffect(() => {
     const theme = settings.theme;
     const media = window.matchMedia("(prefers-color-scheme: light)");
     function apply() {
-      const resolved = theme === "system" ? (media.matches ? "light" : "dark") : theme;
+      // Unconditional and safe (a no-op for anything not currently set) —
+      // guarantees a custom theme's colors never leak into a built-in one.
+      clearCustomThemeProperties(document.documentElement);
+
+      if (theme === "custom") {
+        const custom = settings.customThemes.find((t) => t.id === settings.activeCustomThemeId);
+        if (custom) {
+          applyCustomThemeProperties(document.documentElement, custom);
+          setResolvedTheme(custom.baseMode);
+          document.documentElement.dataset.theme = custom.baseMode;
+          window.memoryStack.setTitleBarOverlay({
+            color: custom.colors["bg-base"],
+            symbolColor: custom.colors["text-primary"],
+          });
+          return;
+        }
+        // activeCustomThemeId doesn't resolve (deleted theme, corrupt settings) — fall through to dark below.
+      }
+
+      const resolved = theme === "system" ? (media.matches ? "light" : "dark") : theme === "custom" ? "dark" : theme;
       setResolvedTheme(resolved);
       document.documentElement.dataset.theme = resolved;
-      window.memoryStack.setTitleBarOverlay(resolved);
+      const builtIn = defaultColorsFor(resolved);
+      window.memoryStack.setTitleBarOverlay({ color: builtIn["bg-base"], symbolColor: builtIn["text-primary"] });
     }
     apply();
     if (theme !== "system") return;
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, [settings.theme]);
+  }, [settings.theme, settings.customThemes, settings.activeCustomThemeId]);
 
   useEffect(() => {
     window.memoryStack.readLayoutPrefs().then((prefs) => {

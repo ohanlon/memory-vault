@@ -38,6 +38,8 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
       dateFormat: "DD/MM/YYYY",
       timeFormat: "HH:mm",
       datetimeFormat: "DD/MM/YYYY HH:mm",
+      customThemes: [],
+      activeCustomThemeId: null,
     };
     writeAppSettingsFile(tmpFile, settings);
     expect(readAppSettingsFile(tmpFile)).toEqual(settings);

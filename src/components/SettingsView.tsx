@@ -10,6 +10,7 @@ import type {
 import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from "@shared/editorFonts";
 import { CODE_LANGUAGES } from "@shared/codeLanguages";
 import { formatDateWithPattern, isValidDateFormat } from "@shared/dateFormat";
+import { CustomThemesModal } from "./CustomThemesModal";
 
 interface Props {
   settings: AppSettings;
@@ -173,6 +174,20 @@ function DateFormatField({
 }
 
 export function SettingsView({ settings, onChange }: Props) {
+  const [managingThemes, setManagingThemes] = useState(false);
+  const themeSelectValue =
+    settings.theme === "custom" && settings.customThemes.some((t) => t.id === settings.activeCustomThemeId)
+      ? `custom:${settings.activeCustomThemeId}`
+      : settings.theme;
+
+  function handleThemeSelect(value: string) {
+    if (value.startsWith("custom:")) {
+      onChange({ ...settings, theme: "custom", activeCustomThemeId: value.slice("custom:".length) });
+    } else {
+      onChange({ ...settings, theme: value as ThemeSetting, activeCustomThemeId: null });
+    }
+  }
+
   return (
     <div className="settings-view">
       <h1>Settings</h1>
@@ -181,18 +196,28 @@ export function SettingsView({ settings, onChange }: Props) {
         <h2>Appearance</h2>
         <div className="settings-row">
           <label htmlFor="setting-theme">Theme</label>
-          <select
-            id="setting-theme"
-            value={settings.theme}
-            onChange={(e) => onChange({ ...settings, theme: e.target.value as ThemeSetting })}
-          >
+          <select id="setting-theme" value={themeSelectValue} onChange={(e) => handleThemeSelect(e.target.value)}>
             {THEME_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
+            {settings.customThemes.map((t) => (
+              <option key={t.id} value={`custom:${t.id}`}>
+                {t.name}
+              </option>
+            ))}
           </select>
         </div>
+        <div className="settings-row">
+          <label>Custom themes</label>
+          <button type="button" onClick={() => setManagingThemes(true)}>
+            Manage custom themes…
+          </button>
+        </div>
+        {managingThemes && (
+          <CustomThemesModal settings={settings} onChange={onChange} onClose={() => setManagingThemes(false)} />
+        )}
       </section>
 
       <section className="settings-section">

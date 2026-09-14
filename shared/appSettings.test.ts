@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_APP_SETTINGS, normalizeAppSettings } from "./appSettings";
+import { DEFAULT_APP_SETTINGS, normalizeAppSettings, normalizeCustomTheme, normalizeCustomThemes } from "./appSettings";
 import { EDITOR_FONT_OPTIONS } from "./editorFonts";
+import { DEFAULT_DARK_COLORS, DEFAULT_LIGHT_COLORS } from "./themeColors";
 
 describe("normalizeAppSettings", () => {
   it("passes through valid values unchanged", () => {
@@ -18,6 +19,8 @@ describe("normalizeAppSettings", () => {
         dateFormat: "DD/MM/YYYY",
         timeFormat: "HH:mm",
         datetimeFormat: "DD/MM/YYYY HH:mm",
+        customThemes: [],
+        activeCustomThemeId: null,
       })
     ).toEqual({
       tabFolderDisplay: "always",
@@ -32,6 +35,8 @@ describe("normalizeAppSettings", () => {
       dateFormat: "DD/MM/YYYY",
       timeFormat: "HH:mm",
       datetimeFormat: "DD/MM/YYYY HH:mm",
+      customThemes: [],
+      activeCustomThemeId: null,
     });
     expect(
       normalizeAppSettings({
@@ -47,6 +52,8 @@ describe("normalizeAppSettings", () => {
         dateFormat: "YYYY-MM-DD",
         timeFormat: "HH:mm",
         datetimeFormat: "YYYY-MM-DD HH:mm",
+        customThemes: [{ id: "t1", name: "My Theme", baseMode: "dark", colors: { "bg-base": "#123456" } }],
+        activeCustomThemeId: "t1",
       })
     ).toEqual({
       tabFolderDisplay: "never",
@@ -61,6 +68,10 @@ describe("normalizeAppSettings", () => {
       dateFormat: "YYYY-MM-DD",
       timeFormat: "HH:mm",
       datetimeFormat: "YYYY-MM-DD HH:mm",
+      customThemes: [
+        { id: "t1", name: "My Theme", baseMode: "dark", colors: { ...DEFAULT_DARK_COLORS, "bg-base": "#123456" } },
+      ],
+      activeCustomThemeId: "t1",
     });
   });
 
@@ -186,5 +197,87 @@ describe("normalizeAppSettings", () => {
     expect(normalizeAppSettings({ dateFormat: 'YYYY-MM-DD"' }).dateFormat).toBe(DEFAULT_APP_SETTINGS.dateFormat);
     expect(normalizeAppSettings({ timeFormat: "" }).timeFormat).toBe(DEFAULT_APP_SETTINGS.timeFormat);
     expect(normalizeAppSettings({ datetimeFormat: "" }).datetimeFormat).toBe(DEFAULT_APP_SETTINGS.datetimeFormat);
+  });
+
+  it("accepts theme='custom' and a string activeCustomThemeId", () => {
+    const result = normalizeAppSettings({ theme: "custom", activeCustomThemeId: "abc" });
+    expect(result.theme).toBe("custom");
+    expect(result.activeCustomThemeId).toBe("abc");
+  });
+
+  it("falls back to null for a non-string activeCustomThemeId", () => {
+    expect(normalizeAppSettings({ activeCustomThemeId: 5 }).activeCustomThemeId).toBeNull();
+    expect(normalizeAppSettings({}).activeCustomThemeId).toBeNull();
+  });
+
+  it("does not require activeCustomThemeId to exist in customThemes — existence is checked at apply-time, not here", () => {
+    const result = normalizeAppSettings({ activeCustomThemeId: "deleted-theme", customThemes: [] });
+    expect(result.activeCustomThemeId).toBe("deleted-theme");
+    expect(result.customThemes).toEqual([]);
+  });
+});
+
+describe("normalizeCustomTheme", () => {
+  it("passes through a fully valid theme unchanged", () => {
+    const theme = { id: "t1", name: "My Theme", baseMode: "dark" as const, colors: DEFAULT_DARK_COLORS };
+    expect(normalizeCustomTheme(theme)).toEqual(theme);
+  });
+
+  it("returns null for a non-object", () => {
+    expect(normalizeCustomTheme(null)).toBeNull();
+    expect(normalizeCustomTheme("not an object")).toBeNull();
+    expect(normalizeCustomTheme(5)).toBeNull();
+  });
+
+  it("returns null for a missing or invalid baseMode", () => {
+    expect(normalizeCustomTheme({ id: "t1", name: "x", colors: {} })).toBeNull();
+    expect(normalizeCustomTheme({ id: "t1", name: "x", baseMode: "purple", colors: {} })).toBeNull();
+  });
+
+  it("generates an id when missing", () => {
+    const result = normalizeCustomTheme({ name: "x", baseMode: "dark", colors: {} });
+    expect(result?.id).toEqual(expect.any(String));
+    expect(result?.id.length).toBeGreaterThan(0);
+  });
+
+  it("falls back to 'Untitled theme' for a missing or blank name", () => {
+    expect(normalizeCustomTheme({ id: "t1", baseMode: "dark", colors: {} })?.name).toBe("Untitled theme");
+    expect(normalizeCustomTheme({ id: "t1", name: "   ", baseMode: "dark", colors: {} })?.name).toBe(
+      "Untitled theme"
+    );
+  });
+
+  it("fills a missing or invalid color from the theme's own baseMode default, leaving valid ones as-is", () => {
+    const result = normalizeCustomTheme({
+      id: "t1",
+      name: "x",
+      baseMode: "light",
+      colors: { "bg-base": "#123456", "text-primary": "not a color" },
+    });
+    expect(result?.colors["bg-base"]).toBe("#123456");
+    expect(result?.colors["text-primary"]).toBe(DEFAULT_LIGHT_COLORS["text-primary"]);
+    expect(result?.colors["accent-blue"]).toBe(DEFAULT_LIGHT_COLORS["accent-blue"]);
+  });
+
+  it("handles a missing or non-object colors field entirely", () => {
+    const result = normalizeCustomTheme({ id: "t1", name: "x", baseMode: "dark" });
+    expect(result?.colors).toEqual(DEFAULT_DARK_COLORS);
+  });
+});
+
+describe("normalizeCustomThemes", () => {
+  it("falls back to the default (empty array) when the value isn't an array", () => {
+    expect(normalizeCustomThemes("not an array")).toEqual([]);
+    expect(normalizeCustomThemes(undefined)).toEqual([]);
+  });
+
+  it("drops unsalvageable entries but keeps the rest", () => {
+    const result = normalizeCustomThemes([
+      { id: "t1", name: "Good", baseMode: "dark", colors: {} },
+      { id: "t2", name: "Bad", baseMode: "invalid", colors: {} },
+      null,
+      "not an object",
+    ]);
+    expect(result.map((t) => t.id)).toEqual(["t1"]);
   });
 });

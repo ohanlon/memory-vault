@@ -70,7 +70,7 @@ export interface MemoryStackAPI {
   saveLayoutPrefs(prefs: LayoutPrefs): Promise<boolean>;
   readAppSettings(): Promise<AppSettings>;
   saveAppSettings(settings: AppSettings): Promise<boolean>;
-  setTitleBarOverlay(theme: "dark" | "light"): Promise<boolean>;
+  setTitleBarOverlay(colors: { color: string; symbolColor: string }): Promise<boolean>;
   openOrCreateDailyNote(stackRoot: string): Promise<DailyNoteResult>;
   listPlugins(): Promise<PluginManifest[]>;
   getPluginPermissions(): Promise<PluginPermissionsFile>;
