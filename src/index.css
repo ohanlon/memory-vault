@@ -901,6 +901,15 @@ body {
   background: var(--bg-control-hover);
 }
 
+.cairn-search-text-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.cairn-search-text-btn:disabled:hover {
+  background: var(--bg-control);
+}
+
 .cairn-search-close {
   font-size: 15px;
   line-height: 1;

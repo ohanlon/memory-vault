@@ -11,6 +11,7 @@ import type {
   PluginPermission,
   PluginPermissionsFile,
   PropertyDef,
+  ReplaceAllResult,
   SearchFileResult,
   SearchOptions,
   StackEntry,
@@ -124,6 +125,8 @@ const api = {
     ipcRenderer.invoke("search:start", options),
   cancelSearch: (searchId: string): Promise<boolean> =>
     ipcRenderer.invoke("search:cancel", searchId),
+  replaceAll: (options: SearchOptions, replaceText: string): Promise<ReplaceAllResult> =>
+    ipcRenderer.invoke("search:replaceAll", options, replaceText),
   onSearchResult: (
     cb: (event: { searchId: string; result: SearchFileResult }) => void
   ): (() => void) => {

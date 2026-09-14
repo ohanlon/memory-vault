@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
 import { loadStack, reconcileStackCache, readNote, watchStack } from "./stack";
 import { readStackCache, writeStackCache } from "./stackCache";
-import { runSearch } from "./search";
+import { runReplaceAll, runSearch } from "./search";
 import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import {
   addCairn,
@@ -395,6 +395,15 @@ ipcMain.handle("search:start", async (_event, options: SearchOptions) => {
 ipcMain.handle("search:cancel", async (_event, searchId: string) => {
   cancelledSearchIds.add(searchId);
   return true;
+});
+
+ipcMain.handle("search:replaceAll", async (_event, options: SearchOptions, replaceText: string) => {
+  if (activeRoots.length === 0) throw new Error("No stack loaded");
+  const results = await Promise.all(activeRoots.map((root) => runReplaceAll(root, options, replaceText)));
+  return results.reduce(
+    (acc, r) => ({ filesChanged: acc.filesChanged + r.filesChanged, replacements: acc.replacements + r.replacements }),
+    { filesChanged: 0, replacements: 0 }
+  );
 });
 
 ipcMain.handle("plugin:list", async () => {

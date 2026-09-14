@@ -10,6 +10,7 @@ import type {
   PluginPermission,
   PluginPermissionsFile,
   PropertyDef,
+  ReplaceAllResult,
   SearchFileResult,
   SearchOptions,
   StackEntry,
@@ -71,6 +72,7 @@ export interface MemoryStackAPI {
   pluginOpenExternal(pluginId: string, url: string): Promise<boolean>;
   startSearch(options: SearchOptions): Promise<string>;
   cancelSearch(searchId: string): Promise<boolean>;
+  replaceAll(options: SearchOptions, replaceText: string): Promise<ReplaceAllResult>;
   onSearchResult(cb: (event: { searchId: string; result: SearchFileResult }) => void): () => void;
   onSearchDone(cb: (event: { searchId: string }) => void): () => void;
 }

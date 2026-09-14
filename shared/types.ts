@@ -318,3 +318,8 @@ export interface SearchFileResult {
   title: string;
   matches: SearchMatch[];
 }
+
+export interface ReplaceAllResult {
+  filesChanged: number;
+  replacements: number;
+}

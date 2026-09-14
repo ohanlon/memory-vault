@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSearchRegExp, searchContent } from "./search";
+import { buildSearchRegExp, replaceAllInContent, searchContent } from "./search";
 
 describe("buildSearchRegExp", () => {
   it("returns null for an empty query", () => {
@@ -84,5 +84,40 @@ describe("searchContent", () => {
   it("respects case sensitivity when set", () => {
     const matches = searchContent("Cat\ncat", { query: "cat", mode: "plain", wholeWord: false, caseSensitive: true });
     expect(matches).toEqual([{ line: 2, lineText: "cat", start: 0, end: 3 }]);
+  });
+});
+
+describe("replaceAllInContent", () => {
+  it("replaces every match with the literal replacement text in plain mode", () => {
+    const result = replaceAllInContent("cat and cat", { query: "cat", mode: "plain", wholeWord: false }, "dog");
+    expect(result).toEqual({ content: "dog and dog", count: 2 });
+  });
+
+  it("respects whole word and case sensitivity", () => {
+    const result = replaceAllInContent(
+      "Cat catalog cat",
+      { query: "cat", mode: "plain", wholeWord: true, caseSensitive: true },
+      "dog"
+    );
+    expect(result).toEqual({ content: "Cat catalog dog", count: 1 });
+  });
+
+  it("substitutes $1/$& capture groups in regex mode", () => {
+    const result = replaceAllInContent(
+      "foo123 bar456",
+      { query: "([a-z]+)(\\d+)", mode: "regex", wholeWord: false },
+      "$2-$1 [$&]"
+    );
+    expect(result).toEqual({ content: "123-foo [foo123] 456-bar [bar456]", count: 2 });
+  });
+
+  it("returns the original content and a zero count when nothing matches", () => {
+    const result = replaceAllInContent("hello", { query: "cat", mode: "plain", wholeWord: false }, "dog");
+    expect(result).toEqual({ content: "hello", count: 0 });
+  });
+
+  it("returns the original content for an invalid regex", () => {
+    const result = replaceAllInContent("hello", { query: "[", mode: "regex", wholeWord: false }, "dog");
+    expect(result).toEqual({ content: "hello", count: 0 });
   });
 });

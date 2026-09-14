@@ -19,6 +19,9 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [results, setResults] = useState<SearchFileResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
+  const [replaceText, setReplaceText] = useState("");
+  const [replacing, setReplacing] = useState(false);
 
   const searchIdRef = useRef<string | null>(null);
 
@@ -67,11 +70,56 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, mode, wholeWord, caseSensitive]);
 
+  // Re-runs the search immediately (no debounce) once a replace finishes, since the
+  // replaced files are rewritten on disk out from under the streamed results above.
+  async function refreshAfterReplace() {
+    const prevSearchId = searchIdRef.current;
+    if (prevSearchId) window.memoryStack.cancelSearch(prevSearchId);
+    searchIdRef.current = null;
+    setResults([]);
+    setSearching(false);
+
+    if (!query || invalidRegex) return;
+
+    const searchId = await window.memoryStack.startSearch({ query, mode, wholeWord, caseSensitive });
+    searchIdRef.current = searchId;
+    setSearching(true);
+  }
+
+  async function handleReplaceAll() {
+    if (!query || invalidRegex || replacing) return;
+    setReplacing(true);
+    await window.memoryStack.replaceAll({ query, mode, wholeWord, caseSensitive }, replaceText);
+    setReplacing(false);
+    await refreshAfterReplace();
+  }
+
   const totalMatches = results.reduce((sum, r) => sum + r.matches.length, 0);
 
   return (
     <div className="search-panel">
       <div className="search-input-row">
+        <button
+          type="button"
+          className="cairn-search-icon-btn"
+          aria-label={showReplace ? "Hide replace" : "Show replace"}
+          title={showReplace ? "Hide replace" : "Show replace"}
+          onClick={() => setShowReplace((v) => !v)}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ transform: showReplace ? "rotate(90deg)" : "none" }}
+          >
+            <path d="M9 5L16 12L9 19" />
+          </svg>
+        </button>
         <input
           type="text"
           className="search-input"
@@ -111,6 +159,27 @@ export function SearchPanel({ sessionKey, notes, onSelect }: Props) {
           .*
         </button>
       </div>
+
+      {showReplace && (
+        <div className="cairn-search-row">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Replace"
+            aria-label="Replace"
+            value={replaceText}
+            onChange={(e) => setReplaceText(e.target.value)}
+          />
+          <button
+            type="button"
+            className="cairn-search-text-btn"
+            disabled={!query || invalidRegex || replacing}
+            onClick={handleReplaceAll}
+          >
+            Replace All
+          </button>
+        </div>
+      )}
 
       {invalidRegex && <p className="backlinks-empty">Invalid regular expression</p>}
       {!invalidRegex && !query && <p className="backlinks-empty">Type to search across all notes</p>}

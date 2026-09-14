@@ -36,3 +36,39 @@ export function searchContent(content: string, options: SearchOptions): SearchMa
   });
   return matches;
 }
+
+/** Turns a literal replace string into what should actually be inserted for one match — in regex mode, substitutes $1/$2/$&/$$ against that match's capture groups (plain mode has no groups, so the text is used as-is). */
+function computeReplacement(replaceText: string, mode: SearchOptions["mode"], match: RegExpMatchArray): string {
+  if (mode !== "regex") return replaceText;
+  return replaceText.replace(/\$([$&]|\d+)/g, (whole, group: string) => {
+    if (group === "&") return match[0];
+    if (group === "$") return "$";
+    for (let len = group.length; len > 0; len--) {
+      const n = Number(group.slice(0, len));
+      if (n > 0 && n < match.length) return (match[n] ?? "") + group.slice(len);
+    }
+    return whole;
+  });
+}
+
+/** Replaces every match of `options` in `content` with `replaceText`, returning the updated content and how many matches were replaced. */
+export function replaceAllInContent(
+  content: string,
+  options: SearchOptions,
+  replaceText: string
+): { content: string; count: number } {
+  const re = buildSearchRegExp(options);
+  if (!re) return { content, count: 0 };
+  const matches = [...content.matchAll(re)];
+  if (matches.length === 0) return { content, count: 0 };
+  let result = "";
+  let lastIndex = 0;
+  for (const m of matches) {
+    const start = m.index ?? 0;
+    result += content.slice(lastIndex, start);
+    result += computeReplacement(replaceText, options.mode, m);
+    lastIndex = start + m[0].length;
+  }
+  result += content.slice(lastIndex);
+  return { content: result, count: matches.length };
+}
