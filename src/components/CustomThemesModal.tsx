@@ -143,30 +143,32 @@ export function CustomThemesModal({ settings, onChange, onClose }: Props) {
 
         {!editing && (
           <>
-            <ul className="property-schema-list">
-              {draft.map((theme, i) => (
-                <li className="property-schema-row" key={theme.id}>
-                  <div>
-                    <span>{theme.name}</span> <span className="property-type-badge">{theme.baseMode}</span>
-                  </div>
-                  <div>
-                    <button type="button" onClick={() => startEdit(i)}>
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => duplicate(i)}>
-                      Duplicate
-                    </button>
-                    <button type="button" onClick={() => downloadTheme(theme)}>
-                      Export
-                    </button>
-                    <button type="button" onClick={() => removeTheme(i)}>
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              ))}
-              {draft.length === 0 && <p className="backlinks-empty">No custom themes yet</p>}
-            </ul>
+            <div className="modal-scroll-body">
+              <ul className="property-schema-list">
+                {draft.map((theme, i) => (
+                  <li className="property-schema-row" key={theme.id}>
+                    <div>
+                      <span>{theme.name}</span> <span className="property-type-badge">{theme.baseMode}</span>
+                    </div>
+                    <div>
+                      <button type="button" onClick={() => startEdit(i)}>
+                        Edit
+                      </button>
+                      <button type="button" onClick={() => duplicate(i)}>
+                        Duplicate
+                      </button>
+                      <button type="button" onClick={() => downloadTheme(theme)}>
+                        Export
+                      </button>
+                      <button type="button" onClick={() => removeTheme(i)}>
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                ))}
+                {draft.length === 0 && <p className="backlinks-empty">No custom themes yet</p>}
+              </ul>
+            </div>
 
             <div className="modal-actions">
               <button type="button" onClick={startNew}>
@@ -188,52 +190,54 @@ export function CustomThemesModal({ settings, onChange, onClose }: Props) {
 
         {editing && (
           <div className="property-schema-form">
-            <input
-              type="text"
-              placeholder="Theme name"
-              value={editing.name}
-              onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-            />
-            <div className="settings-row">
-              <label htmlFor="theme-base-mode">Base</label>
-              <select
-                id="theme-base-mode"
-                value={editing.baseMode}
-                onChange={(e) => setBaseMode(e.target.value as "dark" | "light")}
-              >
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-              </select>
-            </div>
+            <div className="modal-scroll-body">
+              <input
+                type="text"
+                placeholder="Theme name"
+                value={editing.name}
+                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+              />
+              <div className="settings-row">
+                <label htmlFor="theme-base-mode">Base</label>
+                <select
+                  id="theme-base-mode"
+                  value={editing.baseMode}
+                  onChange={(e) => setBaseMode(e.target.value as "dark" | "light")}
+                >
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </div>
 
-            {GROUPS.map((group) => (
-              <fieldset key={group} className="theme-color-group">
-                <legend>{group}</legend>
-                {THEME_COLOR_VARS.filter((v) => v.group === group).map((v) => {
-                  const value = editing.colors[v.name] ?? "";
-                  const valid = isValidCssColor(value);
-                  return (
-                    <div className="settings-row theme-color-row" key={v.name}>
-                      <label htmlFor={`theme-color-${v.name}`}>{v.label}</label>
-                      <div className="theme-color-field">
-                        <span
-                          className="theme-color-swatch"
-                          style={{ background: valid ? value : "transparent" }}
-                          aria-hidden="true"
-                        />
-                        <input
-                          id={`theme-color-${v.name}`}
-                          type="text"
-                          value={value}
-                          aria-invalid={!valid}
-                          onChange={(e) => setColor(v.name, e.target.value)}
-                        />
+              {GROUPS.map((group) => (
+                <fieldset key={group} className="theme-color-group">
+                  <legend>{group}</legend>
+                  {THEME_COLOR_VARS.filter((v) => v.group === group).map((v) => {
+                    const value = editing.colors[v.name] ?? "";
+                    const valid = isValidCssColor(value);
+                    return (
+                      <div className="settings-row theme-color-row" key={v.name}>
+                        <label htmlFor={`theme-color-${v.name}`}>{v.label}</label>
+                        <div className="theme-color-field">
+                          <span
+                            className="theme-color-swatch"
+                            style={{ background: valid ? value : "transparent" }}
+                            aria-hidden="true"
+                          />
+                          <input
+                            id={`theme-color-${v.name}`}
+                            type="text"
+                            value={value}
+                            aria-invalid={!valid}
+                            onChange={(e) => setColor(v.name, e.target.value)}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </fieldset>
-            ))}
+                    );
+                  })}
+                </fieldset>
+              ))}
+            </div>
 
             {formError && <span className="property-error">{formError}</span>}
 

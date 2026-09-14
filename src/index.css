@@ -1751,6 +1751,10 @@ body {
   gap: 8px;
   border-top: 1px solid var(--border-divider);
   padding-top: 10px;
+  /* Lets a .modal-scroll-body child actually shrink to scroll instead of
+     being held to its content's full height by the flexbox min-height:auto
+     default — only matters when this form is long enough to need it. */
+  min-height: 0;
 }
 
 .property-schema-form label {
@@ -1825,9 +1829,21 @@ body {
   border-radius: 6px;
   padding: 16px;
   min-width: 320px;
+  max-height: min(85vh, 720px);
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
+}
+
+/* Wraps whichever part of a modal's content could grow tall (e.g. a long
+   list, or a big form) so it scrolls internally instead of pushing the
+   modal past the viewport — the header/actions around it (siblings, not
+   wrapped) stay in place and reachable regardless of scroll position. */
+.modal-scroll-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .modal-box h3 {
