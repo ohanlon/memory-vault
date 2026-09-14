@@ -14,6 +14,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   enabledCodeLanguages: DEFAULT_ENABLED_CODE_LANGUAGES,
   hasSeenTour: false,
   dateFormat: "YYYY-MM-DD",
+  timeFormat: "HH:mm",
   datetimeFormat: "YYYY-MM-DD HH:mm",
 };
 
@@ -65,6 +66,10 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof raw.dateFormat === "string" && isValidDateFormat(raw.dateFormat)
         ? raw.dateFormat
         : DEFAULT_APP_SETTINGS.dateFormat,
+    timeFormat:
+      typeof raw.timeFormat === "string" && isValidDateFormat(raw.timeFormat)
+        ? raw.timeFormat
+        : DEFAULT_APP_SETTINGS.timeFormat,
     datetimeFormat:
       typeof raw.datetimeFormat === "string" && isValidDateFormat(raw.datetimeFormat)
         ? raw.datetimeFormat

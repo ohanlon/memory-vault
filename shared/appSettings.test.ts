@@ -16,6 +16,7 @@ describe("normalizeAppSettings", () => {
         enabledCodeLanguages: ["python", "rust"],
         hasSeenTour: true,
         dateFormat: "DD/MM/YYYY",
+        timeFormat: "HH:mm",
         datetimeFormat: "DD/MM/YYYY HH:mm",
       })
     ).toEqual({
@@ -29,6 +30,7 @@ describe("normalizeAppSettings", () => {
       enabledCodeLanguages: ["python", "rust"],
       hasSeenTour: true,
       dateFormat: "DD/MM/YYYY",
+      timeFormat: "HH:mm",
       datetimeFormat: "DD/MM/YYYY HH:mm",
     });
     expect(
@@ -43,6 +45,7 @@ describe("normalizeAppSettings", () => {
         enabledCodeLanguages: [],
         hasSeenTour: false,
         dateFormat: "YYYY-MM-DD",
+        timeFormat: "HH:mm",
         datetimeFormat: "YYYY-MM-DD HH:mm",
       })
     ).toEqual({
@@ -56,6 +59,7 @@ describe("normalizeAppSettings", () => {
       enabledCodeLanguages: [],
       hasSeenTour: false,
       dateFormat: "YYYY-MM-DD",
+      timeFormat: "HH:mm",
       datetimeFormat: "YYYY-MM-DD HH:mm",
     });
   });
@@ -170,15 +174,17 @@ describe("normalizeAppSettings", () => {
     expect(normalizeAppSettings({ hasSeenTour: false }).hasSeenTour).toBe(false);
   });
 
-  it("accepts a valid dateFormat/datetimeFormat", () => {
+  it("accepts a valid dateFormat/timeFormat/datetimeFormat", () => {
     expect(normalizeAppSettings({ dateFormat: "DD/MM/YYYY" }).dateFormat).toBe("DD/MM/YYYY");
+    expect(normalizeAppSettings({ timeFormat: "h:mm a" }).timeFormat).toBe("h:mm a");
     expect(normalizeAppSettings({ datetimeFormat: "DD/MM/YYYY HH:mm" }).datetimeFormat).toBe("DD/MM/YYYY HH:mm");
   });
 
-  it("falls back to the default for an invalid or non-string dateFormat/datetimeFormat", () => {
+  it("falls back to the default for an invalid or non-string dateFormat/timeFormat/datetimeFormat", () => {
     expect(normalizeAppSettings({ dateFormat: "" }).dateFormat).toBe(DEFAULT_APP_SETTINGS.dateFormat);
     expect(normalizeAppSettings({ dateFormat: 5 }).dateFormat).toBe(DEFAULT_APP_SETTINGS.dateFormat);
     expect(normalizeAppSettings({ dateFormat: 'YYYY-MM-DD"' }).dateFormat).toBe(DEFAULT_APP_SETTINGS.dateFormat);
+    expect(normalizeAppSettings({ timeFormat: "" }).timeFormat).toBe(DEFAULT_APP_SETTINGS.timeFormat);
     expect(normalizeAppSettings({ datetimeFormat: "" }).datetimeFormat).toBe(DEFAULT_APP_SETTINGS.datetimeFormat);
   });
 });

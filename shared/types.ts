@@ -210,9 +210,11 @@ export interface AppSettings {
   enabledCodeLanguages: string[];
   /** Whether the first-run onboarding tour has already been shown (and dismissed/completed). */
   hasSeenTour: boolean;
-  /** Token-based date pattern (see shared/dateFormat.ts), e.g. "YYYY-MM-DD" — applied to daily note filenames/headings. */
+  /** Token-based date pattern (see shared/dateFormat.ts), e.g. "YYYY-MM-DD" — applied to daily note filenames/headings, and the default for {{date}} in templates. */
   dateFormat: string;
-  /** Token-based date+time pattern, e.g. "YYYY-MM-DD HH:mm". */
+  /** Token-based time pattern, e.g. "HH:mm" — the default for {{time}} in templates. */
+  timeFormat: string;
+  /** Token-based date+time pattern, e.g. "YYYY-MM-DD HH:mm" — the default for {{datetime}} in templates. */
   datetimeFormat: string;
 }
 

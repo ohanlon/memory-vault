@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { renderTemplate, templatePlaceholders } from "./templateRender";
+import { expandBuiltInDateVars, renderTemplate, templatePlaceholders } from "./templateRender";
+
+const DEFAULTS = { date: "YYYY-MM-DD", time: "HH:mm", datetime: "YYYY-MM-DD HH:mm" };
+const NOW = new Date(2026, 7, 27, 14, 5); // August 27, 2026, 14:05
 
 describe("templatePlaceholders", () => {
   it("finds plain placeholders in first-appearance order", () => {
@@ -16,6 +19,12 @@ describe("templatePlaceholders", () => {
     ).toEqual(["topic"]);
   });
 
+  it("excludes built-in date/time/datetime variables even with a custom format", () => {
+    expect(templatePlaceholders("{{date:YYYY}} {{time:h:mm a}} {{datetime:YYYY/MM/DD}} {{topic}}")).toEqual([
+      "topic",
+    ]);
+  });
+
   it("doesn't treat a section tag itself as a placeholder, but scans inside it", () => {
     expect(templatePlaceholders("{{#attendees}}{{name}}{{/attendees}}")).toEqual(["name"]);
   });
@@ -26,6 +35,23 @@ describe("templatePlaceholders", () => {
 
   it("returns an empty list for invalid mustache syntax instead of throwing", () => {
     expect(templatePlaceholders("{{#unclosed")).toEqual([]);
+  });
+});
+
+describe("expandBuiltInDateVars", () => {
+  it("expands {{date}}, {{time}}, and {{datetime}} using the given defaults", () => {
+    expect(expandBuiltInDateVars("{{date}} {{time}} {{datetime}}", NOW, DEFAULTS)).toBe(
+      "2026-08-27 14:05 2026-08-27 14:05"
+    );
+  });
+
+  it("uses a tag's own format instead of the default when given", () => {
+    expect(expandBuiltInDateVars("{{date:YYYY}}", NOW, DEFAULTS)).toBe("2026");
+    expect(expandBuiltInDateVars("{{time:h:mm a}}", NOW, DEFAULTS)).toBe("2:05 pm");
+  });
+
+  it("leaves everything else untouched", () => {
+    expect(expandBuiltInDateVars("# {{title}}\n\n{{topic}}", NOW, DEFAULTS)).toBe("# {{title}}\n\n{{topic}}");
   });
 });
 

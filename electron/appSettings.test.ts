@@ -36,6 +36,7 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
       enabledCodeLanguages: ["python", "rust"],
       hasSeenTour: true,
       dateFormat: "DD/MM/YYYY",
+      timeFormat: "HH:mm",
       datetimeFormat: "DD/MM/YYYY HH:mm",
     };
     writeAppSettingsFile(tmpFile, settings);

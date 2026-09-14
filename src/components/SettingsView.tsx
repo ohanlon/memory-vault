@@ -256,13 +256,21 @@ export function SettingsView({ settings, onChange }: Props) {
         </div>
         <p className="settings-hint">
           Date format tokens: YYYY/YY, MMMM/MMM/MM/M, dddd/ddd, DD/D, HH/H, hh/h, mm/m, ss/s, A/a. Wrap literal text
-          in [brackets] (e.g. "[Daily] YYYY-MM-DD").
+          in [brackets] (e.g. "[Daily] YYYY-MM-DD"). These are the defaults for a template's {"{{date}}"},{" "}
+          {"{{time}}"}, and {"{{datetime}}"} — add a format after a colon (e.g. {"{{date:YYYY-MM-DD}}"}) to override
+          just that one.
         </p>
         <DateFormatField
           id="setting-date-format"
           label="Date format"
           value={settings.dateFormat}
           onCommit={(dateFormat) => onChange({ ...settings, dateFormat })}
+        />
+        <DateFormatField
+          id="setting-time-format"
+          label="Time format"
+          value={settings.timeFormat}
+          onCommit={(timeFormat) => onChange({ ...settings, timeFormat })}
         />
         <DateFormatField
           id="setting-datetime-format"
