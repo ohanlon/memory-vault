@@ -32,7 +32,7 @@ import {
   tabRefToTabId,
 } from "./stack/tabs";
 import { CombineStacksModal } from "./components/CombineStacksModal";
-import { stripMdExtension } from "@shared/displayName";
+import { basename, stripMdExtension } from "@shared/displayName";
 import { backlinkTitles } from "@shared/buildGraph";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
@@ -56,11 +56,6 @@ function clampWidth(width: number): number {
 
 function deleteConfirmMessage(note: Note): string {
   return `Delete "${stripMdExtension(note.relativePath)}"? This can't be undone.`;
-}
-
-/** Last path segment, handling both "/" and "\" separators — used to default a new stack's name to its folder name. */
-function basename(fullPath: string): string {
-  return fullPath.split(/[/\\]/).filter(Boolean).pop() ?? fullPath;
 }
 
 /** The root a note's own stack lives at — the single open stack's root for
@@ -101,6 +96,7 @@ export default function App() {
     openStackByEntry,
     openCairnByEntry,
     addStack,
+    addStackToRegistry,
     removeStack,
     renameStack,
     addCairn,
@@ -1013,6 +1009,7 @@ export default function App() {
             <CombineStacksModal
               stacks={stacks}
               initialSelected={dialog.preselectStackName ? [dialog.preselectStackName] : undefined}
+              onAddStack={addStackToRegistry}
               onSubmit={handleCombineStacksSubmit}
               onCancel={() => setDialog(null)}
             />
@@ -1022,6 +1019,7 @@ export default function App() {
               stacks={stacks}
               editingCairnName={dialog.cairn.name}
               initialSelected={dialog.cairn.memberStackNames}
+              onAddStack={addStackToRegistry}
               onSubmit={(_name, memberStackNames) => handleManageCairnMembersSubmit(dialog.cairn, memberStackNames)}
               onCancel={() => setDialog(null)}
             />

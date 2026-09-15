@@ -163,13 +163,21 @@ export function useStack() {
     [openCairn, state.stacks]
   );
 
+  // Persists a new stack without opening it — used when adding a folder as a
+  // stack from somewhere other than the launcher (e.g. mid-flow while
+  // picking members for a Cairn), where switching the active session out
+  // from under that flow would be unwelcome.
+  const addStackToRegistry = useCallback(async (name: string, root: string) => {
+    const stacks = await window.memoryStack.addStack(name, root); // throws on empty/duplicate name
+    setState((s) => ({ ...s, stacks }));
+  }, []);
+
   const addStack = useCallback(
     async (name: string, root: string) => {
-      const stacks = await window.memoryStack.addStack(name, root); // throws on empty/duplicate name
-      setState((s) => ({ ...s, stacks }));
+      await addStackToRegistry(name, root);
       await openStack({ name: name.trim(), root });
     },
-    [openStack]
+    [openStack, addStackToRegistry]
   );
 
   const removeStack = useCallback(async (name: string) => {
@@ -321,6 +329,7 @@ export function useStack() {
     openStackByEntry,
     openCairnByEntry,
     addStack,
+    addStackToRegistry,
     removeStack,
     renameStack,
     addCairn,

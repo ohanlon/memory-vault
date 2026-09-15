@@ -1892,6 +1892,22 @@ body {
   cursor: pointer;
 }
 
+.combine-stacks-add-folder {
+  align-self: flex-start;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-control);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.combine-stacks-add-folder:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stripMdExtension } from "./displayName";
+import { basename, stripMdExtension } from "./displayName";
 
 describe("stripMdExtension", () => {
   it("strips a trailing .md extension", () => {
@@ -24,5 +24,23 @@ describe("stripMdExtension", () => {
 
   it("does not strip .md occurring mid-name", () => {
     expect(stripMdExtension("Note.md.bak")).toBe("Note.md.bak");
+  });
+});
+
+describe("basename", () => {
+  it("returns the last segment of a forward-slash path", () => {
+    expect(basename("/Users/pete/Notes")).toBe("Notes");
+  });
+
+  it("returns the last segment of a windows-style path", () => {
+    expect(basename("C:\\Users\\pete\\Notes")).toBe("Notes");
+  });
+
+  it("ignores a trailing separator", () => {
+    expect(basename("/Users/pete/Notes/")).toBe("Notes");
+  });
+
+  it("returns the whole string when there's no separator", () => {
+    expect(basename("Notes")).toBe("Notes");
   });
 });
