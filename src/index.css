@@ -244,6 +244,11 @@ body {
   background: var(--bg-control-hover);
 }
 
+.empty-state button:not(.context-menu-item):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .empty-state-actions {
   display: flex;
   gap: 8px;
@@ -302,6 +307,18 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.stack-list-section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  padding: 4px 4px 0;
+}
+
+.stack-list-section-label:not(:first-child) {
+  margin-top: 8px;
 }
 
 .stack-list-item {

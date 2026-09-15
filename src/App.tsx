@@ -9,7 +9,7 @@ import { ContextMenu, type ContextMenuEntry } from "./components/ContextMenu";
 import { TemplatePlaceholdersModal } from "./components/TemplatePlaceholdersModal";
 import { ShortcutsPanel } from "./components/ShortcutsPanel";
 import { OnboardingTour } from "./components/OnboardingTour";
-import { DeleteIcon, RenameIcon } from "./components/icons";
+import { DeleteIcon, LinkIcon, RenameIcon } from "./components/icons";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
@@ -58,6 +58,11 @@ function deleteConfirmMessage(note: Note): string {
   return `Delete "${stripMdExtension(note.relativePath)}"? This can't be undone.`;
 }
 
+/** Last path segment, handling both "/" and "\" separators — used to default a new stack's name to its folder name. */
+function basename(fullPath: string): string {
+  return fullPath.split(/[/\\]/).filter(Boolean).pop() ?? fullPath;
+}
+
 /** The root a note's own stack lives at — the single open stack's root for
  *  a plain session, or the matching member stack's root (via
  *  Note.sourceStack) when notes are merged from an open Cairn. */
@@ -71,7 +76,8 @@ type DialogState =
   | { kind: "name-stack"; root: string }
   | { kind: "rename-stack"; stack: StackEntry }
   | { kind: "rename-cairn"; cairn: CairnEntry }
-  | { kind: "combine-stacks" }
+  | { kind: "combine-stacks"; preselectStackName?: string }
+  | { kind: "manage-cairn-members"; cairn: CairnEntry }
   | { kind: "manage-properties"; root: string }
   | { kind: "confirm-delete"; note: Note }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
@@ -100,6 +106,7 @@ export default function App() {
     addCairn,
     removeCairn,
     renameCairn,
+    updateCairnMembers,
     closeStack,
     refresh,
     saveSchema,
@@ -590,6 +597,23 @@ export default function App() {
     }
   }
 
+  async function handleManageCairnMembersSubmit(cairn: CairnEntry, memberStackNames: string[]) {
+    try {
+      await updateCairnMembers(cairn.name, memberStackNames);
+      setDialog(null);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleAddStackToCairn(stackName: string, cairn: CairnEntry) {
+    try {
+      await updateCairnMembers(cairn.name, [...cairn.memberStackNames, stackName]);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function handleRemoveCairn(name: string) {
     if (!window.confirm(`Remove Cairn "${name}"? Its member stacks are untouched.`)) return;
     await removeCairn(name);
@@ -793,6 +817,71 @@ export default function App() {
   const LeftRibbon = pluginRegistry.getRegion("left-ribbon");
 
   if (!activeSession) {
+    // Built once per render so the context menu can carry a fully-typed,
+    // narrowed `target` into its item closures (the raw union on
+    // stackContextMenu.target doesn't stay narrowed inside nested callbacks).
+    const stackContextMenuItems: ContextMenuEntry[] | null = (() => {
+      if (!stackContextMenu) return null;
+      const { target } = stackContextMenu;
+      if (target.type === "cairn") {
+        return [
+          {
+            label: "Manage stacks…",
+            icon: <LinkIcon />,
+            onClick: () => setDialog({ kind: "manage-cairn-members", cairn: target.cairn }),
+          },
+          {
+            label: "Rename",
+            shortcut: "F2",
+            icon: <RenameIcon />,
+            onClick: () => setDialog({ kind: "rename-cairn", cairn: target.cairn }),
+          },
+          {
+            label: "Delete",
+            shortcut: "Del",
+            icon: <DeleteIcon />,
+            onClick: () => handleRemoveCairn(target.cairn.name),
+          },
+        ];
+      }
+      const otherCairns = cairns.filter(
+        (c) => !c.memberStackNames.some((m) => m.toLowerCase() === target.stack.name.toLowerCase())
+      );
+      return [
+        {
+          label: "Rename",
+          shortcut: "F2",
+          icon: <RenameIcon />,
+          onClick: () => setDialog({ kind: "rename-stack", stack: target.stack }),
+        },
+        ...(stacks.length >= 2
+          ? ([
+              {
+                label: "Add to Cairn",
+                icon: <LinkIcon />,
+                children: [
+                  ...otherCairns.map((c) => ({
+                    label: c.name,
+                    onClick: () => handleAddStackToCairn(target.stack.name, c),
+                  })),
+                  ...(otherCairns.length > 0 ? [{ separator: true as const }] : []),
+                  {
+                    label: "New Cairn…",
+                    onClick: () => setDialog({ kind: "combine-stacks", preselectStackName: target.stack.name }),
+                  },
+                ],
+              },
+            ] satisfies ContextMenuEntry[])
+          : []),
+        {
+          label: "Delete",
+          shortcut: "Del",
+          icon: <DeleteIcon />,
+          onClick: () => handleRemoveStack(target.stack.name),
+        },
+      ];
+    })();
+
     return (
       <div className="app-shell">
         {isRegionPresent("title-bar") && TitleBar && (
@@ -809,6 +898,11 @@ export default function App() {
             <p>Add a folder of markdown notes to get started.</p>
           ) : (
             <ul className="stack-list">
+              {cairns.length > 0 && (
+                <li className="stack-list-section-label" aria-hidden="true">
+                  Cairns — merged views combining two or more stacks
+                </li>
+              )}
               {cairns.map((c) => (
                 <li key={`cairn:${c.name.toLowerCase()}`}>
                   <button
@@ -834,6 +928,11 @@ export default function App() {
                   </button>
                 </li>
               ))}
+              {cairns.length > 0 && stacks.length > 0 && (
+                <li className="stack-list-section-label" aria-hidden="true">
+                  Stacks
+                </li>
+              )}
               {stacks.map((v) => (
                 <li key={v.name.toLowerCase()}>
                   <button
@@ -863,15 +962,30 @@ export default function App() {
           )}
           <div className="empty-state-actions">
             <button onClick={handlePickFolder}>+ Add Stack</button>
-            {stacks.length >= 2 && (
-              <button onClick={() => setDialog({ kind: "combine-stacks" })}>Combine stacks…</button>
-            )}
+            <button
+              onClick={() => setDialog({ kind: "combine-stacks" })}
+              disabled={stacks.length < 2}
+              title={
+                stacks.length < 2
+                  ? "Add one more stack first — a Cairn merges two or more stacks into one linked view."
+                  : "Merge two or more stacks into one linked view"
+              }
+            >
+              Combine stacks…
+            </button>
           </div>
+          {stacks.length < 2 && (
+            <p className="modal-message">
+              A Cairn merges notes from two or more stacks into a single linked view — the stacks themselves are
+              untouched.
+            </p>
+          )}
           {error && <p className="error">{error}</p>}
 
           {dialog?.kind === "name-stack" && (
             <PromptModal
               title="Name this stack"
+              initialValue={basename(dialog.root)}
               confirmLabel="Add"
               onSubmit={handleNameStackSubmit}
               onCancel={() => setDialog(null)}
@@ -898,34 +1012,25 @@ export default function App() {
           {dialog?.kind === "combine-stacks" && (
             <CombineStacksModal
               stacks={stacks}
+              initialSelected={dialog.preselectStackName ? [dialog.preselectStackName] : undefined}
               onSubmit={handleCombineStacksSubmit}
               onCancel={() => setDialog(null)}
             />
           )}
-          {stackContextMenu && (
+          {dialog?.kind === "manage-cairn-members" && (
+            <CombineStacksModal
+              stacks={stacks}
+              editingCairnName={dialog.cairn.name}
+              initialSelected={dialog.cairn.memberStackNames}
+              onSubmit={(_name, memberStackNames) => handleManageCairnMembersSubmit(dialog.cairn, memberStackNames)}
+              onCancel={() => setDialog(null)}
+            />
+          )}
+          {stackContextMenu && stackContextMenuItems && (
             <ContextMenu
               x={stackContextMenu.x}
               y={stackContextMenu.y}
-              items={[
-                {
-                  label: "Rename",
-                  shortcut: "F2",
-                  icon: <RenameIcon />,
-                  onClick: () =>
-                    stackContextMenu.target.type === "stack"
-                      ? setDialog({ kind: "rename-stack", stack: stackContextMenu.target.stack })
-                      : setDialog({ kind: "rename-cairn", cairn: stackContextMenu.target.cairn }),
-                },
-                {
-                  label: "Delete",
-                  shortcut: "Del",
-                  icon: <DeleteIcon />,
-                  onClick: () =>
-                    stackContextMenu.target.type === "stack"
-                      ? handleRemoveStack(stackContextMenu.target.stack.name)
-                      : handleRemoveCairn(stackContextMenu.target.cairn.name),
-                },
-              ]}
+              items={stackContextMenuItems}
               onClose={() => setStackContextMenu(null)}
             />
           )}
