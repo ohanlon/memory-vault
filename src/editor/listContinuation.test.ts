@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { insertNewlineContinueMarkup } from "@codemirror/lang-markdown";
-import { loremIpsumExpand, noCurlyBraceAutoClose } from "./loremIpsumExpand";
 import { listIndentKeymap } from "./listIndent";
 
 // Exercises the exact extension stack EditorPane assembles (minus the
@@ -13,7 +12,7 @@ function stateAtEnd(doc: string) {
   return EditorState.create({
     doc,
     selection: { anchor: doc.length },
-    extensions: [markdown(), loremIpsumExpand(), noCurlyBraceAutoClose(), listIndentKeymap()],
+    extensions: [markdown(), listIndentKeymap()],
   });
 }
 
@@ -46,7 +45,7 @@ describe("list continuation (Enter after a list marker)", () => {
     state = EditorState.create({
       doc: state.doc.toString() + "second",
       selection: { anchor: state.doc.length + "second".length },
-      extensions: [markdown(), loremIpsumExpand(), noCurlyBraceAutoClose(), listIndentKeymap()],
+      extensions: [markdown(), listIndentKeymap()],
     });
     state = pressEnter(state);
     expect(state.doc.toString()).toBe("1. first\n2. second\n3. ");

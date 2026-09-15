@@ -8,7 +8,6 @@ import { stripMdExtension } from "@shared/displayName";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
 import { CODE_LANGUAGES, CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
 import { livePreview } from "../editor/livePreview";
-import { loremIpsumExpand, noCurlyBraceAutoClose } from "../editor/loremIpsumExpand";
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest, type PickableNote } from "../editor/editorContextMenu";
 import { editorSearchKeymap, searchExtension } from "../editor/editorSearch";
@@ -249,8 +248,6 @@ export function EditorPane({
       editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", note?.sourceStack, writeNote),
       searchExtension(),
       editorSearchKeymap(),
-      loremIpsumExpand(),
-      noCurlyBraceAutoClose(),
       listIndentKeymap(),
       formatShortcutsKeymap(),
       fontTheme,
