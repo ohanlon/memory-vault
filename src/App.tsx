@@ -926,108 +926,116 @@ export default function App() {
           {stacks.length === 0 && cairns.length === 0 ? (
             <p>Add a folder of markdown notes to get started.</p>
           ) : (
-            <ul className="stack-list">
-              {cairns.length > 0 && (
-                <li className="stack-list-section-label" aria-hidden="true">
-                  Cairns — merged views combining two or more stacks
-                </li>
-              )}
-              {cairns.map((c) => (
-                <li key={`cairn:${c.name.toLowerCase()}`}>
-                  <div
-                    className="stack-list-item"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openCairnByEntry(c)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openCairnByEntry(c);
-                        return;
-                      }
-                      if (e.key === "F2") {
-                        e.preventDefault();
-                        setDialog({ kind: "rename-cairn", cairn: c });
-                        return;
-                      }
-                      if (e.key !== "Delete") return;
-                      e.preventDefault();
-                      handleRemoveCairn(c.name);
-                    }}
-                  >
-                    <EntryAvatar kind="cairn" name={c.name} avatar={c.avatar} size={128} className="stack-list-avatar" />
-                    <div className="stack-list-row">
-                      <span className="stack-list-text">
-                        <span className="stack-list-name">◆ {c.name}</span>
-                        <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
-                      </span>
-                      <button
-                        type="button"
-                        className="stack-list-menu-trigger"
-                        aria-label={`${c.name} options`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setStackContextMenu({ target: { type: "cairn", cairn: c }, x: rect.left, y: rect.bottom + 4 });
-                        }}
-                      >
-                        ⋮
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-              {cairns.length > 0 && stacks.length > 0 && (
-                <li className="stack-list-section-label" aria-hidden="true">
-                  Stacks
-                </li>
-              )}
-              {stacks.map((v) => (
-                <li key={v.name.toLowerCase()}>
-                  <div
-                    className="stack-list-item"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openStackByEntry(v)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openStackByEntry(v);
-                        return;
-                      }
-                      if (e.key === "F2") {
-                        e.preventDefault();
-                        setDialog({ kind: "rename-stack", stack: v });
-                        return;
-                      }
-                      if (e.key !== "Delete") return;
-                      e.preventDefault();
-                      handleRemoveStack(v.name);
-                    }}
-                  >
-                    <EntryAvatar kind="stack" name={v.name} avatar={v.avatar} size={128} className="stack-list-avatar" />
-                    <div className="stack-list-row">
-                      <span className="stack-list-text">
-                        <span className="stack-list-name">{v.name}</span>
-                        <span className="stack-list-path">{v.root}</span>
-                      </span>
-                      <button
-                        type="button"
-                        className="stack-list-menu-trigger"
-                        aria-label={`${v.name} options`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setStackContextMenu({ target: { type: "stack", stack: v }, x: rect.left, y: rect.bottom + 4 });
-                        }}
-                      >
-                        ⋮
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="stack-sections">
+              <section className="stack-section">
+                <h2 className="stack-section-label">Cairns — merged views combining two or more stacks</h2>
+                {cairns.length === 0 ? (
+                  <p className="stack-section-empty">No Cairns yet.</p>
+                ) : (
+                  <ul className="stack-grid">
+                    {cairns.map((c) => (
+                      <li key={`cairn:${c.name.toLowerCase()}`}>
+                        <div
+                          className="stack-list-item"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openCairnByEntry(c)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openCairnByEntry(c);
+                              return;
+                            }
+                            if (e.key === "F2") {
+                              e.preventDefault();
+                              setDialog({ kind: "rename-cairn", cairn: c });
+                              return;
+                            }
+                            if (e.key !== "Delete") return;
+                            e.preventDefault();
+                            handleRemoveCairn(c.name);
+                          }}
+                        >
+                          <EntryAvatar kind="cairn" name={c.name} avatar={c.avatar} size={128} className="stack-list-avatar" />
+                          <div className="stack-list-row">
+                            <span className="stack-list-text">
+                              <span className="stack-list-name">◆ {c.name}</span>
+                              <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
+                            </span>
+                            <button
+                              type="button"
+                              className="stack-list-menu-trigger"
+                              aria-label={`${c.name} options`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setStackContextMenu({ target: { type: "cairn", cairn: c }, x: rect.left, y: rect.bottom + 4 });
+                              }}
+                            >
+                              ⋮
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              <section className="stack-section">
+                <h2 className="stack-section-label">Stacks</h2>
+                {stacks.length === 0 ? (
+                  <p className="stack-section-empty">No stacks yet.</p>
+                ) : (
+                  <ul className="stack-grid">
+                    {stacks.map((v) => (
+                      <li key={v.name.toLowerCase()}>
+                        <div
+                          className="stack-list-item"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openStackByEntry(v)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openStackByEntry(v);
+                              return;
+                            }
+                            if (e.key === "F2") {
+                              e.preventDefault();
+                              setDialog({ kind: "rename-stack", stack: v });
+                              return;
+                            }
+                            if (e.key !== "Delete") return;
+                            e.preventDefault();
+                            handleRemoveStack(v.name);
+                          }}
+                        >
+                          <EntryAvatar kind="stack" name={v.name} avatar={v.avatar} size={128} className="stack-list-avatar" />
+                          <div className="stack-list-row">
+                            <span className="stack-list-text">
+                              <span className="stack-list-name">{v.name}</span>
+                              <span className="stack-list-path">{v.root}</span>
+                            </span>
+                            <button
+                              type="button"
+                              className="stack-list-menu-trigger"
+                              aria-label={`${v.name} options`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setStackContextMenu({ target: { type: "stack", stack: v }, x: rect.left, y: rect.bottom + 4 });
+                              }}
+                            >
+                              ⋮
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
           )}
           <div className="empty-state-actions">
             <button onClick={handlePickFolder}>+ Add Stack</button>
