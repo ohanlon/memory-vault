@@ -822,6 +822,10 @@ export default function App() {
       if (target.type === "cairn") {
         return [
           {
+            label: "Open",
+            onClick: () => openCairnByEntry(target.cairn),
+          },
+          {
             label: "Manage stacks…",
             icon: <LinkIcon />,
             onClick: () => setDialog({ kind: "manage-cairn-members", cairn: target.cairn }),
@@ -844,6 +848,10 @@ export default function App() {
         (c) => !c.memberStackNames.some((m) => m.toLowerCase() === target.stack.name.toLowerCase())
       );
       return [
+        {
+          label: "Open",
+          onClick: () => openStackByEntry(target.stack),
+        },
         {
           label: "Rename",
           shortcut: "F2",
@@ -901,14 +909,17 @@ export default function App() {
               )}
               {cairns.map((c) => (
                 <li key={`cairn:${c.name.toLowerCase()}`}>
-                  <button
+                  <div
                     className="stack-list-item"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => openCairnByEntry(c)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setStackContextMenu({ target: { type: "cairn", cairn: c }, x: e.clientX, y: e.clientY });
-                    }}
                     onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openCairnByEntry(c);
+                        return;
+                      }
                       if (e.key === "F2") {
                         e.preventDefault();
                         setDialog({ kind: "rename-cairn", cairn: c });
@@ -919,9 +930,23 @@ export default function App() {
                       handleRemoveCairn(c.name);
                     }}
                   >
-                    <span className="stack-list-name">◆ {c.name}</span>
-                    <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
-                  </button>
+                    <span className="stack-list-text">
+                      <span className="stack-list-name">◆ {c.name}</span>
+                      <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="stack-list-menu-trigger"
+                      aria-label={`${c.name} options`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setStackContextMenu({ target: { type: "cairn", cairn: c }, x: rect.left, y: rect.bottom + 4 });
+                      }}
+                    >
+                      ⋮
+                    </button>
+                  </div>
                 </li>
               ))}
               {cairns.length > 0 && stacks.length > 0 && (
@@ -931,14 +956,17 @@ export default function App() {
               )}
               {stacks.map((v) => (
                 <li key={v.name.toLowerCase()}>
-                  <button
+                  <div
                     className="stack-list-item"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => openStackByEntry(v)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setStackContextMenu({ target: { type: "stack", stack: v }, x: e.clientX, y: e.clientY });
-                    }}
                     onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openStackByEntry(v);
+                        return;
+                      }
                       if (e.key === "F2") {
                         e.preventDefault();
                         setDialog({ kind: "rename-stack", stack: v });
@@ -949,9 +977,23 @@ export default function App() {
                       handleRemoveStack(v.name);
                     }}
                   >
-                    <span className="stack-list-name">{v.name}</span>
-                    <span className="stack-list-path">{v.root}</span>
-                  </button>
+                    <span className="stack-list-text">
+                      <span className="stack-list-name">{v.name}</span>
+                      <span className="stack-list-path">{v.root}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="stack-list-menu-trigger"
+                      aria-label={`${v.name} options`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setStackContextMenu({ target: { type: "stack", stack: v }, x: rect.left, y: rect.bottom + 4 });
+                      }}
+                    >
+                      ⋮
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

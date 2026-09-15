@@ -324,9 +324,8 @@ body {
 .stack-list-item {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
   border: 1px solid var(--bg-selected);
@@ -339,6 +338,39 @@ body {
 
 .stack-list-item:hover {
   background: var(--bg-control);
+}
+
+.stack-list-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.stack-list-menu-trigger {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.stack-list-menu-trigger:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+  border-color: var(--border-control);
 }
 
 .stack-list-name {
