@@ -32,6 +32,7 @@ import {
   tabRefToTabId,
 } from "./stack/tabs";
 import { CombineStacksModal } from "./components/CombineStacksModal";
+import { EntryAvatar } from "./components/EntryAvatar";
 import { basename, stripMdExtension } from "@shared/displayName";
 import { backlinkTitles } from "@shared/buildGraph";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
@@ -103,6 +104,10 @@ export default function App() {
     removeCairn,
     renameCairn,
     updateCairnMembers,
+    changeStackAvatar,
+    resetStackAvatar,
+    changeCairnAvatar,
+    resetCairnAvatar,
     closeStack,
     refresh,
     saveSchema,
@@ -833,6 +838,20 @@ export default function App() {
             onClick: () => setDialog({ kind: "rename-cairn", cairn: target.cairn }),
           },
           {
+            label: "Change avatar…",
+            onClick: () =>
+              changeCairnAvatar(target.cairn.name).catch((err) =>
+                window.alert(err instanceof Error ? err.message : String(err))
+              ),
+          },
+          {
+            label: "Reset avatar",
+            onClick: () =>
+              resetCairnAvatar(target.cairn.name).catch((err) =>
+                window.alert(err instanceof Error ? err.message : String(err))
+              ),
+          },
+          {
             label: "Delete",
             shortcut: "Del",
             icon: <DeleteIcon />,
@@ -849,6 +868,20 @@ export default function App() {
           shortcut: "F2",
           icon: <RenameIcon />,
           onClick: () => setDialog({ kind: "rename-stack", stack: target.stack }),
+        },
+        {
+          label: "Change avatar…",
+          onClick: () =>
+            changeStackAvatar(target.stack.name).catch((err) =>
+              window.alert(err instanceof Error ? err.message : String(err))
+            ),
+        },
+        {
+          label: "Reset avatar",
+          onClick: () =>
+            resetStackAvatar(target.stack.name).catch((err) =>
+              window.alert(err instanceof Error ? err.message : String(err))
+            ),
         },
         ...(stacks.length >= 2
           ? ([
@@ -922,6 +955,7 @@ export default function App() {
                       handleRemoveCairn(c.name);
                     }}
                   >
+                    <EntryAvatar kind="cairn" name={c.name} avatar={c.avatar} size={40} className="stack-list-avatar" />
                     <span className="stack-list-text">
                       <span className="stack-list-name">◆ {c.name}</span>
                       <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
@@ -969,6 +1003,7 @@ export default function App() {
                       handleRemoveStack(v.name);
                     }}
                   >
+                    <EntryAvatar kind="stack" name={v.name} avatar={v.avatar} size={40} className="stack-list-avatar" />
                     <span className="stack-list-text">
                       <span className="stack-list-name">{v.name}</span>
                       <span className="stack-list-path">{v.root}</span>

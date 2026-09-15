@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { StackEntry } from "../shared/types";
+import { STACK_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
+import type { AvatarRef, StackEntry } from "../shared/types";
 
 export function readStacksFile(filePath: string): StackEntry[] {
   if (!fs.existsSync(filePath)) return [];
@@ -33,7 +34,16 @@ export function addStack(stacks: StackEntry[], name: string, root: string): Stac
   if (findByNameCI(stacks, trimmed)) {
     throw new Error(`A stack named "${trimmed}" already exists`);
   }
-  return [...stacks, { name: trimmed, root }];
+  const avatar: AvatarRef = { kind: "builtin", index: defaultAvatarIndexForName(trimmed, STACK_AVATAR_COUNT) };
+  return [...stacks, { name: trimmed, root, avatar }];
+}
+
+/** Map-and-replace mutator, same shape as renameStack — used both to
+ *  persist a newly-uploaded custom avatar and to reset back to a built-in
+ *  one. */
+export function setStackAvatar(stacks: StackEntry[], name: string, avatar: AvatarRef): StackEntry[] {
+  const lower = name.toLowerCase();
+  return stacks.map((v) => (v.name.toLowerCase() === lower ? { ...v, avatar } : v));
 }
 
 export function removeStack(stacks: StackEntry[], name: string): StackEntry[] {

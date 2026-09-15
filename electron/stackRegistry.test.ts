@@ -2,13 +2,29 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { addStack, findByNameCI, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
+import {
+  addStack,
+  findByNameCI,
+  readStacksFile,
+  removeStack,
+  renameStack,
+  setStackAvatar,
+  writeStacksFile,
+} from "./stackRegistry";
+import { STACK_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
 import type { StackEntry } from "../shared/types";
 
 describe("addStack", () => {
   it("adds a stack to an empty list", () => {
     const result = addStack([], "Work", "/stack/work");
-    expect(result).toEqual([{ name: "Work", root: "/stack/work" }]);
+    expect(result).toEqual([
+      { name: "Work", root: "/stack/work", avatar: { kind: "builtin", index: defaultAvatarIndexForName("Work", STACK_AVATAR_COUNT) } },
+    ]);
+  });
+
+  it("assigns a deterministic built-in avatar index", () => {
+    const result = addStack([], "Personal", "/stack/personal");
+    expect(result[0].avatar).toEqual({ kind: "builtin", index: defaultAvatarIndexForName("Personal", STACK_AVATAR_COUNT) });
   });
 
   it("trims whitespace from the name", () => {
@@ -105,6 +121,28 @@ describe("renameStack", () => {
     const stacks: StackEntry[] = [{ name: "Work", root: "/stack/work" }];
     renameStack(stacks, "Work", "Job");
     expect(stacks[0].name).toBe("Work");
+  });
+});
+
+describe("setStackAvatar", () => {
+  it("replaces only the matched entry's avatar, case-insensitively", () => {
+    const stacks: StackEntry[] = [
+      { name: "Work", root: "/stack/work", avatar: { kind: "builtin", index: 0 } },
+      { name: "Personal", root: "/stack/personal", avatar: { kind: "builtin", index: 1 } },
+    ];
+    const result = setStackAvatar(stacks, "WORK", { kind: "custom", fileName: "avatar.png", updatedAt: 123 });
+    expect(result[0]).toEqual({
+      name: "Work",
+      root: "/stack/work",
+      avatar: { kind: "custom", fileName: "avatar.png", updatedAt: 123 },
+    });
+    expect(result[1]).toEqual(stacks[1]);
+  });
+
+  it("does not mutate the input array", () => {
+    const stacks: StackEntry[] = [{ name: "Work", root: "/stack/work", avatar: { kind: "builtin", index: 0 } }];
+    setStackAvatar(stacks, "Work", { kind: "builtin", index: 5 });
+    expect(stacks[0].avatar).toEqual({ kind: "builtin", index: 0 });
   });
 });
 

@@ -248,6 +248,29 @@ export function useStack() {
     setState((s) => ({ ...s, cairns }));
   }, []);
 
+  // Opens the native file picker and, on success, swaps in the uploaded
+  // image as the stack's avatar. `null` means the user cancelled the
+  // picker — nothing to update in that case.
+  const changeStackAvatar = useCallback(async (name: string) => {
+    const stacks = await window.memoryStack.changeStackAvatar(name);
+    if (stacks) setState((s) => ({ ...s, stacks }));
+  }, []);
+
+  const resetStackAvatar = useCallback(async (name: string) => {
+    const stacks = await window.memoryStack.resetStackAvatar(name);
+    setState((s) => ({ ...s, stacks }));
+  }, []);
+
+  const changeCairnAvatar = useCallback(async (name: string) => {
+    const cairns = await window.memoryStack.changeCairnAvatar(name);
+    if (cairns) setState((s) => ({ ...s, cairns }));
+  }, []);
+
+  const resetCairnAvatar = useCallback(async (name: string) => {
+    const cairns = await window.memoryStack.resetCairnAvatar(name);
+    setState((s) => ({ ...s, cairns }));
+  }, []);
+
   const closeStack = useCallback(() => {
     activeRootsRef.current = [];
     pendingReconcileRootsRef.current = new Set();
@@ -336,6 +359,10 @@ export function useStack() {
     removeCairn,
     renameCairn,
     updateCairnMembers,
+    changeStackAvatar,
+    resetStackAvatar,
+    changeCairnAvatar,
+    resetCairnAvatar,
     closeStack,
     refresh,
     saveSchema,

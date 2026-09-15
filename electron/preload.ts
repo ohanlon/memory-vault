@@ -56,6 +56,14 @@ const api = {
     ipcRenderer.invoke("cairns:rename", oldName, newName),
   updateCairnMembers: (name: string, memberStackNames: string[]): Promise<CairnEntry[]> =>
     ipcRenderer.invoke("cairns:updateMembers", name, memberStackNames),
+  changeStackAvatar: (name: string): Promise<StackEntry[] | null> =>
+    ipcRenderer.invoke("stacks:changeAvatar", name),
+  resetStackAvatar: (name: string): Promise<StackEntry[]> =>
+    ipcRenderer.invoke("stacks:resetAvatar", name),
+  changeCairnAvatar: (name: string): Promise<CairnEntry[] | null> =>
+    ipcRenderer.invoke("cairns:changeAvatar", name),
+  resetCairnAvatar: (name: string): Promise<CairnEntry[]> =>
+    ipcRenderer.invoke("cairns:resetAvatar", name),
   readNote: (absPath: string): Promise<Note> =>
     ipcRenderer.invoke("stack:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>

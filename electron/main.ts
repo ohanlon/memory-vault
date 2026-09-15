@@ -8,15 +8,19 @@ import { readStackCache, writeStackCache } from "./stackCache";
 import { runReplaceAll, runSearch } from "./search";
 import { convertToTemplate, listAllFileTemplates } from "./templates";
 import { expandBuiltInDateVars, renderTemplate } from "../shared/templateRender";
-import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
+import { addStack, readStacksFile, removeStack, renameStack, setStackAvatar, writeStacksFile } from "./stackRegistry";
 import {
   addCairn,
   readCairnsFile,
   removeCairn,
   renameCairn,
+  setCairnAvatar,
   updateCairnMembers,
   writeCairnsFile,
 } from "./cairnRegistry";
+import { removeCustomAvatar, renameAvatarFolder, writeCustomAvatar } from "./avatarStorage";
+import { handleAvatarProtocol, registerAvatarScheme } from "./avatarProtocol";
+import { CAIRN_AVATAR_COUNT, STACK_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
 import { titleFromPath } from "../shared/parseNote";
 import { STARTER_NOTES } from "../shared/starterContent";
 import { findNoteTemplate } from "../shared/noteTemplates";
@@ -261,12 +265,35 @@ ipcMain.handle("stacks:remove", async (_event, name: string) => {
   const stacks = readStacksFile(stacksFilePath());
   const updated = removeStack(stacks, name);
   writeStacksFile(stacksFilePath(), updated);
+  removeCustomAvatar(app.getPath("userData"), "stack", name);
   return updated;
 });
 
 ipcMain.handle("stacks:rename", async (_event, oldName: string, newName: string) => {
   const stacks = readStacksFile(stacksFilePath());
   const updated = renameStack(stacks, oldName, newName); // throws on empty/duplicate name
+  writeStacksFile(stacksFilePath(), updated);
+  renameAvatarFolder(app.getPath("userData"), "stack", oldName, newName.trim());
+  return updated;
+});
+
+ipcMain.handle("stacks:changeAvatar", async (_event, name: string) => {
+  if (!win) return null;
+  const result = await dialog.showOpenDialog(win, {
+    properties: ["openFile"],
+    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  const avatar = writeCustomAvatar(app.getPath("userData"), "stack", name, result.filePaths[0]);
+  const updated = setStackAvatar(readStacksFile(stacksFilePath()), name, avatar);
+  writeStacksFile(stacksFilePath(), updated);
+  return updated;
+});
+
+ipcMain.handle("stacks:resetAvatar", async (_event, name: string) => {
+  removeCustomAvatar(app.getPath("userData"), "stack", name);
+  const avatar = { kind: "builtin" as const, index: defaultAvatarIndexForName(name, STACK_AVATAR_COUNT) };
+  const updated = setStackAvatar(readStacksFile(stacksFilePath()), name, avatar);
   writeStacksFile(stacksFilePath(), updated);
   return updated;
 });
@@ -286,6 +313,7 @@ ipcMain.handle("cairns:remove", async (_event, name: string) => {
   const cairns = readCairnsFile(cairnsFilePath());
   const updated = removeCairn(cairns, name);
   writeCairnsFile(cairnsFilePath(), updated);
+  removeCustomAvatar(app.getPath("userData"), "cairn", name);
   return updated;
 });
 
@@ -293,12 +321,34 @@ ipcMain.handle("cairns:rename", async (_event, oldName: string, newName: string)
   const cairns = readCairnsFile(cairnsFilePath());
   const updated = renameCairn(cairns, oldName, newName); // throws on empty/duplicate name
   writeCairnsFile(cairnsFilePath(), updated);
+  renameAvatarFolder(app.getPath("userData"), "cairn", oldName, newName.trim());
   return updated;
 });
 
 ipcMain.handle("cairns:updateMembers", async (_event, name: string, memberStackNames: string[]) => {
   const cairns = readCairnsFile(cairnsFilePath());
   const updated = updateCairnMembers(cairns, name, memberStackNames); // throws on <2 members
+  writeCairnsFile(cairnsFilePath(), updated);
+  return updated;
+});
+
+ipcMain.handle("cairns:changeAvatar", async (_event, name: string) => {
+  if (!win) return null;
+  const result = await dialog.showOpenDialog(win, {
+    properties: ["openFile"],
+    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  const avatar = writeCustomAvatar(app.getPath("userData"), "cairn", name, result.filePaths[0]);
+  const updated = setCairnAvatar(readCairnsFile(cairnsFilePath()), name, avatar);
+  writeCairnsFile(cairnsFilePath(), updated);
+  return updated;
+});
+
+ipcMain.handle("cairns:resetAvatar", async (_event, name: string) => {
+  removeCustomAvatar(app.getPath("userData"), "cairn", name);
+  const avatar = { kind: "builtin" as const, index: defaultAvatarIndexForName(name, CAIRN_AVATAR_COUNT) };
+  const updated = setCairnAvatar(readCairnsFile(cairnsFilePath()), name, avatar);
   writeCairnsFile(cairnsFilePath(), updated);
   return updated;
 });
@@ -730,7 +780,9 @@ app.on("window-all-closed", () => {
 });
 
 registerPluginScheme();
+registerAvatarScheme();
 app.whenReady().then(() => {
   createWindow();
   handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
+  handleAvatarProtocol(app.getPath("userData"));
 });

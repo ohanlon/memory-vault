@@ -8,15 +8,28 @@ import {
   readCairnsFile,
   removeCairn,
   renameCairn,
+  setCairnAvatar,
   updateCairnMembers,
   writeCairnsFile,
 } from "./cairnRegistry";
+import { CAIRN_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
 import type { CairnEntry } from "../shared/types";
 
 describe("addCairn", () => {
   it("adds a Cairn with its member stacks", () => {
     const result = addCairn([], "Life", ["Work", "Personal"]);
-    expect(result).toEqual([{ name: "Life", memberStackNames: ["Work", "Personal"] }]);
+    expect(result).toEqual([
+      {
+        name: "Life",
+        memberStackNames: ["Work", "Personal"],
+        avatar: { kind: "builtin", index: defaultAvatarIndexForName("Life", CAIRN_AVATAR_COUNT) },
+      },
+    ]);
+  });
+
+  it("assigns a deterministic built-in avatar index", () => {
+    const result = addCairn([], "Other", ["A", "B"]);
+    expect(result[0].avatar).toEqual({ kind: "builtin", index: defaultAvatarIndexForName("Other", CAIRN_AVATAR_COUNT) });
   });
 
   it("trims whitespace from the name", () => {
@@ -125,6 +138,30 @@ describe("updateCairnMembers", () => {
   it("is a no-op when the name is not present", () => {
     const cairns: CairnEntry[] = [{ name: "Life", memberStackNames: ["Work", "Personal"] }];
     expect(updateCairnMembers(cairns, "Missing", ["A", "B"])).toEqual(cairns);
+  });
+});
+
+describe("setCairnAvatar", () => {
+  it("replaces only the matched entry's avatar, case-insensitively", () => {
+    const cairns: CairnEntry[] = [
+      { name: "Life", memberStackNames: ["Work", "Personal"], avatar: { kind: "builtin", index: 0 } },
+      { name: "Other", memberStackNames: ["A", "B"], avatar: { kind: "builtin", index: 1 } },
+    ];
+    const result = setCairnAvatar(cairns, "LIFE", { kind: "custom", fileName: "avatar.png", updatedAt: 123 });
+    expect(result[0]).toEqual({
+      name: "Life",
+      memberStackNames: ["Work", "Personal"],
+      avatar: { kind: "custom", fileName: "avatar.png", updatedAt: 123 },
+    });
+    expect(result[1]).toEqual(cairns[1]);
+  });
+
+  it("does not mutate the input array", () => {
+    const cairns: CairnEntry[] = [
+      { name: "Life", memberStackNames: ["Work", "Personal"], avatar: { kind: "builtin", index: 0 } },
+    ];
+    setCairnAvatar(cairns, "Life", { kind: "builtin", index: 5 });
+    expect(cairns[0].avatar).toEqual({ kind: "builtin", index: 0 });
   });
 });
 

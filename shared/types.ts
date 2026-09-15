@@ -85,11 +85,33 @@ export interface StackReconcileStatusEvent {
   reconciling: boolean;
 }
 
+/** One of the deterministically-generated abstract pastel avatars (see
+ *  shared/avatars.ts) — `index` selects which one. */
+export interface BuiltinAvatarRef {
+  kind: "builtin";
+  index: number;
+}
+
+/** A user-uploaded avatar image, stored outside the vault under userData
+ *  (see electron/avatarStorage.ts) and served to the renderer via the
+ *  cairn-avatar:// protocol (see shared/avatarProtocol.ts). */
+export interface CustomAvatarRef {
+  kind: "custom";
+  /** File name as stored on disk, e.g. "avatar.png" — extension reflects the uploaded file. */
+  fileName: string;
+  /** Date.now() at write time — cache-busts the <img> URL so re-uploading doesn't keep showing a stale cached image. */
+  updatedAt: number;
+}
+
+export type AvatarRef = BuiltinAvatarRef | CustomAvatarRef;
+
 export interface StackEntry {
   /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
   name: string;
   /** Absolute path to the stack's root folder. */
   root: string;
+  /** Absent on entries created before avatars existed — see EntryAvatar.tsx for the fallback. */
+  avatar?: AvatarRef;
 }
 
 /**
@@ -103,6 +125,8 @@ export interface CairnEntry {
   name: string;
   /** Names of member StackEntry entries (case-insensitively unique among themselves). */
   memberStackNames: string[];
+  /** Absent on entries created before avatars existed — see EntryAvatar.tsx for the fallback. */
+  avatar?: AvatarRef;
 }
 
 export type FileChangeKind = "add" | "change" | "unlink";

@@ -325,7 +325,7 @@ body {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: var(--bg-surface);
   color: var(--text-primary);
   border: 1px solid var(--bg-selected);
@@ -338,6 +338,14 @@ body {
 
 .stack-list-item:hover {
   background: var(--bg-control);
+}
+
+.stack-list-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 .stack-list-text {

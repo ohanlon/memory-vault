@@ -38,6 +38,10 @@ export interface MemoryStackAPI {
   removeCairn(name: string): Promise<CairnEntry[]>;
   renameCairn(oldName: string, newName: string): Promise<CairnEntry[]>;
   updateCairnMembers(name: string, memberStackNames: string[]): Promise<CairnEntry[]>;
+  changeStackAvatar(name: string): Promise<StackEntry[] | null>;
+  resetStackAvatar(name: string): Promise<StackEntry[]>;
+  changeCairnAvatar(name: string): Promise<CairnEntry[] | null>;
+  resetCairnAvatar(name: string): Promise<CairnEntry[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;

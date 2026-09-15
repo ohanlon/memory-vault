@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { CairnEntry } from "../shared/types";
+import { CAIRN_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
+import type { AvatarRef, CairnEntry } from "../shared/types";
 
 export function readCairnsFile(filePath: string): CairnEntry[] {
   if (!fs.existsSync(filePath)) return [];
@@ -55,7 +56,16 @@ export function addCairn(cairns: CairnEntry[], name: string, memberStackNames: s
   if (members.length < 2) {
     throw new Error("A Cairn needs at least two member stacks");
   }
-  return [...cairns, { name: trimmed, memberStackNames: members }];
+  const avatar: AvatarRef = { kind: "builtin", index: defaultAvatarIndexForName(trimmed, CAIRN_AVATAR_COUNT) };
+  return [...cairns, { name: trimmed, memberStackNames: members, avatar }];
+}
+
+/** Map-and-replace mutator, same shape as updateCairnMembers — used both to
+ *  persist a newly-uploaded custom avatar and to reset back to a built-in
+ *  one. */
+export function setCairnAvatar(cairns: CairnEntry[], name: string, avatar: AvatarRef): CairnEntry[] {
+  const lower = name.toLowerCase();
+  return cairns.map((c) => (c.name.toLowerCase() === lower ? { ...c, avatar } : c));
 }
 
 export function removeCairn(cairns: CairnEntry[], name: string): CairnEntry[] {
