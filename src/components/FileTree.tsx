@@ -153,11 +153,15 @@ export function FileTree({
 
   // An open Cairn stamps every note with its origin stack — group by that
   // to simulate the folder-like separation a single stack no longer has,
-  // one collapsible section per member stack. A plain single-stack session
-  // has no sourceStack on any note, so this is a no-op there (flat list,
-  // unchanged from before).
+  // one collapsible section per member stack. Seeded with every member
+  // stack up front (not just ones a note happens to belong to) so a stack
+  // with no notes yet still gets a group — otherwise it silently vanishes
+  // from the tree instead of showing up empty. A plain single-stack session
+  // has no memberStacks and no sourceStack on any note, so this is a no-op
+  // there (flat list, unchanged from before).
   const groupedByStack = useMemo(() => {
     const groups = new Map<string, Note[]>();
+    for (const stack of memberStacks ?? []) groups.set(stack.name, []);
     for (const note of sorted) {
       if (!note.sourceStack || dailyNotePaths.has(note.path)) continue;
       const group = groups.get(note.sourceStack);
@@ -165,12 +169,13 @@ export function FileTree({
       else groups.set(note.sourceStack, [note]);
     }
     return groups;
-  }, [sorted, dailyNotePaths]);
+  }, [sorted, dailyNotePaths, memberStacks]);
 
-  // Every note carries a sourceStack in an open Cairn, none does in a plain
-  // single-stack session — this is enough to tell the two apart.
-  const isGrouped = sorted.length > 0 && sorted.every((n) => n.sourceStack !== undefined);
-  const canMove = isGrouped && !!memberStacks && !!onMoveNoteToStack;
+  // memberStacks is only ever passed for an open Cairn — a more reliable
+  // signal than checking sourceStack on notes, which tells us nothing when
+  // every member stack (and so every note) happens to be empty.
+  const isGrouped = !!memberStacks;
+  const canMove = isGrouped && !!onMoveNoteToStack;
 
   function toggleStack(stackName: string) {
     setCollapsedStacks((prev) => {
@@ -404,7 +409,7 @@ export function FileTree({
               }),
             ]
           : sorted.map((note) => renderNoteRow(note, false))}
-        {sorted.length === 0 && <li className="file-tree-empty">No notes yet</li>}
+        {!isGrouped && sorted.length === 0 && <li className="file-tree-empty">No notes yet</li>}
       </ul>
       {contextMenu && (
         <ContextMenu
