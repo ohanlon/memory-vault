@@ -822,10 +822,6 @@ export default function App() {
       if (target.type === "cairn") {
         return [
           {
-            label: "Open",
-            onClick: () => openCairnByEntry(target.cairn),
-          },
-          {
             label: "Manage stacks…",
             icon: <LinkIcon />,
             onClick: () => setDialog({ kind: "manage-cairn-members", cairn: target.cairn }),
@@ -848,10 +844,6 @@ export default function App() {
         (c) => !c.memberStackNames.some((m) => m.toLowerCase() === target.stack.name.toLowerCase())
       );
       return [
-        {
-          label: "Open",
-          onClick: () => openStackByEntry(target.stack),
-        },
         {
           label: "Rename",
           shortcut: "F2",
