@@ -955,23 +955,25 @@ export default function App() {
                       handleRemoveCairn(c.name);
                     }}
                   >
-                    <EntryAvatar kind="cairn" name={c.name} avatar={c.avatar} size={40} className="stack-list-avatar" />
-                    <span className="stack-list-text">
-                      <span className="stack-list-name">◆ {c.name}</span>
-                      <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
-                    </span>
-                    <button
-                      type="button"
-                      className="stack-list-menu-trigger"
-                      aria-label={`${c.name} options`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setStackContextMenu({ target: { type: "cairn", cairn: c }, x: rect.left, y: rect.bottom + 4 });
-                      }}
-                    >
-                      ⋮
-                    </button>
+                    <EntryAvatar kind="cairn" name={c.name} avatar={c.avatar} size={128} className="stack-list-avatar" />
+                    <div className="stack-list-row">
+                      <span className="stack-list-text">
+                        <span className="stack-list-name">◆ {c.name}</span>
+                        <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="stack-list-menu-trigger"
+                        aria-label={`${c.name} options`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setStackContextMenu({ target: { type: "cairn", cairn: c }, x: rect.left, y: rect.bottom + 4 });
+                        }}
+                      >
+                        ⋮
+                      </button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -1003,23 +1005,25 @@ export default function App() {
                       handleRemoveStack(v.name);
                     }}
                   >
-                    <EntryAvatar kind="stack" name={v.name} avatar={v.avatar} size={40} className="stack-list-avatar" />
-                    <span className="stack-list-text">
-                      <span className="stack-list-name">{v.name}</span>
-                      <span className="stack-list-path">{v.root}</span>
-                    </span>
-                    <button
-                      type="button"
-                      className="stack-list-menu-trigger"
-                      aria-label={`${v.name} options`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setStackContextMenu({ target: { type: "stack", stack: v }, x: rect.left, y: rect.bottom + 4 });
-                      }}
-                    >
-                      ⋮
-                    </button>
+                    <EntryAvatar kind="stack" name={v.name} avatar={v.avatar} size={128} className="stack-list-avatar" />
+                    <div className="stack-list-row">
+                      <span className="stack-list-text">
+                        <span className="stack-list-name">{v.name}</span>
+                        <span className="stack-list-path">{v.root}</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="stack-list-menu-trigger"
+                        aria-label={`${v.name} options`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setStackContextMenu({ target: { type: "stack", stack: v }, x: rect.left, y: rect.bottom + 4 });
+                        }}
+                      >
+                        ⋮
+                      </button>
+                    </div>
                   </div>
                 </li>
               ))}
