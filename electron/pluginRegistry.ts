@@ -88,7 +88,7 @@ export interface DiscoveredPlugin {
 }
 
 // Plugins live under <userData>/plugins/<folder>/manifest.json — one global
-// install directory shared by every stack/Cairn, not scoped per stack.
+// install directory shared by every stack/merged view, not scoped per stack.
 export function discoverPlugins(pluginsDir: string): DiscoveredPlugin[] {
   if (!fs.existsSync(pluginsDir)) return [];
 

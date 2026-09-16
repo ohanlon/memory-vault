@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { PickableNote } from "../editor/editorContextMenu";
-import { ExternalLinkIcon, PageIcon } from "./icons";
+import { ExternalLinkIcon, NoteIcon } from "./icons";
 
 type LinkTarget = { kind: "note"; note: PickableNote } | { kind: "external"; url: string };
 
@@ -20,7 +20,7 @@ function sameTarget(a: LinkTarget | null, b: LinkTarget): boolean {
   return a.kind === "external" && b.kind === "external" && a.url === b.url;
 }
 
-/** "Title (Stack)" when the note came from a specific stack (an open Cairn merges more than one), otherwise just "Title". */
+/** "Title (Stack)" when the note came from a specific stack (an open merged view merges more than one), otherwise just "Title". */
 function noteLabel(note: PickableNote): string {
   return note.sourceStack ? `${note.title} (${note.sourceStack})` : note.title;
 }
@@ -50,7 +50,7 @@ export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSel
       <form className="modal-box modal-box-wide" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <h3>Insert Link</h3>
         <input
-          placeholder="Link text (optional — defaults to the page title or URL)"
+          placeholder="Link text (optional — defaults to the note title or URL)"
           value={displayText}
           onChange={(e) => setDisplayText(e.target.value)}
           onKeyDown={(e) => {
@@ -59,7 +59,7 @@ export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSel
         />
         <input
           autoFocus
-          placeholder="Search pages, or type a URL…"
+          placeholder="Search notes, or type a URL…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
@@ -93,15 +93,15 @@ export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSel
               >
                 <span className="picker-type">
                   <span className="picker-type-icon">
-                    <PageIcon />
+                    <NoteIcon />
                   </span>
-                  Page
+                  Note
                 </span>
                 <span className="picker-summary">{noteLabel(note)}</span>
               </button>
             </li>
           ))}
-          {filtered.length === 0 && !trimmedQuery && <p className="modal-message">No pages yet.</p>}
+          {filtered.length === 0 && !trimmedQuery && <p className="modal-message">No notes yet.</p>}
         </ul>
         <div className="modal-actions">
           <button type="button" onClick={onCancel}>

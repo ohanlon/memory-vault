@@ -41,7 +41,7 @@ import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
 import { NOTE_TEMPLATES } from "@shared/noteTemplates";
 import { templatePlaceholders } from "@shared/templateRender";
 import { defaultColorsFor } from "@shared/themeColors";
-import type { AppSettings, CairnEntry, FileTemplate, LayoutRegionName, Note, StackEntry } from "@shared/types";
+import type { AppSettings, MergedViewEntry, FileTemplate, LayoutRegionName, Note, StackEntry } from "@shared/types";
 import { applyCustomThemeProperties, clearCustomThemeProperties } from "./applyCustomTheme";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
@@ -61,7 +61,7 @@ function deleteConfirmMessage(note: Note): string {
 
 /** The root a note's own stack lives at — the single open stack's root for
  *  a plain session, or the matching member stack's root (via
- *  Note.sourceStack) when notes are merged from an open Cairn. */
+ *  Note.sourceStack) when notes are merged from an open merged view. */
 function noteRootFor(note: Note | null, session: ActiveSession | null): string | null {
   if (!note || !session) return null;
   if (session.kind === "stack") return session.entry.root;
@@ -71,9 +71,9 @@ function noteRootFor(note: Note | null, session: ActiveSession | null): string |
 type DialogState =
   | { kind: "name-stack"; root: string }
   | { kind: "rename-stack"; stack: StackEntry }
-  | { kind: "rename-cairn"; cairn: CairnEntry }
+  | { kind: "rename-merged-view"; mergedView: MergedViewEntry }
   | { kind: "combine-stacks"; preselectStackName?: string }
-  | { kind: "manage-cairn-members"; cairn: CairnEntry }
+  | { kind: "manage-merged-view-members"; mergedView: MergedViewEntry }
   | { kind: "manage-properties"; root: string }
   | { kind: "confirm-delete"; note: Note }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
@@ -81,12 +81,12 @@ type DialogState =
   | { kind: "fill-template"; dir: string; templatePath: string; placeholders: string[] }
   | null;
 
-type StackContextMenuState = { target: { type: "stack"; stack: StackEntry } | { type: "cairn"; cairn: CairnEntry }; x: number; y: number };
+type StackContextMenuState = { target: { type: "stack"; stack: StackEntry } | { type: "mergedView"; mergedView: MergedViewEntry }; x: number; y: number };
 
 export default function App() {
   const {
     stacks,
-    cairns,
+    mergedViews,
     activeSession,
     notes,
     graph,
@@ -95,19 +95,19 @@ export default function App() {
     error,
     reconciling,
     openStackByEntry,
-    openCairnByEntry,
+    openMergedViewByEntry,
     addStack,
     addStackToRegistry,
     removeStack,
     renameStack,
-    addCairn,
-    removeCairn,
-    renameCairn,
-    updateCairnMembers,
+    addMergedView,
+    removeMergedView,
+    renameMergedView,
+    updateMergedViewMembers,
     changeStackAvatar,
     resetStackAvatar,
-    changeCairnAvatar,
-    resetCairnAvatar,
+    changeMergedViewAvatar,
+    resetMergedViewAvatar,
     closeStack,
     refresh,
     saveSchema,
@@ -122,7 +122,7 @@ export default function App() {
   // folding them into `notes` and having to filter them back out of the
   // graph/search/backlinks/link-picker everywhere that array is consumed.
   const [templateNotesByPath, setTemplateNotesByPath] = useState<Record<string, Note>>({});
-  // Which session (a stack's root, or "cairn:<name>") a workspace-state
+  // Which session (a stack's root, or "mergedView:<name>") a workspace-state
   // restore has been kicked off for, so a refresh() of the same session
   // doesn't retrigger it — reset to null when the session closes so
   // reopening it (or a different one) restores again.
@@ -143,14 +143,14 @@ export default function App() {
   const [showTour, setShowTour] = useState(false);
   // Stack-picker/template-picker menu shown for "New Note" — for a plain
   // stack this is only ever opened via right-click (see
-  // handleNewNoteContextMenu); for an open Cairn, a left-click opens it too,
+  // handleNewNoteContextMenu); for an open merged view, a left-click opens it too,
   // since there's no single implicit target stack to ask "always ask" about.
   const [templateMenu, setTemplateMenu] = useState<{ x: number; y: number } | null>(null);
   // Every file template across every registered stack (not just the
   // currently open one) — so a template created in one stack is available
   // when creating a note in any other. See loadFileTemplates.
   const [allTemplates, setAllTemplates] = useState<FileTemplate[]>([]);
-  // Stack-picker menu for "New Daily Note" in an open Cairn (same "always
+  // Stack-picker menu for "New Daily Note" in an open merged view (same "always
   // ask" reasoning as templateMenu; a plain stack never shows this).
   const [dailyNoteMenu, setDailyNoteMenu] = useState<{ x: number; y: number } | null>(null);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
@@ -159,8 +159,8 @@ export default function App() {
   // Stable identity for the currently-open session, used to gate the
   // workspace-state restore/save effects below.
   const sessionKey = activeSession
-    ? activeSession.kind === "cairn"
-      ? `cairn:${activeSession.entry.name}`
+    ? activeSession.kind === "mergedView"
+      ? `mergedView:${activeSession.entry.name}`
       : activeSession.entry.root
     : null;
   // Mirrors the two widths above so the drag-end handler can save the exact
@@ -268,7 +268,7 @@ export default function App() {
     [notes, activePath, templateNotesByPath]
   );
 
-  // Not just activeNote.title — in an open Cairn, a note whose title
+  // Not just activeNote.title — in an open merged view, a note whose title
   // collides with another stack's gets a "sourceStack/Title" graph node id
   // instead (see buildGraph.ts), and edges/backlinks/tags are keyed on that
   // id, not the bare title.
@@ -279,7 +279,7 @@ export default function App() {
 
   // Which stack root the active note's properties live under — a single
   // stack's own root in a plain session, or the matching member stack when
-  // notes are merged from an open Cairn (see noteRootFor).
+  // notes are merged from an open merged view (see noteRootFor).
   const activeNoteRoot = useMemo(
     () => noteRootFor(activeNote, activeSession),
     [activeNote, activeSession]
@@ -325,12 +325,12 @@ export default function App() {
   }, [notes, templateNotesByPath]);
 
   // Reads workspace.json for the currently open session — a plain stack's
-  // own <stack>/.cairn/workspace.json, or an open Cairn's
-  // <userData>/cairns/<name>/workspace.json.
+  // own <stack>/.cairn/workspace.json, or an open merged view's
+  // <userData>/mergedViews/<name>/workspace.json.
   const readActiveWorkspaceState = useCallback(() => {
     if (!activeSession) return Promise.resolve(null);
-    return activeSession.kind === "cairn"
-      ? window.memoryStack.readCairnWorkspaceState(activeSession.entry.name)
+    return activeSession.kind === "mergedView"
+      ? window.memoryStack.readMergedViewWorkspaceState(activeSession.entry.name)
       : window.memoryStack.readWorkspaceState();
   }, [activeSession]);
 
@@ -376,8 +376,8 @@ export default function App() {
         .filter((r): r is NonNullable<typeof r> => r !== null);
       const activeTab = activePath ? tabIdToTabRef(activePath, notes) : null;
       const state = { openTabs, activeTab };
-      if (activeSession.kind === "cairn") {
-        window.memoryStack.saveCairnWorkspaceState(activeSession.entry.name, state);
+      if (activeSession.kind === "mergedView") {
+        window.memoryStack.saveMergedViewWorkspaceState(activeSession.entry.name, state);
       } else {
         window.memoryStack.saveWorkspaceState(state);
       }
@@ -458,7 +458,7 @@ export default function App() {
       // immediacy instead of interrupting the click with a stack picker
       // (New Note/New Daily Note still always ask).
       const targetRoot =
-        activeSession.kind === "cairn"
+        activeSession.kind === "mergedView"
           ? (qualifiedStack &&
               activeSession.memberStacks.find((s) => s.name.toLowerCase() === qualifiedStack.toLowerCase())?.root) ??
             activeNoteRoot ??
@@ -560,7 +560,7 @@ export default function App() {
     openTab(result.path);
   }
 
-  // "Always ask" for a Cairn: New Note/New Daily Note have no single
+  // "Always ask" for a merged view: New Note/New Daily Note have no single
   // implicit target stack once notes are merged, so both open a
   // stack-picker menu instead of acting immediately. A plain single-stack
   // session keeps today's one-click behavior.
@@ -591,40 +591,40 @@ export default function App() {
 
   async function handleCombineStacksSubmit(name: string, memberStackNames: string[]) {
     try {
-      await addCairn(name, memberStackNames);
+      await addMergedView(name, memberStackNames);
       setDialog(null);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function handleManageCairnMembersSubmit(cairn: CairnEntry, memberStackNames: string[]) {
+  async function handleManageMergedViewMembersSubmit(mergedView: MergedViewEntry, memberStackNames: string[]) {
     try {
-      await updateCairnMembers(cairn.name, memberStackNames);
+      await updateMergedViewMembers(mergedView.name, memberStackNames);
       setDialog(null);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function handleAddStackToCairn(stackName: string, cairn: CairnEntry) {
+  async function handleAddStackToMergedView(stackName: string, mergedView: MergedViewEntry) {
     try {
-      await updateCairnMembers(cairn.name, [...cairn.memberStackNames, stackName]);
+      await updateMergedViewMembers(mergedView.name, [...mergedView.memberStackNames, stackName]);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function handleRemoveCairn(name: string) {
-    if (!window.confirm(`Remove Cairn "${name}"? Its member stacks are untouched.`)) return;
-    await removeCairn(name);
+  async function handleRemoveMergedView(name: string) {
+    if (!window.confirm(`Remove merged view "${name}"? Its member stacks are untouched.`)) return;
+    await removeMergedView(name);
   }
 
-  async function handleRenameCairnSubmit(newName: string) {
-    if (dialog?.kind !== "rename-cairn") return;
-    const oldName = dialog.cairn.name;
+  async function handleRenameMergedViewSubmit(newName: string) {
+    if (dialog?.kind !== "rename-merged-view") return;
+    const oldName = dialog.mergedView.name;
     try {
-      await renameCairn(oldName, newName);
+      await renameMergedView(oldName, newName);
       setDialog(null);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : String(err));
@@ -660,7 +660,7 @@ export default function App() {
     await refresh({ showReindexing: true });
   }
 
-  // Moves a note to a different member stack of the open Cairn. Unlike a
+  // Moves a note to a different member stack of the open merged view. Unlike a
   // rename, the title (and therefore every [[link]] to it) doesn't change —
   // only the note's physical location and sourceStack do, so no link
   // rewriting is needed; the graph just re-resolves against the moved
@@ -693,7 +693,7 @@ export default function App() {
   }
 
   // Every template across every registered stack — not scoped to the
-  // currently open stack/Cairn, so one created anywhere is available
+  // currently open stack/merged view, so one created anywhere is available
   // everywhere. The .templates folder is excluded from the file watcher
   // (same dotfolder rule as everything else under it), so nothing else
   // refreshes this automatically.
@@ -824,30 +824,30 @@ export default function App() {
     const stackContextMenuItems: ContextMenuEntry[] | null = (() => {
       if (!stackContextMenu) return null;
       const { target } = stackContextMenu;
-      if (target.type === "cairn") {
+      if (target.type === "mergedView") {
         return [
           {
             label: "Manage stacks…",
             icon: <LinkIcon />,
-            onClick: () => setDialog({ kind: "manage-cairn-members", cairn: target.cairn }),
+            onClick: () => setDialog({ kind: "manage-merged-view-members", mergedView: target.mergedView }),
           },
           {
             label: "Rename",
             shortcut: "F2",
             icon: <RenameIcon />,
-            onClick: () => setDialog({ kind: "rename-cairn", cairn: target.cairn }),
+            onClick: () => setDialog({ kind: "rename-merged-view", mergedView: target.mergedView }),
           },
           {
             label: "Change avatar…",
             onClick: () =>
-              changeCairnAvatar(target.cairn.name).catch((err) =>
+              changeMergedViewAvatar(target.mergedView.name).catch((err) =>
                 window.alert(err instanceof Error ? err.message : String(err))
               ),
           },
           {
             label: "Reset avatar",
             onClick: () =>
-              resetCairnAvatar(target.cairn.name).catch((err) =>
+              resetMergedViewAvatar(target.mergedView.name).catch((err) =>
                 window.alert(err instanceof Error ? err.message : String(err))
               ),
           },
@@ -855,11 +855,11 @@ export default function App() {
             label: "Delete",
             shortcut: "Del",
             icon: <DeleteIcon />,
-            onClick: () => handleRemoveCairn(target.cairn.name),
+            onClick: () => handleRemoveMergedView(target.mergedView.name),
           },
         ];
       }
-      const otherCairns = cairns.filter(
+      const otherMergedViews = mergedViews.filter(
         (c) => !c.memberStackNames.some((m) => m.toLowerCase() === target.stack.name.toLowerCase())
       );
       return [
@@ -886,16 +886,16 @@ export default function App() {
         ...(stacks.length >= 2
           ? ([
               {
-                label: "Add to Cairn",
+                label: "Add to merged view",
                 icon: <LinkIcon />,
                 children: [
-                  ...otherCairns.map((c) => ({
+                  ...otherMergedViews.map((c) => ({
                     label: c.name,
-                    onClick: () => handleAddStackToCairn(target.stack.name, c),
+                    onClick: () => handleAddStackToMergedView(target.stack.name, c),
                   })),
-                  ...(otherCairns.length > 0 ? [{ separator: true as const }] : []),
+                  ...(otherMergedViews.length > 0 ? [{ separator: true as const }] : []),
                   {
-                    label: "New Cairn…",
+                    label: "New merged view…",
                     onClick: () => setDialog({ kind: "combine-stacks", preselectStackName: target.stack.name }),
                   },
                 ],
@@ -923,40 +923,40 @@ export default function App() {
         )}
         <div className="empty-state">
           <h1>Cairn</h1>
-          {stacks.length === 0 && cairns.length === 0 ? (
+          {stacks.length === 0 && mergedViews.length === 0 ? (
             <p>Add a folder of markdown notes to get started.</p>
           ) : (
             <div className="stack-sections">
               <section className="stack-section">
-                <h2 className="stack-section-label">Cairns — merged views combining two or more stacks</h2>
-                {cairns.length === 0 ? (
-                  <p className="stack-section-empty">No Cairns yet.</p>
+                <h2 className="stack-section-label">Merged views — combine two or more stacks into one linked view</h2>
+                {mergedViews.length === 0 ? (
+                  <p className="stack-section-empty">No merged views yet.</p>
                 ) : (
                   <ul className="stack-grid">
-                    {cairns.map((c) => (
-                      <li key={`cairn:${c.name.toLowerCase()}`}>
+                    {mergedViews.map((c) => (
+                      <li key={`mergedView:${c.name.toLowerCase()}`}>
                         <div
                           className="stack-list-item"
                           role="button"
                           tabIndex={0}
-                          onClick={() => openCairnByEntry(c)}
+                          onClick={() => openMergedViewByEntry(c)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
-                              openCairnByEntry(c);
+                              openMergedViewByEntry(c);
                               return;
                             }
                             if (e.key === "F2") {
                               e.preventDefault();
-                              setDialog({ kind: "rename-cairn", cairn: c });
+                              setDialog({ kind: "rename-merged-view", mergedView: c });
                               return;
                             }
                             if (e.key !== "Delete") return;
                             e.preventDefault();
-                            handleRemoveCairn(c.name);
+                            handleRemoveMergedView(c.name);
                           }}
                         >
-                          <EntryAvatar kind="cairn" name={c.name} avatar={c.avatar} size={128} className="stack-list-avatar" />
+                          <EntryAvatar kind="mergedView" name={c.name} avatar={c.avatar} size={128} className="stack-list-avatar" />
                           <div className="stack-list-row">
                             <span className="stack-list-text">
                               <span className="stack-list-name">◆ {c.name}</span>
@@ -969,7 +969,7 @@ export default function App() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const rect = e.currentTarget.getBoundingClientRect();
-                                setStackContextMenu({ target: { type: "cairn", cairn: c }, x: rect.left, y: rect.bottom + 4 });
+                                setStackContextMenu({ target: { type: "mergedView", mergedView: c }, x: rect.left, y: rect.bottom + 4 });
                               }}
                             >
                               ⋮
@@ -1044,7 +1044,7 @@ export default function App() {
               disabled={stacks.length < 2}
               title={
                 stacks.length < 2
-                  ? "Add one more stack first — a Cairn merges two or more stacks into one linked view."
+                  ? "Add one more stack first — a merged view combines two or more stacks into one linked view."
                   : "Merge two or more stacks into one linked view"
               }
             >
@@ -1053,7 +1053,7 @@ export default function App() {
           </div>
           {stacks.length < 2 && (
             <p className="modal-message">
-              A Cairn merges notes from two or more stacks into a single linked view — the stacks themselves are
+              A merged view combines notes from two or more stacks into a single linked view — the stacks themselves are
               untouched.
             </p>
           )}
@@ -1077,12 +1077,12 @@ export default function App() {
               onCancel={() => setDialog(null)}
             />
           )}
-          {dialog?.kind === "rename-cairn" && (
+          {dialog?.kind === "rename-merged-view" && (
             <PromptModal
-              title="Rename Cairn to"
-              initialValue={dialog.cairn.name}
+              title="Rename merged view to"
+              initialValue={dialog.mergedView.name}
               confirmLabel="Rename"
-              onSubmit={handleRenameCairnSubmit}
+              onSubmit={handleRenameMergedViewSubmit}
               onCancel={() => setDialog(null)}
             />
           )}
@@ -1095,13 +1095,13 @@ export default function App() {
               onCancel={() => setDialog(null)}
             />
           )}
-          {dialog?.kind === "manage-cairn-members" && (
+          {dialog?.kind === "manage-merged-view-members" && (
             <CombineStacksModal
               stacks={stacks}
-              editingCairnName={dialog.cairn.name}
-              initialSelected={dialog.cairn.memberStackNames}
+              editingMergedViewName={dialog.mergedView.name}
+              initialSelected={dialog.mergedView.memberStackNames}
               onAddStack={addStackToRegistry}
-              onSubmit={(_name, memberStackNames) => handleManageCairnMembersSubmit(dialog.cairn, memberStackNames)}
+              onSubmit={(_name, memberStackNames) => handleManageMergedViewMembersSubmit(dialog.mergedView, memberStackNames)}
               onCancel={() => setDialog(null)}
             />
           )}
@@ -1180,7 +1180,7 @@ export default function App() {
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
               onCancelRename: () => setRenamingPath(null),
               onSeedStarterContent: activeSession.kind === "stack" ? handleSeedStarterContent : undefined,
-              memberStacks: activeSession.kind === "cairn" ? activeSession.memberStacks : undefined,
+              memberStacks: activeSession.kind === "mergedView" ? activeSession.memberStacks : undefined,
               onMoveNoteToStack: (n: Note, destRoot: string) => handleMoveNoteToStack(n, destRoot),
               templates: allTemplates,
               onSelectTemplate: (t: FileTemplate) => openTemplateTab(t),
@@ -1330,7 +1330,7 @@ export default function App() {
             x={templateMenu.x}
             y={templateMenu.y}
             items={
-              activeSession.kind === "cairn"
+              activeSession.kind === "mergedView"
                 ? activeSession.memberStacks.map((stack) => ({
                     label: stack.name,
                     children: templatePickerEntries(stack.root),
@@ -1350,7 +1350,7 @@ export default function App() {
             onCancel={() => setDialog(null)}
           />
         )}
-        {dailyNoteMenu && activeSession.kind === "cairn" && (
+        {dailyNoteMenu && activeSession.kind === "mergedView" && (
           <ContextMenu
             x={dailyNoteMenu.x}
             y={dailyNoteMenu.y}

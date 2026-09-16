@@ -25,7 +25,7 @@ export function registerAvatarScheme(): void {
  *  the path.relative() check even runs. */
 export function resolveAvatarFilePath(userDataDir: string, url: URL): string | null {
   const kind = url.hostname;
-  if (kind !== "stack" && kind !== "cairn") return null;
+  if (kind !== "stack" && kind !== "mergedView") return null;
   const segments = url.pathname.replace(/^\/+/, "").split("/");
   if (segments.length !== 2) return null;
   const [name, fileName] = segments.map(decodeURIComponent);

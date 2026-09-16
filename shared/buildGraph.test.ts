@@ -6,7 +6,7 @@ function note(relativePath: string, raw: string) {
   return parseNote({ path: `/stack/${relativePath}`, relativePath, raw, mtimeMs: 0 });
 }
 
-/** A note stamped with a source stack, as buildGraph sees notes merged from an open Cairn. */
+/** A note stamped with a source stack, as buildGraph sees notes merged from an open merged view. */
 function noteIn(sourceStack: string, relativePath: string, raw: string) {
   return {
     ...parseNote({ path: `/${sourceStack}/${relativePath}`, relativePath, raw, mtimeMs: 0 }),

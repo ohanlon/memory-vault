@@ -1,26 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CairnEntry, GraphModel, Note, PropertyDef, StackEntry } from "@shared/types";
+import type { MergedViewEntry, GraphModel, Note, PropertyDef, StackEntry } from "@shared/types";
 import { buildGraph } from "@shared/buildGraph";
 import { loadThirdPartyPlugins } from "../plugins/loader";
 
 export type ActiveSession =
   | { kind: "stack"; entry: StackEntry }
-  | { kind: "cairn"; entry: CairnEntry; memberStacks: StackEntry[] };
+  | { kind: "mergedView"; entry: MergedViewEntry; memberStacks: StackEntry[] };
 
 export interface StackState {
   stacks: StackEntry[];
-  cairns: CairnEntry[];
+  mergedViews: MergedViewEntry[];
   activeSession: ActiveSession | null;
   notes: Note[];
   graph: GraphModel;
   /** Property schema for every currently-open root (the one stack's root in
-   *  a plain session, or every member stack's root in an open Cairn), keyed
+   *  a plain session, or every member stack's root in an open merged view), keyed
    *  by absolute root path. */
   propertySchemas: Record<string, PropertyDef[]>;
   loading: boolean;
   error: string | null;
   /** True while any active root's background reconciliation pass (kicked
-   *  off by openStack/openCairn) is still in progress. */
+   *  off by openStack/openMergedView) is still in progress. */
   reconciling: boolean;
 }
 
@@ -33,7 +33,7 @@ function belongsToRoot(note: Note, root: string): boolean {
 export function useStack() {
   const [state, setState] = useState<StackState>({
     stacks: [],
-    cairns: [],
+    mergedViews: [],
     activeSession: null,
     notes: [],
     graph: EMPTY_GRAPH,
@@ -51,7 +51,7 @@ export function useStack() {
 
   useEffect(() => {
     window.memoryStack.listStacks().then((stacks) => setState((s) => ({ ...s, stacks })));
-    window.memoryStack.listCairns().then((cairns) => setState((s) => ({ ...s, cairns })));
+    window.memoryStack.listMergedViews().then((mergedViews) => setState((s) => ({ ...s, mergedViews })));
   }, []);
 
   // Opens/switches to a single stack. The main process serves this from a
@@ -89,16 +89,16 @@ export function useStack() {
     }
   }, []);
 
-  // Opens a Cairn — every member stack loads together (same cache/watch
+  // Opens a merged view — every member stack loads together (same cache/watch
   // machinery as a plain stack, one session per member root in the main
   // process) and their notes merge into one note list/graph, each note
   // stamped with which stack it came from (Note.sourceStack).
-  const openCairn = useCallback(async (entry: CairnEntry, memberStacks: StackEntry[]) => {
+  const openMergedView = useCallback(async (entry: MergedViewEntry, memberStacks: StackEntry[]) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const loadEntries = memberStacks.map((m) => ({ root: m.root, name: m.name }));
       const [index, schemas] = await Promise.all([
-        window.memoryStack.loadCairn(loadEntries),
+        window.memoryStack.loadMergedView(loadEntries),
         Promise.all(memberStacks.map((m) => window.memoryStack.readPropertySchema(m.root))),
       ]);
       activeRootsRef.current = index.roots;
@@ -109,7 +109,7 @@ export function useStack() {
       });
       setState((s) => ({
         ...s,
-        activeSession: { kind: "cairn", entry, memberStacks },
+        activeSession: { kind: "mergedView", entry, memberStacks },
         notes: index.notes,
         graph: buildGraph(index.notes),
         propertySchemas,
@@ -123,7 +123,7 @@ export function useStack() {
     }
   }, []);
 
-  // The background reconciliation pass (kicked off by openStack/openCairn)
+  // The background reconciliation pass (kicked off by openStack/openMergedView)
   // found one root's on-disk contents differ from the cache it served
   // initially — replace just that root's slice of notes and rebuild the
   // merged graph.
@@ -140,7 +140,7 @@ export function useStack() {
 
   // One root's background reconciliation pass has finished, whether or not
   // it found anything to change. `reconciling` stays true until every
-  // active root's pass has finished (relevant for a Cairn's several roots).
+  // active root's pass has finished (relevant for a merged view's several roots).
   useEffect(() => {
     const unsubscribe = window.memoryStack.onReconcileStatus(({ root: eventRoot, reconciling }) => {
       if (!activeRootsRef.current.includes(eventRoot)) return;
@@ -153,19 +153,19 @@ export function useStack() {
 
   const openStackByEntry = useCallback((entry: StackEntry) => openStack(entry), [openStack]);
 
-  const openCairnByEntry = useCallback(
-    (entry: CairnEntry) => {
+  const openMergedViewByEntry = useCallback(
+    (entry: MergedViewEntry) => {
       const memberStacks = entry.memberStackNames
         .map((name) => state.stacks.find((s) => s.name.toLowerCase() === name.toLowerCase()))
         .filter((s): s is StackEntry => s !== undefined);
-      return openCairn(entry, memberStacks);
+      return openMergedView(entry, memberStacks);
     },
-    [openCairn, state.stacks]
+    [openMergedView, state.stacks]
   );
 
   // Persists a new stack without opening it — used when adding a folder as a
   // stack from somewhere other than the launcher (e.g. mid-flow while
-  // picking members for a Cairn), where switching the active session out
+  // picking members for a merged view), where switching the active session out
   // from under that flow would be unwelcome.
   const addStackToRegistry = useCallback(async (name: string, root: string) => {
     const stacks = await window.memoryStack.addStack(name, root); // throws on empty/duplicate name
@@ -209,17 +209,17 @@ export function useStack() {
     }));
   }, []);
 
-  const addCairn = useCallback(async (name: string, memberStackNames: string[]) => {
-    const cairns = await window.memoryStack.addCairn(name, memberStackNames); // throws on empty/duplicate name or <2 members
-    setState((s) => ({ ...s, cairns }));
+  const addMergedView = useCallback(async (name: string, memberStackNames: string[]) => {
+    const mergedViews = await window.memoryStack.addMergedView(name, memberStackNames); // throws on empty/duplicate name or <2 members
+    setState((s) => ({ ...s, mergedViews }));
   }, []);
 
-  const removeCairn = useCallback(async (name: string) => {
-    const cairns = await window.memoryStack.removeCairn(name);
+  const removeMergedView = useCallback(async (name: string) => {
+    const mergedViews = await window.memoryStack.removeMergedView(name);
     setState((s) => ({
       ...s,
-      cairns,
-      ...(s.activeSession?.kind === "cairn" && s.activeSession.entry.name.toLowerCase() === name.toLowerCase()
+      mergedViews,
+      ...(s.activeSession?.kind === "mergedView" && s.activeSession.entry.name.toLowerCase() === name.toLowerCase()
         ? {
             activeSession: null,
             notes: [],
@@ -231,21 +231,21 @@ export function useStack() {
     }));
   }, []);
 
-  const renameCairn = useCallback(async (oldName: string, newName: string) => {
-    const cairns = await window.memoryStack.renameCairn(oldName, newName); // throws on empty/duplicate name
+  const renameMergedView = useCallback(async (oldName: string, newName: string) => {
+    const mergedViews = await window.memoryStack.renameMergedView(oldName, newName); // throws on empty/duplicate name
     setState((s) => ({
       ...s,
-      cairns,
+      mergedViews,
       activeSession:
-        s.activeSession?.kind === "cairn" && s.activeSession.entry.name.toLowerCase() === oldName.toLowerCase()
+        s.activeSession?.kind === "mergedView" && s.activeSession.entry.name.toLowerCase() === oldName.toLowerCase()
           ? { ...s.activeSession, entry: { ...s.activeSession.entry, name: newName.trim() } }
           : s.activeSession,
     }));
   }, []);
 
-  const updateCairnMembers = useCallback(async (name: string, memberStackNames: string[]) => {
-    const cairns = await window.memoryStack.updateCairnMembers(name, memberStackNames); // throws on <2 members
-    setState((s) => ({ ...s, cairns }));
+  const updateMergedViewMembers = useCallback(async (name: string, memberStackNames: string[]) => {
+    const mergedViews = await window.memoryStack.updateMergedViewMembers(name, memberStackNames); // throws on <2 members
+    setState((s) => ({ ...s, mergedViews }));
   }, []);
 
   // Opens the native file picker and, on success, swaps in the uploaded
@@ -261,14 +261,14 @@ export function useStack() {
     setState((s) => ({ ...s, stacks }));
   }, []);
 
-  const changeCairnAvatar = useCallback(async (name: string) => {
-    const cairns = await window.memoryStack.changeCairnAvatar(name);
-    if (cairns) setState((s) => ({ ...s, cairns }));
+  const changeMergedViewAvatar = useCallback(async (name: string) => {
+    const mergedViews = await window.memoryStack.changeMergedViewAvatar(name);
+    if (mergedViews) setState((s) => ({ ...s, mergedViews }));
   }, []);
 
-  const resetCairnAvatar = useCallback(async (name: string) => {
-    const cairns = await window.memoryStack.resetCairnAvatar(name);
-    setState((s) => ({ ...s, cairns }));
+  const resetMergedViewAvatar = useCallback(async (name: string) => {
+    const mergedViews = await window.memoryStack.resetMergedViewAvatar(name);
+    setState((s) => ({ ...s, mergedViews }));
   }, []);
 
   const closeStack = useCallback(() => {
@@ -299,8 +299,8 @@ export function useStack() {
       if (showReindexing) setState((s) => ({ ...s, reconciling: true }));
       try {
         const { notes } =
-          state.activeSession.kind === "cairn"
-            ? await window.memoryStack.reloadCairn()
+          state.activeSession.kind === "mergedView"
+            ? await window.memoryStack.reloadMergedView()
             : await window.memoryStack.reloadStack();
         setState((s) => ({
           ...s,
@@ -350,19 +350,19 @@ export function useStack() {
   return {
     ...state,
     openStackByEntry,
-    openCairnByEntry,
+    openMergedViewByEntry,
     addStack,
     addStackToRegistry,
     removeStack,
     renameStack,
-    addCairn,
-    removeCairn,
-    renameCairn,
-    updateCairnMembers,
+    addMergedView,
+    removeMergedView,
+    renameMergedView,
+    updateMergedViewMembers,
     changeStackAvatar,
     resetStackAvatar,
-    changeCairnAvatar,
-    resetCairnAvatar,
+    changeMergedViewAvatar,
+    resetMergedViewAvatar,
     closeStack,
     refresh,
     saveSchema,

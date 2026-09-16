@@ -45,9 +45,9 @@ describe("writeCustomAvatar", () => {
 
 describe("removeCustomAvatar", () => {
   it("deletes the avatar folder", () => {
-    writeCustomAvatar(userDataDir, "cairn", "Life", writeSourceImage("pic.png"));
-    removeCustomAvatar(userDataDir, "cairn", "Life");
-    expect(fs.existsSync(avatarDirPath(userDataDir, "cairn", "Life"))).toBe(false);
+    writeCustomAvatar(userDataDir, "mergedView", "Life", writeSourceImage("pic.png"));
+    removeCustomAvatar(userDataDir, "mergedView", "Life");
+    expect(fs.existsSync(avatarDirPath(userDataDir, "mergedView", "Life"))).toBe(false);
   });
 
   it("is a no-op when no avatar folder exists", () => {

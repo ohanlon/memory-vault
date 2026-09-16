@@ -83,7 +83,7 @@ function belongsToRoot(note: NoteLike, root: string): boolean {
  * Converts an open-tab id (an absolute note path or a sentinel id) to the
  * root-qualified form persisted in workspace state, so saved state stays
  * valid if the vault is relocated and resolves to the right note even when
- * more than one open stack shares a relative path (an open Cairn). Returns
+ * more than one open stack shares a relative path (an open merged view). Returns
  * null when the note can't be found.
  */
 export function tabIdToTabRef(tabId: string, notes: NoteLike[]): TabRef | null {

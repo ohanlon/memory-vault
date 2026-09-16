@@ -10,17 +10,17 @@ import { convertToTemplate, listAllFileTemplates } from "./templates";
 import { expandBuiltInDateVars, renderTemplate } from "../shared/templateRender";
 import { addStack, readStacksFile, removeStack, renameStack, setStackAvatar, writeStacksFile } from "./stackRegistry";
 import {
-  addCairn,
-  readCairnsFile,
-  removeCairn,
-  renameCairn,
-  setCairnAvatar,
-  updateCairnMembers,
-  writeCairnsFile,
-} from "./cairnRegistry";
+  addMergedView,
+  readMergedViewsFile,
+  removeMergedView,
+  renameMergedView,
+  setMergedViewAvatar,
+  updateMergedViewMembers,
+  writeMergedViewsFile,
+} from "./mergedViewRegistry";
 import { removeCustomAvatar, renameAvatarFolder, writeCustomAvatar } from "./avatarStorage";
 import { handleAvatarProtocol, registerAvatarScheme } from "./avatarProtocol";
-import { CAIRN_AVATAR_COUNT, STACK_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
+import { MERGED_VIEW_AVATAR_COUNT, STACK_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
 import { titleFromPath } from "../shared/parseNote";
 import { STARTER_NOTES } from "../shared/starterContent";
 import { findNoteTemplate } from "../shared/noteTemplates";
@@ -28,9 +28,9 @@ import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } fr
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
 import {
-  readCairnWorkspaceState,
+  readMergedViewWorkspaceState,
   readWorkspaceState,
-  writeCairnWorkspaceState,
+  writeMergedViewWorkspaceState,
   writeWorkspaceState,
 } from "./workspaceState";
 import { DEFAULT_WORKSPACE_STATE } from "../shared/workspaceState";
@@ -88,7 +88,7 @@ let win: BrowserWindow | null = null;
 
 // One entry per currently-open stack root. A plain single-stack session has
 // exactly one entry (`name: null`, notes never carry Note.sourceStack); an
-// open Cairn has one entry per member stack (`name` set to that stack's
+// open merged view has one entry per member stack (`name` set to that stack's
 // name, used to stamp Note.sourceStack on the notes handed to the
 // renderer). `notes` is always the raw, unstamped result of loadStack — the
 // same shape written to that root's on-disk cache — stamping happens only
@@ -100,7 +100,7 @@ interface StackSession {
 }
 const sessions = new Map<string, StackSession>();
 // Ordered roots of the currently-open session — length 1 for a plain stack,
-// length N for an open Cairn's N member stacks.
+// length N for an open merged view's N member stacks.
 let activeRoots: string[] = [];
 
 let searchCounter = 0;
@@ -132,8 +132,8 @@ function stacksFilePath(): string {
   return path.join(app.getPath("userData"), "stacks.json");
 }
 
-function cairnsFilePath(): string {
-  return path.join(app.getPath("userData"), "cairns.json");
+function mergedViewsFilePath(): string {
+  return path.join(app.getPath("userData"), "mergedViews.json");
 }
 
 function layoutPrefsFilePath(): string {
@@ -299,63 +299,63 @@ ipcMain.handle("stacks:resetAvatar", async (_event, name: string) => {
   return updated;
 });
 
-ipcMain.handle("cairns:list", async () => {
-  return readCairnsFile(cairnsFilePath());
+ipcMain.handle("mergedViews:list", async () => {
+  return readMergedViewsFile(mergedViewsFilePath());
 });
 
-ipcMain.handle("cairns:add", async (_event, name: string, memberStackNames: string[]) => {
-  const cairns = readCairnsFile(cairnsFilePath());
-  const updated = addCairn(cairns, name, memberStackNames); // throws on empty/duplicate name or <2 members
-  writeCairnsFile(cairnsFilePath(), updated);
+ipcMain.handle("mergedViews:add", async (_event, name: string, memberStackNames: string[]) => {
+  const mergedViews = readMergedViewsFile(mergedViewsFilePath());
+  const updated = addMergedView(mergedViews, name, memberStackNames); // throws on empty/duplicate name or <2 members
+  writeMergedViewsFile(mergedViewsFilePath(), updated);
   return updated;
 });
 
-ipcMain.handle("cairns:remove", async (_event, name: string) => {
-  const cairns = readCairnsFile(cairnsFilePath());
-  const updated = removeCairn(cairns, name);
-  writeCairnsFile(cairnsFilePath(), updated);
-  removeCustomAvatar(app.getPath("userData"), "cairn", name);
+ipcMain.handle("mergedViews:remove", async (_event, name: string) => {
+  const mergedViews = readMergedViewsFile(mergedViewsFilePath());
+  const updated = removeMergedView(mergedViews, name);
+  writeMergedViewsFile(mergedViewsFilePath(), updated);
+  removeCustomAvatar(app.getPath("userData"), "mergedView", name);
   return updated;
 });
 
-ipcMain.handle("cairns:rename", async (_event, oldName: string, newName: string) => {
-  const cairns = readCairnsFile(cairnsFilePath());
-  const updated = renameCairn(cairns, oldName, newName); // throws on empty/duplicate name
-  writeCairnsFile(cairnsFilePath(), updated);
-  renameAvatarFolder(app.getPath("userData"), "cairn", oldName, newName.trim());
+ipcMain.handle("mergedViews:rename", async (_event, oldName: string, newName: string) => {
+  const mergedViews = readMergedViewsFile(mergedViewsFilePath());
+  const updated = renameMergedView(mergedViews, oldName, newName); // throws on empty/duplicate name
+  writeMergedViewsFile(mergedViewsFilePath(), updated);
+  renameAvatarFolder(app.getPath("userData"), "mergedView", oldName, newName.trim());
   return updated;
 });
 
-ipcMain.handle("cairns:updateMembers", async (_event, name: string, memberStackNames: string[]) => {
-  const cairns = readCairnsFile(cairnsFilePath());
-  const updated = updateCairnMembers(cairns, name, memberStackNames); // throws on <2 members
-  writeCairnsFile(cairnsFilePath(), updated);
+ipcMain.handle("mergedViews:updateMembers", async (_event, name: string, memberStackNames: string[]) => {
+  const mergedViews = readMergedViewsFile(mergedViewsFilePath());
+  const updated = updateMergedViewMembers(mergedViews, name, memberStackNames); // throws on <2 members
+  writeMergedViewsFile(mergedViewsFilePath(), updated);
   return updated;
 });
 
-ipcMain.handle("cairns:changeAvatar", async (_event, name: string) => {
+ipcMain.handle("mergedViews:changeAvatar", async (_event, name: string) => {
   if (!win) return null;
   const result = await dialog.showOpenDialog(win, {
     properties: ["openFile"],
     filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
   });
   if (result.canceled || result.filePaths.length === 0) return null;
-  const avatar = writeCustomAvatar(app.getPath("userData"), "cairn", name, result.filePaths[0]);
-  const updated = setCairnAvatar(readCairnsFile(cairnsFilePath()), name, avatar);
-  writeCairnsFile(cairnsFilePath(), updated);
+  const avatar = writeCustomAvatar(app.getPath("userData"), "mergedView", name, result.filePaths[0]);
+  const updated = setMergedViewAvatar(readMergedViewsFile(mergedViewsFilePath()), name, avatar);
+  writeMergedViewsFile(mergedViewsFilePath(), updated);
   return updated;
 });
 
-ipcMain.handle("cairns:resetAvatar", async (_event, name: string) => {
-  removeCustomAvatar(app.getPath("userData"), "cairn", name);
-  const avatar = { kind: "builtin" as const, index: defaultAvatarIndexForName(name, CAIRN_AVATAR_COUNT) };
-  const updated = setCairnAvatar(readCairnsFile(cairnsFilePath()), name, avatar);
-  writeCairnsFile(cairnsFilePath(), updated);
+ipcMain.handle("mergedViews:resetAvatar", async (_event, name: string) => {
+  removeCustomAvatar(app.getPath("userData"), "mergedView", name);
+  const avatar = { kind: "builtin" as const, index: defaultAvatarIndexForName(name, MERGED_VIEW_AVATAR_COUNT) };
+  const updated = setMergedViewAvatar(readMergedViewsFile(mergedViewsFilePath()), name, avatar);
+  writeMergedViewsFile(mergedViewsFilePath(), updated);
   return updated;
 });
 
 // Loads (or serves from cache) one root's notes and starts watching it —
-// shared by both stack:load (a session of one root) and cairn:load (a
+// shared by both stack:load (a session of one root) and mergedView:load (a
 // session of N member-stack roots). A cached vault loads instantly; only a
 // vault that's never been opened before pays for a full synchronous walk,
 // which then seeds the cache.
@@ -373,8 +373,8 @@ async function openSessionRoot(root: string, name: string | null): Promise<void>
   // files whose mtime changed since the cache was written, and pushes the
   // reconciled result only if something actually differs (e.g. the vault
   // was edited outside the app while it was closed). The renderer treats
-  // reconciliation as started the moment stack:load/cairn:load resolves
-  // (see openStack/openCairn), so only the "done" transition needs to be
+  // reconciliation as started the moment stack:load/mergedView:load resolves
+  // (see openStack/openMergedView), so only the "done" transition needs to be
   // pushed here.
   reconcileStackCache(root, notes)
     .then((result) => {
@@ -413,7 +413,7 @@ ipcMain.handle("stack:reload", async () => {
   return { notes };
 });
 
-ipcMain.handle("cairn:load", async (_event, entries: { root: string; name: string }[]) => {
+ipcMain.handle("mergedView:load", async (_event, entries: { root: string; name: string }[]) => {
   stopAllSessions();
   cancelAllSearches();
   activeRoots = entries.map((e) => e.root);
@@ -422,7 +422,7 @@ ipcMain.handle("cairn:load", async (_event, entries: { root: string; name: strin
   return { roots: activeRoots, notes };
 });
 
-ipcMain.handle("cairn:reload", async () => {
+ipcMain.handle("mergedView:reload", async () => {
   if (activeRoots.length === 0) throw new Error("No stack loaded");
   await Promise.all(activeRoots.map((root) => reloadSessionRoot(root)));
   const notes = activeRoots.flatMap((root) => sessionNotes(root));
@@ -525,12 +525,12 @@ ipcMain.handle("stack:saveWorkspaceState", async (_event, state: WorkspaceState)
   return true;
 });
 
-ipcMain.handle("cairn:readWorkspaceState", async (_event, cairnName: string) => {
-  return readCairnWorkspaceState(app.getPath("userData"), cairnName);
+ipcMain.handle("mergedView:readWorkspaceState", async (_event, mergedViewName: string) => {
+  return readMergedViewWorkspaceState(app.getPath("userData"), mergedViewName);
 });
 
-ipcMain.handle("cairn:saveWorkspaceState", async (_event, cairnName: string, state: WorkspaceState) => {
-  writeCairnWorkspaceState(app.getPath("userData"), cairnName, state);
+ipcMain.handle("mergedView:saveWorkspaceState", async (_event, mergedViewName: string, state: WorkspaceState) => {
+  writeMergedViewWorkspaceState(app.getPath("userData"), mergedViewName, state);
   return true;
 });
 
@@ -616,7 +616,7 @@ ipcMain.handle(
 // collide with something already on disk, so it's safe to call more than
 // once.
 ipcMain.handle("stack:seedStarterContent", async () => {
-  // Only meaningful for a single freshly-opened, empty stack — a Cairn
+  // Only meaningful for a single freshly-opened, empty stack — a merged view
   // always has 2+ member stacks that already existed independently.
   if (activeRoots.length !== 1) throw new Error("No stack loaded");
   const root = activeRoots[0];
@@ -648,7 +648,7 @@ ipcMain.handle(
 
     if (updateLinks) {
       // Rewrite [[oldTitle]] (and, when this note's stack is part of an
-      // open Cairn, the explicitly-qualified [[StackName/oldTitle]])
+      // open merged view, the explicitly-qualified [[StackName/oldTitle]])
       // references, across every open root — a link to this note can live
       // in any member stack, not just its own.
       const bareTarget = oldTitle;
@@ -676,7 +676,7 @@ ipcMain.handle(
   }
 );
 
-// Moves a note to a different member stack of the currently open Cairn —
+// Moves a note to a different member stack of the currently open merged view —
 // notes aren't renamed by this (title, and therefore every [[link]] to it,
 // stays valid), only their physical file/sourceStack changes.
 ipcMain.handle(
@@ -787,9 +787,22 @@ app.on("window-all-closed", () => {
   }
 });
 
+// One-time migration from the old "cairns" name for the merged-view feature
+// (renamed to avoid colliding with the app's own name) to "mergedViews".
+function migrateMergedViewStorage(): void {
+  const userDataDir = app.getPath("userData");
+  const oldFile = path.join(userDataDir, "cairns.json");
+  const newFile = path.join(userDataDir, "mergedViews.json");
+  if (fs.existsSync(oldFile) && !fs.existsSync(newFile)) fs.renameSync(oldFile, newFile);
+  const oldDir = path.join(userDataDir, "cairns");
+  const newDir = path.join(userDataDir, "mergedViews");
+  if (fs.existsSync(oldDir) && !fs.existsSync(newDir)) fs.renameSync(oldDir, newDir);
+}
+
 registerPluginScheme();
 registerAvatarScheme();
 app.whenReady().then(() => {
+  migrateMergedViewStorage();
   createWindow();
   handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
   handleAvatarProtocol(app.getPath("userData"));

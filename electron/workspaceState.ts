@@ -30,17 +30,17 @@ export function writeWorkspaceState(stackRoot: string, state: WorkspaceState): v
   writeWorkspaceStateFile(workspaceStateFilePath(stackRoot), stackRoot, state);
 }
 
-/** A Cairn-scoped workspace file lives in userData, not inside any one
+/** A merged view-scoped workspace file lives in userData, not inside any one
  *  member stack's own folder — there's no single owning root to nest it
  *  under. */
-export function cairnWorkspaceStateFilePath(userDataDir: string, cairnName: string): string {
-  return path.join(userDataDir, "cairns", cairnName, "workspace.json");
+export function mergedViewWorkspaceStateFilePath(userDataDir: string, mergedViewName: string): string {
+  return path.join(userDataDir, "mergedViews", mergedViewName, "workspace.json");
 }
 
-export function readCairnWorkspaceState(userDataDir: string, cairnName: string): WorkspaceState {
-  return readWorkspaceStateFile(cairnWorkspaceStateFilePath(userDataDir, cairnName), "");
+export function readMergedViewWorkspaceState(userDataDir: string, mergedViewName: string): WorkspaceState {
+  return readWorkspaceStateFile(mergedViewWorkspaceStateFilePath(userDataDir, mergedViewName), "");
 }
 
-export function writeCairnWorkspaceState(userDataDir: string, cairnName: string, state: WorkspaceState): void {
-  writeWorkspaceStateFile(cairnWorkspaceStateFilePath(userDataDir, cairnName), "", state);
+export function writeMergedViewWorkspaceState(userDataDir: string, mergedViewName: string, state: WorkspaceState): void {
+  writeWorkspaceStateFile(mergedViewWorkspaceStateFilePath(userDataDir, mergedViewName), "", state);
 }

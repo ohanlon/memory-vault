@@ -82,7 +82,7 @@ export function PropertySchemaModal({ schema, onSave, onClose }: Props) {
               </div>
             </li>
           ))}
-          {draft.length === 0 && <p className="backlinks-empty">No bounded properties defined yet</p>}
+          {draft.length === 0 && <p className="backlinks-empty">No properties defined yet</p>}
         </ul>
 
         {editing ? (

@@ -12,7 +12,7 @@ function plural(count: number, singular: string, pluralForm: string): string {
 }
 
 export function BacklinksStat({ note, graph }: Props) {
-  // Not just note.title — in an open Cairn, a note whose title collides with
+  // Not just note.title — in an open merged view, a note whose title collides with
   // another stack's gets a "sourceStack/Title" graph node id instead (see
   // buildGraph.ts), and edges target that id, not the bare title.
   const nodeId = graph.nodes.find((n) => n.path === note.path)?.id ?? note.title;

@@ -20,7 +20,7 @@ function isTabRefObject(v: unknown): v is { root: string; relativePath: string }
   );
 }
 
-/** Migrates a pre-Cairn bare relative-path string (implicitly relative to
+/** Migrates a pre-merged view bare relative-path string (implicitly relative to
  *  the single stack being loaded) by qualifying it with `fallbackRoot`. A
  *  bare sentinel id (e.g. "@graph") is never root-qualified. */
 function normalizeTabRef(value: unknown, fallbackRoot: string): WorkspaceTabRef | null {
@@ -43,9 +43,9 @@ function normalizeTabRefs(value: unknown, fallbackRoot: string): WorkspaceTabRef
 
 /**
  * Fills in missing/invalid fields with defaults. `fallbackRoot` qualifies
- * any pre-Cairn bare-string tab entries found in an old workspace.json —
+ * any pre-merged view bare-string tab entries found in an old workspace.json —
  * pass the stack root being loaded for a single-stack session, or "" for a
- * Cairn-scoped workspace file (which never existed in the old format, so
+ * merged view-scoped workspace file (which never existed in the old format, so
  * migration there is a no-op in practice).
  */
 export function normalizeWorkspaceState(value: unknown, fallbackRoot: string): WorkspaceState {

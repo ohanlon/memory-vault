@@ -1,10 +1,10 @@
 // Custom-uploaded avatars are served from userData via this scheme rather
-// than embedded as base64 in stacks.json/cairns.json or React state — see
+// than embedded as base64 in stacks.json/mergedViews.json or React state — see
 // electron/avatarProtocol.ts for the handler. No Electron/DOM dependency
 // here so it's safe to import from both main and renderer.
 export const AVATAR_SCHEME = "cairn-avatar";
 
-export type AvatarEntityUrlKind = "stack" | "cairn";
+export type AvatarEntityUrlKind = "stack" | "mergedView";
 
 /** cairn-avatar://<kind>/<encoded-name>/<encoded-fileName>?v=<updatedAt>
  *  `v` is pure cache-busting (never read by the protocol handler) — without

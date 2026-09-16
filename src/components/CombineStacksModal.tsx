@@ -5,10 +5,10 @@ import { PromptModal } from "./PromptModal";
 
 interface Props {
   stacks: StackEntry[];
-  /** Preselects these stack names on open — used both for "New Cairn…" from a stack's own context menu and for managing an existing Cairn's membership. */
+  /** Preselects these stack names on open — used both for "New merged view…" from a stack's own context menu and for managing an existing merged view's membership. */
   initialSelected?: string[];
-  /** When set, this is an existing Cairn's "manage members" flow rather than creating a new one — hides the name field and changes the copy/labels accordingly. */
-  editingCairnName?: string;
+  /** When set, this is an existing merged view's "manage members" flow rather than creating a new one — hides the name field and changes the copy/labels accordingly. */
+  editingMergedViewName?: string;
   /** Persists a folder as a new stack (throws on empty/duplicate name) without opening it, so a stack picked up mid-flow here joins the checklist below instead of switching the active session. */
   onAddStack: (name: string, root: string) => Promise<void>;
   onSubmit: (name: string, memberStackNames: string[]) => void;
@@ -18,12 +18,12 @@ interface Props {
 export function CombineStacksModal({
   stacks,
   initialSelected,
-  editingCairnName,
+  editingMergedViewName,
   onAddStack,
   onSubmit,
   onCancel,
 }: Props) {
-  const [name, setName] = useState(editingCairnName ?? "");
+  const [name, setName] = useState(editingMergedViewName ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected ?? []));
   const [pickedRoot, setPickedRoot] = useState<string | null>(null);
 
@@ -66,11 +66,11 @@ export function CombineStacksModal({
             if (canSubmit) onSubmit(name, Array.from(selected));
           }}
         >
-          <h3>{editingCairnName ? `Manage stacks in "${editingCairnName}"` : "Combine stacks into a Cairn"}</h3>
-          {!editingCairnName && (
+          <h3>{editingMergedViewName ? `Manage stacks in "${editingMergedViewName}"` : "Combine stacks into a merged view"}</h3>
+          {!editingMergedViewName && (
             <input
               autoFocus
-              placeholder="Cairn name"
+              placeholder="Merged view name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
@@ -79,8 +79,8 @@ export function CombineStacksModal({
             />
           )}
           <p className="modal-message">
-            {editingCairnName
-              ? "Add or remove stacks — a Cairn needs at least two."
+            {editingMergedViewName
+              ? "Add or remove stacks — a merged view needs at least two."
               : "Pick at least two stacks to merge into one linked view."}
           </p>
           <ul className="combine-stacks-list">
@@ -105,7 +105,7 @@ export function CombineStacksModal({
               Cancel
             </button>
             <button type="submit" disabled={!canSubmit}>
-              {editingCairnName ? "Save" : "Combine"}
+              {editingMergedViewName ? "Save" : "Combine"}
             </button>
           </div>
         </form>

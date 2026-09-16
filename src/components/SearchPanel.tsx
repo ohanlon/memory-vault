@@ -3,7 +3,7 @@ import { buildSearchRegExp } from "@shared/search";
 import type { Note, SearchFileResult, SearchMode } from "@shared/types";
 
 interface Props {
-  /** Identifies the open session (a stack root, or a Cairn) — clears stale
+  /** Identifies the open session (a stack root, or a merged view) — clears stale
    *  results when it changes. */
   sessionKey: string;
   notes: Note[];

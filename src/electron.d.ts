@@ -1,7 +1,7 @@
 import type {
   AppSettings,
-  CairnEntry,
-  CairnIndex,
+  MergedViewEntry,
+  MergedViewIndex,
   DailyNoteResult,
   FileChangeEvent,
   FileTemplate,
@@ -25,23 +25,23 @@ export interface MemoryStackAPI {
   pickStack(): Promise<string | null>;
   loadStack(root: string): Promise<StackIndex>;
   reloadStack(): Promise<{ notes: Note[] }>;
-  loadCairn(entries: { root: string; name: string }[]): Promise<CairnIndex>;
-  reloadCairn(): Promise<{ notes: Note[] }>;
+  loadMergedView(entries: { root: string; name: string }[]): Promise<MergedViewIndex>;
+  reloadMergedView(): Promise<{ notes: Note[] }>;
   onReconciled(cb: (event: StackReconciledEvent) => void): () => void;
   onReconcileStatus(cb: (event: StackReconcileStatusEvent) => void): () => void;
   listStacks(): Promise<StackEntry[]>;
   addStack(name: string, root: string): Promise<StackEntry[]>;
   removeStack(name: string): Promise<StackEntry[]>;
   renameStack(oldName: string, newName: string): Promise<StackEntry[]>;
-  listCairns(): Promise<CairnEntry[]>;
-  addCairn(name: string, memberStackNames: string[]): Promise<CairnEntry[]>;
-  removeCairn(name: string): Promise<CairnEntry[]>;
-  renameCairn(oldName: string, newName: string): Promise<CairnEntry[]>;
-  updateCairnMembers(name: string, memberStackNames: string[]): Promise<CairnEntry[]>;
+  listMergedViews(): Promise<MergedViewEntry[]>;
+  addMergedView(name: string, memberStackNames: string[]): Promise<MergedViewEntry[]>;
+  removeMergedView(name: string): Promise<MergedViewEntry[]>;
+  renameMergedView(oldName: string, newName: string): Promise<MergedViewEntry[]>;
+  updateMergedViewMembers(name: string, memberStackNames: string[]): Promise<MergedViewEntry[]>;
   changeStackAvatar(name: string): Promise<StackEntry[] | null>;
   resetStackAvatar(name: string): Promise<StackEntry[]>;
-  changeCairnAvatar(name: string): Promise<CairnEntry[] | null>;
-  resetCairnAvatar(name: string): Promise<CairnEntry[]>;
+  changeMergedViewAvatar(name: string): Promise<MergedViewEntry[] | null>;
+  resetMergedViewAvatar(name: string): Promise<MergedViewEntry[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;
@@ -68,8 +68,8 @@ export interface MemoryStackAPI {
   savePropertySchema(stackRoot: string, properties: PropertyDef[]): Promise<PropertyDef[]>;
   readWorkspaceState(): Promise<WorkspaceState>;
   saveWorkspaceState(state: WorkspaceState): Promise<boolean>;
-  readCairnWorkspaceState(cairnName: string): Promise<WorkspaceState>;
-  saveCairnWorkspaceState(cairnName: string, state: WorkspaceState): Promise<boolean>;
+  readMergedViewWorkspaceState(mergedViewName: string): Promise<WorkspaceState>;
+  saveMergedViewWorkspaceState(mergedViewName: string, state: WorkspaceState): Promise<boolean>;
   readLayoutPrefs(): Promise<LayoutPrefs>;
   saveLayoutPrefs(prefs: LayoutPrefs): Promise<boolean>;
   readAppSettings(): Promise<AppSettings>;

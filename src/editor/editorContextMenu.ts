@@ -107,7 +107,7 @@ export interface LinkTargetOption {
   value: string;
 }
 
-/** A note offered by the link picker — enough to build an unambiguous wikilink target even when merged from more than one stack (an open Cairn). */
+/** A note offered by the link picker — enough to build an unambiguous wikilink target even when merged from more than one stack (an open merged view). */
 export interface PickableNote {
   title: string;
   sourceStack?: string;
@@ -485,7 +485,7 @@ export function editorContextMenu(
             selectedText: view.state.sliceDoc(from, to),
             insertNote: (note: PickableNote, displayText: string) => {
               // Qualify with the source stack whenever the picked note comes from a
-              // different stack than the one being edited — otherwise an open Cairn's
+              // different stack than the one being edited — otherwise an open merged view's
               // title collisions could make an unqualified [[Title]] resolve to the
               // wrong note (see resolveWikilinkTarget in shared/buildGraph.ts).
               const target =

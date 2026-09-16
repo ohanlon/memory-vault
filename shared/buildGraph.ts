@@ -6,7 +6,7 @@ import type { GraphEdge, GraphModel, GraphNode, Note } from "./types";
  *    body, resolved by matching Target against other notes' titles
  *    (case-insensitive). A target can also be explicitly qualified as
  *    [[StackName/Target]] to pick one specific note when merged notes from
- *    more than one stack (an open Cairn) share a title.
+ *    more than one stack (an open merged view) share a title.
  *  - external links: [text](https://...) or mailto: links get their own
  *    external node so they still show up in the graph, distinct from stack
  *    notes (they never resolve to a note and never gain their own backlinks).

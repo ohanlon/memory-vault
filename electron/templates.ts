@@ -28,7 +28,7 @@ export async function listFileTemplates(root: string): Promise<FileTemplate[]> {
 
 /** Every template across every registered stack, tagged with its owning
  *  stack's name — so a template created in one stack is available when
- *  creating a note in any other, not just the stack (or Cairn) currently open. */
+ *  creating a note in any other, not just the stack (or merged view) currently open. */
 export async function listAllFileTemplates(stacks: StackEntry[]): Promise<FileTemplate[]> {
   const perStack = await Promise.all(
     stacks.map(async (stack) => {

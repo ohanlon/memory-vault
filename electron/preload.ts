@@ -1,8 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   AppSettings,
-  CairnEntry,
-  CairnIndex,
+  MergedViewEntry,
+  MergedViewIndex,
   DailyNoteResult,
   FileChangeEvent,
   FileTemplate,
@@ -28,9 +28,9 @@ const api = {
     ipcRenderer.invoke("stack:load", root),
   reloadStack: (): Promise<{ notes: Note[] }> =>
     ipcRenderer.invoke("stack:reload"),
-  loadCairn: (entries: { root: string; name: string }[]): Promise<CairnIndex> =>
-    ipcRenderer.invoke("cairn:load", entries),
-  reloadCairn: (): Promise<{ notes: Note[] }> => ipcRenderer.invoke("cairn:reload"),
+  loadMergedView: (entries: { root: string; name: string }[]): Promise<MergedViewIndex> =>
+    ipcRenderer.invoke("mergedView:load", entries),
+  reloadMergedView: (): Promise<{ notes: Note[] }> => ipcRenderer.invoke("mergedView:reload"),
   onReconciled: (cb: (event: StackReconciledEvent) => void): (() => void) => {
     const listener = (_e: unknown, event: StackReconciledEvent) => cb(event);
     ipcRenderer.on("stack:reconciled", listener);
@@ -48,22 +48,22 @@ const api = {
     ipcRenderer.invoke("stacks:remove", name),
   renameStack: (oldName: string, newName: string): Promise<StackEntry[]> =>
     ipcRenderer.invoke("stacks:rename", oldName, newName),
-  listCairns: (): Promise<CairnEntry[]> => ipcRenderer.invoke("cairns:list"),
-  addCairn: (name: string, memberStackNames: string[]): Promise<CairnEntry[]> =>
-    ipcRenderer.invoke("cairns:add", name, memberStackNames),
-  removeCairn: (name: string): Promise<CairnEntry[]> => ipcRenderer.invoke("cairns:remove", name),
-  renameCairn: (oldName: string, newName: string): Promise<CairnEntry[]> =>
-    ipcRenderer.invoke("cairns:rename", oldName, newName),
-  updateCairnMembers: (name: string, memberStackNames: string[]): Promise<CairnEntry[]> =>
-    ipcRenderer.invoke("cairns:updateMembers", name, memberStackNames),
+  listMergedViews: (): Promise<MergedViewEntry[]> => ipcRenderer.invoke("mergedViews:list"),
+  addMergedView: (name: string, memberStackNames: string[]): Promise<MergedViewEntry[]> =>
+    ipcRenderer.invoke("mergedViews:add", name, memberStackNames),
+  removeMergedView: (name: string): Promise<MergedViewEntry[]> => ipcRenderer.invoke("mergedViews:remove", name),
+  renameMergedView: (oldName: string, newName: string): Promise<MergedViewEntry[]> =>
+    ipcRenderer.invoke("mergedViews:rename", oldName, newName),
+  updateMergedViewMembers: (name: string, memberStackNames: string[]): Promise<MergedViewEntry[]> =>
+    ipcRenderer.invoke("mergedViews:updateMembers", name, memberStackNames),
   changeStackAvatar: (name: string): Promise<StackEntry[] | null> =>
     ipcRenderer.invoke("stacks:changeAvatar", name),
   resetStackAvatar: (name: string): Promise<StackEntry[]> =>
     ipcRenderer.invoke("stacks:resetAvatar", name),
-  changeCairnAvatar: (name: string): Promise<CairnEntry[] | null> =>
-    ipcRenderer.invoke("cairns:changeAvatar", name),
-  resetCairnAvatar: (name: string): Promise<CairnEntry[]> =>
-    ipcRenderer.invoke("cairns:resetAvatar", name),
+  changeMergedViewAvatar: (name: string): Promise<MergedViewEntry[] | null> =>
+    ipcRenderer.invoke("mergedViews:changeAvatar", name),
+  resetMergedViewAvatar: (name: string): Promise<MergedViewEntry[]> =>
+    ipcRenderer.invoke("mergedViews:resetAvatar", name),
   readNote: (absPath: string): Promise<Note> =>
     ipcRenderer.invoke("stack:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>
@@ -106,10 +106,10 @@ const api = {
     ipcRenderer.invoke("stack:readWorkspaceState"),
   saveWorkspaceState: (state: WorkspaceState): Promise<boolean> =>
     ipcRenderer.invoke("stack:saveWorkspaceState", state),
-  readCairnWorkspaceState: (cairnName: string): Promise<WorkspaceState> =>
-    ipcRenderer.invoke("cairn:readWorkspaceState", cairnName),
-  saveCairnWorkspaceState: (cairnName: string, state: WorkspaceState): Promise<boolean> =>
-    ipcRenderer.invoke("cairn:saveWorkspaceState", cairnName, state),
+  readMergedViewWorkspaceState: (mergedViewName: string): Promise<WorkspaceState> =>
+    ipcRenderer.invoke("mergedView:readWorkspaceState", mergedViewName),
+  saveMergedViewWorkspaceState: (mergedViewName: string, state: WorkspaceState): Promise<boolean> =>
+    ipcRenderer.invoke("mergedView:saveWorkspaceState", mergedViewName, state),
   readLayoutPrefs: (): Promise<LayoutPrefs> => ipcRenderer.invoke("layout:read"),
   saveLayoutPrefs: (prefs: LayoutPrefs): Promise<boolean> => ipcRenderer.invoke("layout:save", prefs),
   readAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke("settings:read"),

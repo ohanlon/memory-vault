@@ -401,7 +401,7 @@ export function HorizontalRuleIcon() {
   );
 }
 
-export function PageIcon() {
+export function NoteIcon() {
   return (
     <Svg>
       <path d="M7 3.5H14L18 7.5V20.5H7V3.5Z" />

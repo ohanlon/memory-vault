@@ -1,16 +1,16 @@
 // Hues for the built-in abstract avatars — 12 evenly-spaced for stacks, 6
-// for Cairns (every other stack hue), so hue alone is enough to tell entries
+// for merged views (every other stack hue), so hue alone is enough to tell entries
 // apart at a glance without needing hand-authored artwork.
 const STACK_HUES = [10, 40, 70, 100, 130, 160, 190, 220, 250, 280, 310, 340];
-const CAIRN_HUES = [10, 70, 130, 190, 250, 310];
+const MERGED_VIEW_HUES = [10, 70, 130, 190, 250, 310];
 
 export const STACK_AVATAR_COUNT = STACK_HUES.length;
-export const CAIRN_AVATAR_COUNT = CAIRN_HUES.length;
+export const MERGED_VIEW_AVATAR_COUNT = MERGED_VIEW_HUES.length;
 
-export type AvatarEntityKind = "stack" | "cairn";
+export type AvatarEntityKind = "stack" | "mergedView";
 
 function huesFor(kind: AvatarEntityKind): number[] {
-  return kind === "stack" ? STACK_HUES : CAIRN_HUES;
+  return kind === "stack" ? STACK_HUES : MERGED_VIEW_HUES;
 }
 
 export function avatarCountFor(kind: AvatarEntityKind): number {
@@ -18,7 +18,7 @@ export function avatarCountFor(kind: AvatarEntityKind): number {
 }
 
 /** Deterministic djb2-style hash -> stable index in [0, count). Used both to
- *  assign a new entry's default avatar (see stackRegistry.ts/cairnRegistry.ts)
+ *  assign a new entry's default avatar (see stackRegistry.ts/mergedViewRegistry.ts)
  *  and as the fallback wherever an entry's `avatar` field is missing (see
  *  EntryAvatar.tsx) — the same formula in both places so they always agree. */
 export function defaultAvatarIndexForName(name: string, count: number): number {

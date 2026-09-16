@@ -6,7 +6,7 @@ interface Props {
   activeTitle: string | null;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
-  /** True while the vault's background reindexing pass is in progress. */
+  /** True while the stack's background reindexing pass is in progress. */
   reconciling?: boolean;
 }
 
@@ -14,7 +14,7 @@ export function LinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal, 
   if (!activeTitle) {
     return (
       <>
-        {reconciling && <div className="reindexing-toast">Reindexing vault…</div>}
+        {reconciling && <div className="reindexing-toast">Updating links…</div>}
         <p className="backlinks-empty">Select a note to see its links</p>
       </>
     );
@@ -29,7 +29,7 @@ export function LinksPanel({ graph, activeTitle, onSelectTitle, onOpenExternal, 
 
   return (
     <>
-      {reconciling && <div className="reindexing-toast">Reindexing vault…</div>}
+      {reconciling && <div className="reindexing-toast">Updating links…</div>}
       <div className="backlinks-section">
         <h4>Links to here</h4>
         {backlinks.length === 0 && <p className="backlinks-empty">No backlinks</p>}

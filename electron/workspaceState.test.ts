@@ -3,11 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  cairnWorkspaceStateFilePath,
-  readCairnWorkspaceState,
+  mergedViewWorkspaceStateFilePath,
+  readMergedViewWorkspaceState,
   readWorkspaceState,
   workspaceStateFilePath,
-  writeCairnWorkspaceState,
+  writeMergedViewWorkspaceState,
   writeWorkspaceState,
 } from "./workspaceState";
 import { DEFAULT_WORKSPACE_STATE } from "../shared/workspaceState";
@@ -41,7 +41,7 @@ describe("readWorkspaceState / writeWorkspaceState", () => {
     expect(readWorkspaceState(stackRoot)).toEqual(state);
   });
 
-  it("qualifies a pre-Cairn bare relative-path entry with the stack root on read", () => {
+  it("qualifies a pre-merged view bare relative-path entry with the stack root on read", () => {
     fs.mkdirSync(path.join(stackRoot, ".cairn"), { recursive: true });
     fs.writeFileSync(workspaceStateFilePath(stackRoot), JSON.stringify({ openTabs: ["a.md"], activeTab: "a.md" }));
     expect(readWorkspaceState(stackRoot)).toEqual({
@@ -57,16 +57,16 @@ describe("readWorkspaceState / writeWorkspaceState", () => {
   });
 });
 
-describe("readCairnWorkspaceState / writeCairnWorkspaceState", () => {
-  const userDataDir = path.join(os.tmpdir(), `cairn-workspace-state-test-${process.pid}`);
-  const cairnName = "Life";
+describe("readMergedViewWorkspaceState / writeMergedViewWorkspaceState", () => {
+  const userDataDir = path.join(os.tmpdir(), `mergedView-workspace-state-test-${process.pid}`);
+  const mergedViewName = "Life";
 
   afterEach(() => {
     fs.rmSync(userDataDir, { recursive: true, force: true });
   });
 
   it("returns defaults when the file does not exist", () => {
-    expect(readCairnWorkspaceState(userDataDir, cairnName)).toEqual(DEFAULT_WORKSPACE_STATE);
+    expect(readMergedViewWorkspaceState(userDataDir, mergedViewName)).toEqual(DEFAULT_WORKSPACE_STATE);
   });
 
   it("round-trips root-qualified tabs from more than one member stack", () => {
@@ -77,8 +77,8 @@ describe("readCairnWorkspaceState / writeCairnWorkspaceState", () => {
       ],
       activeTab: { root: "/stacks/personal", relativePath: "b.md" },
     };
-    writeCairnWorkspaceState(userDataDir, cairnName, state);
-    expect(fs.existsSync(cairnWorkspaceStateFilePath(userDataDir, cairnName))).toBe(true);
-    expect(readCairnWorkspaceState(userDataDir, cairnName)).toEqual(state);
+    writeMergedViewWorkspaceState(userDataDir, mergedViewName, state);
+    expect(fs.existsSync(mergedViewWorkspaceStateFilePath(userDataDir, mergedViewName))).toBe(true);
+    expect(readMergedViewWorkspaceState(userDataDir, mergedViewName)).toEqual(state);
   });
 });

@@ -23,7 +23,7 @@ export interface Note {
   content: string;
   mtimeMs: number;
   /** Origin stack's name — set only when notes are merged from more than one
-   *  stack (an open Cairn); undefined for a plain single-stack session. Used
+   *  stack (an open merged view); undefined for a plain single-stack session. Used
    *  by buildGraph to disambiguate a title held by more than one note. */
   sourceStack?: string;
 }
@@ -63,9 +63,9 @@ export interface StackIndex {
   notes: Note[];
 }
 
-/** Returned by cairn:load — notes merged from every member stack, each
+/** Returned by mergedView:load — notes merged from every member stack, each
  *  stamped with Note.sourceStack. */
-export interface CairnIndex {
+export interface MergedViewIndex {
   roots: string[];
   notes: Note[];
 }
@@ -117,10 +117,10 @@ export interface StackEntry {
 /**
  * A named group of stacks, opened together as one merged note list/graph.
  * Members reference StackEntry.name — an entry whose name no longer exists
- * in the stack list is silently dropped when the Cairn is loaded rather
+ * in the stack list is silently dropped when the merged view is loaded rather
  * than erroring, mirroring how a removed stack disappears gracefully.
  */
-export interface CairnEntry {
+export interface MergedViewEntry {
   /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
   name: string;
   /** Names of member StackEntry entries (case-insensitively unique among themselves). */
@@ -185,8 +185,8 @@ export interface LayoutPrefs {
   rightPanelWidth: number;
 }
 
-// Persisted per-stack (under <stackRoot>/.cairn/workspace.json) or per-Cairn
-// (under <userData>/cairns/<name>/workspace.json) so reopening restores
+// Persisted per-stack (under <stackRoot>/.cairn/workspace.json) or per-merged view
+// (under <userData>/mergedViews/<name>/workspace.json) so reopening restores
 // which notes were open.
 /** A bare sentinel tab id (e.g. "@graph", never root-qualified) or a real
  *  note, qualified by which stack root it belongs to so a tab can be
@@ -376,6 +376,6 @@ export interface FileTemplate {
   path: string;
   /** Filename without the .md extension — display label and lookup key. */
   name: string;
-  /** Owning stack's name — set client-side (mirrors Note.sourceStack) when templates are merged from more than one stack (an open Cairn). */
+  /** Owning stack's name — set client-side (mirrors Note.sourceStack) when templates are merged from more than one stack (an open merged view). */
   sourceStack?: string;
 }

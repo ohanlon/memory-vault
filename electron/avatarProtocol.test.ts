@@ -15,9 +15,9 @@ describe("resolveAvatarFilePath", () => {
     expect(result).toBe(path.resolve(avatarDirPath(userDataDir, "stack", "MyStack"), "avatar.png"));
   });
 
-  it("resolves a well-formed cairn avatar URL", () => {
-    const result = resolveAvatarFilePath(userDataDir, urlFor("/Life/avatar.jpg", "cairn"));
-    expect(result).toBe(path.resolve(avatarDirPath(userDataDir, "cairn", "Life"), "avatar.jpg"));
+  it("resolves a well-formed merged-view avatar URL", () => {
+    const result = resolveAvatarFilePath(userDataDir, urlFor("/Life/avatar.jpg", "mergedView"));
+    expect(result).toBe(path.resolve(avatarDirPath(userDataDir, "mergedView", "Life"), "avatar.jpg"));
   });
 
   it("decodes a name containing spaces/punctuation", () => {
@@ -25,7 +25,7 @@ describe("resolveAvatarFilePath", () => {
     expect(result).toBe(path.resolve(avatarDirPath(userDataDir, "stack", "My Stack"), "avatar.png"));
   });
 
-  it("rejects a hostname other than stack/cairn", () => {
+  it("rejects a hostname other than stack/mergedView", () => {
     expect(resolveAvatarFilePath(userDataDir, urlFor("/MyStack/avatar.png", "plugin"))).toBeNull();
   });
 

@@ -39,7 +39,7 @@ describe("normalizeWorkspaceState", () => {
     expect(normalizeWorkspaceState({ activeTab: { root: "x" } }, ROOT).activeTab).toBeNull();
   });
 
-  describe("migrating the pre-Cairn bare relative-path format", () => {
+  describe("migrating the pre-merged view bare relative-path format", () => {
     it("qualifies a bare relative-path string with fallbackRoot", () => {
       const state = normalizeWorkspaceState({ openTabs: ["a.md", "sub/b.md"], activeTab: "a.md" }, ROOT);
       expect(state.openTabs).toEqual([
@@ -49,7 +49,7 @@ describe("normalizeWorkspaceState", () => {
       expect(state.activeTab).toEqual({ root: ROOT, relativePath: "a.md" });
     });
 
-    it("qualifies with an empty fallbackRoot when none is given (Cairn-scoped file)", () => {
+    it("qualifies with an empty fallbackRoot when none is given (merged view-scoped file)", () => {
       const state = normalizeWorkspaceState({ openTabs: ["a.md"] }, "");
       expect(state.openTabs).toEqual([{ root: "", relativePath: "a.md" }]);
     });

@@ -118,7 +118,7 @@ export function PropertiesPanel({
       ) : (
         <>
           <div className="properties-section">
-            {schema.length === 0 && <p className="backlinks-empty">No bounded properties defined</p>}
+            {schema.length === 0 && <p className="backlinks-empty">No properties defined</p>}
             {schema.map((def) => {
               const value = boundedValues[def.name];
               const error = validatePropertyValue(def, value);

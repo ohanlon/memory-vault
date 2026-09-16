@@ -6,11 +6,11 @@ import type { CustomAvatarRef } from "../shared/types";
 const ALLOWED_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp"]);
 
 /** Per-entity avatar folder in userData, keyed directly by the entry's
- *  current display name — same convention as cairnWorkspaceStateFilePath in
+ *  current display name — same convention as mergedViewWorkspaceStateFilePath in
  *  workspaceState.ts. Avatar data lives here (not inside the user's vault)
  *  since it's app-owned, not part of the user's notes. */
 export function avatarDirPath(userDataDir: string, kind: AvatarEntityKind, name: string): string {
-  return path.join(userDataDir, kind === "stack" ? "stacks" : "cairns", name, "avatar");
+  return path.join(userDataDir, kind === "stack" ? "stacks" : "mergedViews", name, "avatar");
 }
 
 /** Copies `sourceFilePath` (as returned by the OS file picker) into this
@@ -36,7 +36,7 @@ export function writeCustomAvatar(
 }
 
 /** Deletes this entry's entire avatar folder — used both for an explicit
- *  "Reset avatar" and when the Stack/Cairn itself is removed. No-op if it
+ *  "Reset avatar" and when the Stack/merged view itself is removed. No-op if it
  *  never existed. */
 export function removeCustomAvatar(userDataDir: string, kind: AvatarEntityKind, name: string): void {
   fs.rmSync(avatarDirPath(userDataDir, kind, name), { recursive: true, force: true });

@@ -13,10 +13,10 @@ interface Props {
   onConvertToTemplate: (note: Note) => void;
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
-  /** Omitted for an open Cairn — seeding starter content only applies to a
+  /** Omitted for an open merged view — seeding starter content only applies to a
    *  single freshly-opened, empty stack. */
   onSeedStarterContent?: () => void;
-  /** Every member stack of an open Cairn, for "move to" — omitted for a
+  /** Every member stack of an open merged view, for "move to" — omitted for a
    *  plain single-stack session (nothing to move a note to). */
   memberStacks?: StackEntry[];
   onMoveNoteToStack?: (note: Note, destRoot: string) => void;

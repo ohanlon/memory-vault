@@ -6,7 +6,7 @@ import { isDailyNote } from "@shared/dailyNote";
 import { pluginRegistry } from "../plugins/registry";
 import { pushToPlugin } from "../plugins/pluginFrameRegistry";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
-import { DeleteIcon, OpenInExplorerIcon, PageIcon, RenameIcon } from "./icons";
+import { DeleteIcon, NoteIcon, OpenInExplorerIcon, RenameIcon } from "./icons";
 
 interface Props {
   notes: Note[];
@@ -19,12 +19,12 @@ interface Props {
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
   onShowInExplorer: (absPath: string) => void;
-  /** Every member stack of an open Cairn, for "move to" — omitted for a
+  /** Every member stack of an open merged view, for "move to" — omitted for a
    *  plain single-stack session (nothing to move a note to). */
   memberStacks?: StackEntry[];
   onMoveNoteToStack?: (note: Note, destRoot: string) => void;
   /** Every template file available in the current session (rolled up across
-   *  every member stack for an open Cairn) — shown in their own "Templates"
+   *  every member stack for an open merged view) — shown in their own "Templates"
    *  group, separate from the regular note list they're deliberately excluded from. */
   templates: FileTemplate[];
   onSelectTemplate: (template: FileTemplate) => void;
@@ -130,10 +130,10 @@ export function FileTree({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [templateContextMenu, setTemplateContextMenu] = useState<TemplateContextMenuState | null>(null);
   // Which source-stack groups are collapsed — only relevant for an open
-  // Cairn (see groupedByStack below); session-local, not persisted.
+  // merged view (see groupedByStack below); session-local, not persisted.
   const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(new Set());
   // Which stack group a dragged note is currently over, for drop-target
-  // highlighting — only relevant for an open Cairn.
+  // highlighting — only relevant for an open merged view.
   const [dragOverStack, setDragOverStack] = useState<string | null>(null);
 
   const sorted = useMemo(() => [...notes].sort((a, b) => a.title.localeCompare(b.title)), [notes]);
@@ -151,7 +151,7 @@ export function FileTree({
   );
   const dailyNotePaths = useMemo(() => new Set(dailyNotes.map((n) => n.path)), [dailyNotes]);
 
-  // An open Cairn stamps every note with its origin stack — group by that
+  // An open merged view stamps every note with its origin stack — group by that
   // to simulate the folder-like separation a single stack no longer has,
   // one collapsible section per member stack. Seeded with every member
   // stack up front (not just ones a note happens to belong to) so a stack
@@ -171,7 +171,7 @@ export function FileTree({
     return groups;
   }, [sorted, dailyNotePaths, memberStacks]);
 
-  // memberStacks is only ever passed for an open Cairn — a more reliable
+  // memberStacks is only ever passed for an open merged view — a more reliable
   // signal than checking sourceStack on notes, which tells us nothing when
   // every member stack (and so every note) happens to be empty.
   const isGrouped = !!memberStacks;
@@ -423,7 +423,7 @@ export function FileTree({
             { separator: true as const },
             {
               label: "Convert to template",
-              icon: <PageIcon />,
+              icon: <NoteIcon />,
               onClick: () => onConvertToTemplate(contextMenu.note),
             },
             {
