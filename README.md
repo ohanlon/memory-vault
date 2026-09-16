@@ -1,32 +1,16 @@
 # Cairn
 
-An open-source, local-first desktop app for browsing and editing a folder of
-markdown notes as a linked graph — an internal alternative to Obsidian aimed
-at managing Claude memory files, but usable for any `[[wikilink]]`-based
-markdown stack.
+Cairn is a desktop app for writing notes as plain markdown files and seeing
+how they connect. Type `[[` to link one note to another, add `#tags` to
+group related notes without linking each one by hand, and Cairn draws the
+result as a graph you can browse. Named after the stacks of stones hikers
+use to mark a trail — it's meant to be a lighter-weight, local-first
+alternative to Obsidian, originally built for keeping Claude's own memory
+files but useful for any folder of linked notes.
 
-Notes live as plain `.md` files on disk. Nothing is stored in a database, so
-other tools (including Claude Code editing the same folder) can keep reading
-and writing the files directly — the app just reflects whatever is on disk.
-
-## Features (v1)
-
-- Named stacks: save a folder under a unique name (case-insensitive) and
-  pick it from a list next time, instead of re-browsing for the folder
-- Open any folder as a stack; browse notes in a file tree
-- Tabbed editing: open several notes at once, switch between them, close
-  individual tabs — clicking a wikilink/backlink/graph node opens it as a
-  new tab (or focuses it if already open) rather than replacing the current one
-- Obsidian-style live preview editor: headings, bold/italic, inline code,
-  wikilinks, markdown links, and tags render styled; raw markdown is
-  revealed only where the cursor currently is, autosaved to disk
-- Graph view of the stack: edges from `[[wikilinks]]`, standard markdown
-  links (`[text](Note.md)`), external links (`https://`, `mailto:`), and
-  tags (frontmatter `tags:` or inline `#tag`)
-- Backlinks / outgoing-links panel for the active note
-- New / rename / delete notes (rename rewrites `[[links]]` across the stack)
-- Live sync: external edits to the stack folder (e.g. by Claude Code) update
-  the file tree, editor, and graph automatically
+There's no database: every note is a `.md` file on disk, so other tools
+(including Claude Code editing the same folder) can read and write them
+directly, and Cairn just reflects whatever's there.
 
 ## Getting started
 
@@ -36,14 +20,40 @@ npm run dev
 ```
 
 This starts Vite and launches the Electron app pointed at the dev server.
+The first time it opens, point it at a folder of markdown notes (or an
+empty one to start fresh) — that becomes a "stack."
+
+## What it does
+
+- **Link notes** by typing `[[note title]]` — autocomplete suggests
+  matching notes as you type — or right-click → "Insert Link" for a picker
+  that also handles external URLs.
+- **See the connections** in a graph view: every wikilink, markdown link,
+  external URL, and tag becomes an edge or node you can click through.
+- **Group with tags**: adding `#project` to a note links it to every other
+  note tagged `project`, no manual linking required.
+- **Combine stacks**: open two or more stacks together as one "merged
+  view" when you want to browse or search across them, without moving any
+  files.
+- **Search and replace** across every note in a stack at once.
+- **Stay in sync**: edits made outside Cairn (by hand, or by Claude Code)
+  are picked up automatically — the app never owns the files.
+- **Daily notes and templates** for recurring structure, and an optional
+  typed-properties schema for frontmatter (Settings → Advanced) if you want
+  validation beyond plain YAML.
+
+See [docs/reference.md](docs/reference.md) for exact link syntax, the graph
+model, and how stacks/merged views are stored on disk.
 
 ## Scripts
 
 - `npm run dev` — run in development with hot reload
 - `npm run typecheck` — type-check the renderer and main processes
-- `npm test` — run unit tests (wikilink/frontmatter parser, graph builder)
+- `npm test` — run unit tests
 - `npm run build` — type-check, build, and package a distributable with
   `electron-builder`
+- `npm run build:unpack` — same, but skips the installer step for a faster
+  local build
 
 ## Project structure
 
@@ -52,87 +62,3 @@ electron/   main process: window, file I/O, watcher, IPC handlers
 shared/     types + pure logic shared by main and renderer (parsing, graph)
 src/        renderer (React + TypeScript UI)
 ```
-
-## Link syntax
-
-Wikilinks:
-
-- `[[Note Title]]` — link to a note by title
-- `[[Note Title|Alias]]` — link with custom display text
-- `[[Note Title#Header]]` — link to a header within a note
-
-Standard markdown links to a `.md` file also count as graph edges:
-
-- `[Alias](Note Title.md)` — link by relative path, display text is required
-  by markdown syntax
-- `[Alias](Note Title.md#Header)` — with a header anchor
-- Pure in-page anchors (`#section`) and links to non-`.md` files (images,
-  etc.) are ignored
-
-Both forms are resolved by matching the target against other notes' file
-names (case-insensitive), same as Obsidian.
-
-Wikilinks, markdown links, and tags are all ignored inside code — fenced
-blocks (` ```...``` `) and inline spans (`` `...` ``) — so writing
-`` `[[Note]]` `` as a syntax example in a note doesn't create a real link.
-
-External links:
-
-- `[Alias](https://example.com)` and `mailto:` links get their own node in
-  the graph, distinct from stack notes (shown in green). They appear under
-  "Links from here" for the note that references them but never gain
-  backlinks of their own, since nothing outside the stack can link back.
-- Clicking an external node or link opens it in your default browser/mail
-  client.
-- Any other URL scheme (`javascript:`, `data:`, `ftp:`, etc.) is ignored
-  entirely — neither shown in the graph nor treated as a note link.
-
-Tags:
-
-- Tags come from frontmatter (`tags: [project]`) or an inline `#project`
-  anywhere in the note body — both are equivalent and merge together.
-- Each distinct tag gets its own hub node in the graph (shown in purple, id
-  `#tagname`), with an edge from every note that carries it. Writing
-  `#project` in a note automatically links it to every other note tagged
-  `project`, with no explicit wikilink needed.
-- A note's tags are listed in a dedicated "Tags" section in the sidebar,
-  separate from its wikilink/markdown backlinks.
-- `#123` (a bare number) and markdown headings (`# Heading`) are not treated
-  as tags. A `#Header` inside a wikilink or markdown link anchor
-  (`[[Note#Header]]`, `[text](Note.md#Header)`) is not treated as a tag
-  either.
-
-## Live preview editor
-
-`src/editor/livePreview.ts` is a CodeMirror 6 extension that decorates the
-document on every edit/selection change:
-
-- Headings, `**bold**`, `*italic*`, and `` `inline code` `` render styled,
-  with their markup characters hidden — revealed again only when the cursor
-  is on that heading's line (headings) or inside that specific span (bold/
-  italic/code).
-- `[[wikilinks]]` and `[markdown links](Note.md)` render as clickable pills
-  showing just the display text; clicking navigates to the note (or opens
-  external links/mailto in your browser/mail client). Placing the cursor
-  inside one reveals the raw markdown so you can edit it.
-- `#tags` render as a pill inline; there's no raw form to hide since the
-  tag text itself is what's displayed.
-
-This only affects editor rendering — the file on disk always stores plain
-markdown, so external edits (including by Claude Code) are unaffected.
-
-## Named stacks
-
-Stack name → folder mappings are stored in `stacks.json` in Electron's
-[userData directory](https://www.electronjs.org/docs/latest/api/app#appgetpathname)
-(`electron/stackRegistry.ts`). Adding a stack whose name matches an existing
-one case-insensitively (e.g. `"Work"` vs `"work"`) is rejected. Removing a
-stack only deletes the mapping — the folder and its notes on disk are
-untouched. Only one stack is open at a time; switching writes nothing to
-the folder you're leaving.
-
-## Out of scope for v1
-
-Cloud sync, a plugin system, full-text search, and any programmatic API
-(MCP or otherwise) for agents to write memories — v1's only interface is
-the shared markdown files on disk.
