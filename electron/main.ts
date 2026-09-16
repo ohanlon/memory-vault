@@ -237,6 +237,7 @@ ipcMain.handle("plugin:openExternal", async (_event, pluginId: string, url: stri
 // Finder on macOS, the default file manager on Linux. shell.showItemInFolder
 // is cross-platform by design, unlike shelling out to `explorer`/`open`.
 ipcMain.handle("shell:showItemInFolder", (_event, absPath: string) => {
+  ownerRootFor(absPath);
   shell.showItemInFolder(absPath);
   return true;
 });
@@ -475,25 +476,30 @@ ipcMain.handle("stack:readNote", async (_event, absPath: string) => {
 });
 
 ipcMain.handle("stack:readRaw", async (_event, absPath: string) => {
+  ownerRootFor(absPath);
   return fs.readFileSync(absPath, "utf-8");
 });
 
 ipcMain.handle("stack:saveNote", async (_event, absPath: string, body: string) => {
+  ownerRootFor(absPath);
   saveNoteBody(absPath, body);
   return true;
 });
 
 ipcMain.handle("stack:readNoteBody", async (_event, absPath: string) => {
+  ownerRootFor(absPath);
   return readNoteBody(absPath);
 });
 
 ipcMain.handle("stack:readNoteProperties", async (_event, absPath: string) => {
+  ownerRootFor(absPath);
   return readNoteProperties(absPath);
 });
 
 ipcMain.handle(
   "stack:saveNoteProperties",
   async (_event, absPath: string, properties: Record<string, unknown>) => {
+    ownerRootFor(absPath);
     saveNoteProperties(absPath, properties);
     return true;
   }
@@ -625,6 +631,7 @@ ipcMain.handle("stack:seedStarterContent", async () => {
 });
 
 ipcMain.handle("stack:deleteNote", async (_event, absPath: string) => {
+  ownerRootFor(absPath);
   fs.rmSync(absPath, { force: true });
   return true;
 });
@@ -675,6 +682,7 @@ ipcMain.handle(
 ipcMain.handle(
   "stack:moveNoteToStack",
   async (_event, absPath: string, destRoot: string) => {
+    ownerRootFor(absPath);
     if (!activeRoots.includes(destRoot)) throw new Error("Target stack is not open");
     if (path.dirname(absPath) === destRoot) return absPath;
     const fileName = path.basename(absPath);
