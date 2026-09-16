@@ -113,6 +113,16 @@ export interface PickableNote {
   sourceStack?: string;
 }
 
+/** Qualifies `note`'s title with its source stack whenever that differs from
+ *  `currentSourceStack` — otherwise an open merged view's title collisions
+ *  could make an unqualified [[Title]] resolve to the wrong note (see
+ *  resolveWikilinkTarget in shared/buildGraph.ts). Shared by the "Insert
+ *  Link" menu action and the [[ autocomplete (wikilinkAutocomplete.ts) so
+ *  both produce identical output for the same pick. */
+export function qualifiedWikilinkTarget(note: PickableNote, currentSourceStack: string | undefined): string {
+  return note.sourceStack && note.sourceStack !== currentSourceStack ? `${note.sourceStack}/${note.title}` : note.title;
+}
+
 const HEADING_LINE_RE = /^#{1,6}[ \t]+(.*)$/;
 
 /** Scans a note's raw content for headings it could be linked to. */
@@ -484,14 +494,7 @@ export function editorContextMenu(
           insertLinkAction: {
             selectedText: view.state.sliceDoc(from, to),
             insertNote: (note: PickableNote, displayText: string) => {
-              // Qualify with the source stack whenever the picked note comes from a
-              // different stack than the one being edited — otherwise an open merged view's
-              // title collisions could make an unqualified [[Title]] resolve to the
-              // wrong note (see resolveWikilinkTarget in shared/buildGraph.ts).
-              const target =
-                note.sourceStack && note.sourceStack !== currentSourceStack
-                  ? `${note.sourceStack}/${note.title}`
-                  : note.title;
+              const target = qualifiedWikilinkTarget(note, currentSourceStack);
               const text = displayText && displayText !== note.title ? `[[${target}|${displayText}]]` : `[[${target}]]`;
               view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
               view.focus();

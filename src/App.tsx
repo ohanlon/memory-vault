@@ -104,10 +104,6 @@ export default function App() {
     removeMergedView,
     renameMergedView,
     updateMergedViewMembers,
-    changeStackAvatar,
-    resetStackAvatar,
-    changeMergedViewAvatar,
-    resetMergedViewAvatar,
     closeStack,
     refresh,
     saveSchema,
@@ -226,12 +222,14 @@ export default function App() {
     window.memoryStack.saveAppSettings(next);
   }
 
-  // Shows the first-run tour once a stack is open, provided settings have
-  // loaded (so we know for sure it hasn't already been seen) and it hasn't
-  // been dismissed before. Never fires again once hasSeenTour is persisted.
+  // Shows the first-run tour once a stack has at least one note to look at
+  // (rather than the instant a brand-new empty stack opens, before there's
+  // anything on screen for it to refer to), provided settings have loaded
+  // (so we know for sure it hasn't already been seen) and it hasn't been
+  // dismissed before. Never fires again once hasSeenTour is persisted.
   useEffect(() => {
-    if (activeSession && settingsLoaded && !settings.hasSeenTour) setShowTour(true);
-  }, [activeSession, settingsLoaded, settings.hasSeenTour]);
+    if (activeSession && notes.length > 0 && settingsLoaded && !settings.hasSeenTour) setShowTour(true);
+  }, [activeSession, notes.length, settingsLoaded, settings.hasSeenTour]);
 
   function dismissTour() {
     setShowTour(false);
@@ -285,6 +283,11 @@ export default function App() {
     [activeNote, activeSession]
   );
   const activeNoteSchema = activeNoteRoot ? propertySchemas[activeNoteRoot] ?? [] : [];
+
+  // The single stack root Settings' "Manage properties" can target — only
+  // defined for a plain single-stack session, since a merged view has no one
+  // root a property schema could unambiguously belong to.
+  const currentStackRoot = activeSession?.kind === "stack" ? activeSession.entry.root : undefined;
 
   const openTabItems = useMemo<TabItem[]>(
     () =>
@@ -507,15 +510,10 @@ export default function App() {
 
   async function handleNameStackSubmit(name: string) {
     if (dialog?.kind !== "name-stack") return;
-    try {
-      await addStack(name, dialog.root);
-      setDialog(null);
-      setOpenPaths([]);
-      setActivePath(null);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-      // keep the dialog open so the user can retry with a different name
-    }
+    await addStack(name, dialog.root); // rejection surfaces inline in the dialog; it stays open to retry
+    setDialog(null);
+    setOpenPaths([]);
+    setActivePath(null);
   }
 
   function handleSwitchStack() {
@@ -532,13 +530,8 @@ export default function App() {
   async function handleRenameStackSubmit(newName: string) {
     if (dialog?.kind !== "rename-stack") return;
     const oldName = dialog.stack.name;
-    try {
-      await renameStack(oldName, newName);
-      setDialog(null);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-      // keep the dialog open so the user can retry with a different name
-    }
+    await renameStack(oldName, newName); // rejection surfaces inline in the dialog; it stays open to retry
+    setDialog(null);
   }
 
   async function handleCreateNote(dir: string, templateId?: string) {
@@ -623,12 +616,8 @@ export default function App() {
   async function handleRenameMergedViewSubmit(newName: string) {
     if (dialog?.kind !== "rename-merged-view") return;
     const oldName = dialog.mergedView.name;
-    try {
-      await renameMergedView(oldName, newName);
-      setDialog(null);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
+    await renameMergedView(oldName, newName); // rejection surfaces inline in the dialog; it stays open to retry
+    setDialog(null);
   }
 
   async function performDeleteNote(note: Note) {
@@ -838,20 +827,6 @@ export default function App() {
             onClick: () => setDialog({ kind: "rename-merged-view", mergedView: target.mergedView }),
           },
           {
-            label: "Change avatar…",
-            onClick: () =>
-              changeMergedViewAvatar(target.mergedView.name).catch((err) =>
-                window.alert(err instanceof Error ? err.message : String(err))
-              ),
-          },
-          {
-            label: "Reset avatar",
-            onClick: () =>
-              resetMergedViewAvatar(target.mergedView.name).catch((err) =>
-                window.alert(err instanceof Error ? err.message : String(err))
-              ),
-          },
-          {
             label: "Delete",
             shortcut: "Del",
             icon: <DeleteIcon />,
@@ -868,20 +843,6 @@ export default function App() {
           shortcut: "F2",
           icon: <RenameIcon />,
           onClick: () => setDialog({ kind: "rename-stack", stack: target.stack }),
-        },
-        {
-          label: "Change avatar…",
-          onClick: () =>
-            changeStackAvatar(target.stack.name).catch((err) =>
-              window.alert(err instanceof Error ? err.message : String(err))
-            ),
-        },
-        {
-          label: "Reset avatar",
-          onClick: () =>
-            resetStackAvatar(target.stack.name).catch((err) =>
-              window.alert(err instanceof Error ? err.message : String(err))
-            ),
         },
         ...(stacks.length >= 2
           ? ([
@@ -1051,12 +1012,6 @@ export default function App() {
               Combine stacks…
             </button>
           </div>
-          {stacks.length < 2 && (
-            <p className="modal-message">
-              A merged view combines notes from two or more stacks into a single linked view — the stacks themselves are
-              untouched.
-            </p>
-          )}
           {error && <p className="error">{error}</p>}
 
           {dialog?.kind === "name-stack" && (
@@ -1233,8 +1188,9 @@ export default function App() {
                 theme: resolvedTheme,
                 schema: activeNoteSchema,
                 onSaveProperties: saveNoteProperties,
-                onOpenSchemaManager: () =>
-                  activeNoteRoot && pluginRegistry.runCommand("properties.manageSchema", activeNoteRoot),
+                canManageProperties: !!currentStackRoot,
+                onManageProperties: () =>
+                  currentStackRoot && pluginRegistry.runCommand("properties.manageSchema", currentStackRoot),
               }}
             />
           </main>
@@ -1262,8 +1218,6 @@ export default function App() {
               onSelectTitle: selectByTitle,
               onOpenExternal: openExternal,
               onSaveProperties: saveNoteProperties,
-              onOpenSchemaManager: () =>
-                activeNoteRoot && pluginRegistry.runCommand("properties.manageSchema", activeNoteRoot),
               reconciling,
             }}
           />

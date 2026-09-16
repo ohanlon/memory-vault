@@ -38,10 +38,6 @@ export interface MemoryStackAPI {
   removeMergedView(name: string): Promise<MergedViewEntry[]>;
   renameMergedView(oldName: string, newName: string): Promise<MergedViewEntry[]>;
   updateMergedViewMembers(name: string, memberStackNames: string[]): Promise<MergedViewEntry[]>;
-  changeStackAvatar(name: string): Promise<StackEntry[] | null>;
-  resetStackAvatar(name: string): Promise<StackEntry[]>;
-  changeMergedViewAvatar(name: string): Promise<MergedViewEntry[] | null>;
-  resetMergedViewAvatar(name: string): Promise<MergedViewEntry[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;

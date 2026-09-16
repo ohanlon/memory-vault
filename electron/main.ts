@@ -8,19 +8,15 @@ import { readStackCache, writeStackCache } from "./stackCache";
 import { runReplaceAll, runSearch } from "./search";
 import { convertToTemplate, listAllFileTemplates } from "./templates";
 import { expandBuiltInDateVars, renderTemplate } from "../shared/templateRender";
-import { addStack, readStacksFile, removeStack, renameStack, setStackAvatar, writeStacksFile } from "./stackRegistry";
+import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import {
   addMergedView,
   readMergedViewsFile,
   removeMergedView,
   renameMergedView,
-  setMergedViewAvatar,
   updateMergedViewMembers,
   writeMergedViewsFile,
 } from "./mergedViewRegistry";
-import { removeCustomAvatar, renameAvatarFolder, writeCustomAvatar } from "./avatarStorage";
-import { handleAvatarProtocol, registerAvatarScheme } from "./avatarProtocol";
-import { MERGED_VIEW_AVATAR_COUNT, STACK_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
 import { titleFromPath } from "../shared/parseNote";
 import { STARTER_NOTES } from "../shared/starterContent";
 import { findNoteTemplate } from "../shared/noteTemplates";
@@ -266,35 +262,12 @@ ipcMain.handle("stacks:remove", async (_event, name: string) => {
   const stacks = readStacksFile(stacksFilePath());
   const updated = removeStack(stacks, name);
   writeStacksFile(stacksFilePath(), updated);
-  removeCustomAvatar(app.getPath("userData"), "stack", name);
   return updated;
 });
 
 ipcMain.handle("stacks:rename", async (_event, oldName: string, newName: string) => {
   const stacks = readStacksFile(stacksFilePath());
   const updated = renameStack(stacks, oldName, newName); // throws on empty/duplicate name
-  writeStacksFile(stacksFilePath(), updated);
-  renameAvatarFolder(app.getPath("userData"), "stack", oldName, newName.trim());
-  return updated;
-});
-
-ipcMain.handle("stacks:changeAvatar", async (_event, name: string) => {
-  if (!win) return null;
-  const result = await dialog.showOpenDialog(win, {
-    properties: ["openFile"],
-    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
-  });
-  if (result.canceled || result.filePaths.length === 0) return null;
-  const avatar = writeCustomAvatar(app.getPath("userData"), "stack", name, result.filePaths[0]);
-  const updated = setStackAvatar(readStacksFile(stacksFilePath()), name, avatar);
-  writeStacksFile(stacksFilePath(), updated);
-  return updated;
-});
-
-ipcMain.handle("stacks:resetAvatar", async (_event, name: string) => {
-  removeCustomAvatar(app.getPath("userData"), "stack", name);
-  const avatar = { kind: "builtin" as const, index: defaultAvatarIndexForName(name, STACK_AVATAR_COUNT) };
-  const updated = setStackAvatar(readStacksFile(stacksFilePath()), name, avatar);
   writeStacksFile(stacksFilePath(), updated);
   return updated;
 });
@@ -314,7 +287,6 @@ ipcMain.handle("mergedViews:remove", async (_event, name: string) => {
   const mergedViews = readMergedViewsFile(mergedViewsFilePath());
   const updated = removeMergedView(mergedViews, name);
   writeMergedViewsFile(mergedViewsFilePath(), updated);
-  removeCustomAvatar(app.getPath("userData"), "mergedView", name);
   return updated;
 });
 
@@ -322,34 +294,12 @@ ipcMain.handle("mergedViews:rename", async (_event, oldName: string, newName: st
   const mergedViews = readMergedViewsFile(mergedViewsFilePath());
   const updated = renameMergedView(mergedViews, oldName, newName); // throws on empty/duplicate name
   writeMergedViewsFile(mergedViewsFilePath(), updated);
-  renameAvatarFolder(app.getPath("userData"), "mergedView", oldName, newName.trim());
   return updated;
 });
 
 ipcMain.handle("mergedViews:updateMembers", async (_event, name: string, memberStackNames: string[]) => {
   const mergedViews = readMergedViewsFile(mergedViewsFilePath());
   const updated = updateMergedViewMembers(mergedViews, name, memberStackNames); // throws on <2 members
-  writeMergedViewsFile(mergedViewsFilePath(), updated);
-  return updated;
-});
-
-ipcMain.handle("mergedViews:changeAvatar", async (_event, name: string) => {
-  if (!win) return null;
-  const result = await dialog.showOpenDialog(win, {
-    properties: ["openFile"],
-    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
-  });
-  if (result.canceled || result.filePaths.length === 0) return null;
-  const avatar = writeCustomAvatar(app.getPath("userData"), "mergedView", name, result.filePaths[0]);
-  const updated = setMergedViewAvatar(readMergedViewsFile(mergedViewsFilePath()), name, avatar);
-  writeMergedViewsFile(mergedViewsFilePath(), updated);
-  return updated;
-});
-
-ipcMain.handle("mergedViews:resetAvatar", async (_event, name: string) => {
-  removeCustomAvatar(app.getPath("userData"), "mergedView", name);
-  const avatar = { kind: "builtin" as const, index: defaultAvatarIndexForName(name, MERGED_VIEW_AVATAR_COUNT) };
-  const updated = setMergedViewAvatar(readMergedViewsFile(mergedViewsFilePath()), name, avatar);
   writeMergedViewsFile(mergedViewsFilePath(), updated);
   return updated;
 });
@@ -800,10 +750,8 @@ function migrateMergedViewStorage(): void {
 }
 
 registerPluginScheme();
-registerAvatarScheme();
 app.whenReady().then(() => {
   migrateMergedViewStorage();
   createWindow();
   handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
-  handleAvatarProtocol(app.getPath("userData"));
 });

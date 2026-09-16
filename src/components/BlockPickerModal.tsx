@@ -34,6 +34,11 @@ export function BlockPickerModal({ blocks, onSelect, onCancel }: Props) {
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal-box modal-box-wide" onClick={(e) => e.stopPropagation()}>
         <h3>Link to Block</h3>
+        <p className="modal-message">
+          Links directly to one paragraph, heading, or code block below, rather than the note as a whole — this adds a
+          small marker like <code>^a1b2c3</code> after it in the note's text, so the link keeps working even if the
+          note is edited later.
+        </p>
         <ul className="picker-list">
           {blocks.map((block, i) => (
             <li key={i}>

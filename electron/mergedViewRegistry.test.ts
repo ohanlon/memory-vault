@@ -8,7 +8,6 @@ import {
   readMergedViewsFile,
   removeMergedView,
   renameMergedView,
-  setMergedViewAvatar,
   updateMergedViewMembers,
   writeMergedViewsFile,
 } from "./mergedViewRegistry";
@@ -138,30 +137,6 @@ describe("updateMergedViewMembers", () => {
   it("is a no-op when the name is not present", () => {
     const mergedViews: MergedViewEntry[] = [{ name: "Life", memberStackNames: ["Work", "Personal"] }];
     expect(updateMergedViewMembers(mergedViews, "Missing", ["A", "B"])).toEqual(mergedViews);
-  });
-});
-
-describe("setMergedViewAvatar", () => {
-  it("replaces only the matched entry's avatar, case-insensitively", () => {
-    const mergedViews: MergedViewEntry[] = [
-      { name: "Life", memberStackNames: ["Work", "Personal"], avatar: { kind: "builtin", index: 0 } },
-      { name: "Other", memberStackNames: ["A", "B"], avatar: { kind: "builtin", index: 1 } },
-    ];
-    const result = setMergedViewAvatar(mergedViews, "LIFE", { kind: "custom", fileName: "avatar.png", updatedAt: 123 });
-    expect(result[0]).toEqual({
-      name: "Life",
-      memberStackNames: ["Work", "Personal"],
-      avatar: { kind: "custom", fileName: "avatar.png", updatedAt: 123 },
-    });
-    expect(result[1]).toEqual(mergedViews[1]);
-  });
-
-  it("does not mutate the input array", () => {
-    const mergedViews: MergedViewEntry[] = [
-      { name: "Life", memberStackNames: ["Work", "Personal"], avatar: { kind: "builtin", index: 0 } },
-    ];
-    setMergedViewAvatar(mergedViews, "Life", { kind: "builtin", index: 5 });
-    expect(mergedViews[0].avatar).toEqual({ kind: "builtin", index: 0 });
   });
 });
 

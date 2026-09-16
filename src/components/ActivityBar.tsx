@@ -58,14 +58,14 @@ export function ActivityBar({
           e.preventDefault();
           onNewNoteContextMenu(e.clientX, e.clientY);
         }}
-        title="New note (right-click for templates)"
+        title="New blank note (right-click for templates)"
       >
         +
       </button>
       <button
         className="activity-bar-btn"
         onClick={(e) => onOpenDailyNote(e.clientX, e.clientY)}
-        title="New daily note"
+        title="Open today's note (created automatically the first time)"
       >
         📅
       </button>

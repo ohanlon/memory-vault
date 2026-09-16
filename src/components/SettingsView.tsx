@@ -15,6 +15,9 @@ import { CustomThemesModal } from "./CustomThemesModal";
 interface Props {
   settings: AppSettings;
   onChange: (settings: AppSettings) => void;
+  /** False when no single stack is open (e.g. a merged view, or no session at all) — a property schema belongs to one stack, so there's nothing for "Manage properties" to target. */
+  canManageProperties?: boolean;
+  onManageProperties?: () => void;
 }
 
 const TAB_FOLDER_DISPLAY_OPTIONS: { value: TabFolderDisplay; label: string }[] = [
@@ -46,8 +49,8 @@ function PluginsSection() {
   };
 
   return (
-    <section className="settings-section">
-      <h2>Plugins</h2>
+    <>
+      <h3>Plugins</h3>
       {plugins.length === 0 ? (
         <p className="settings-empty">No plugins found in this stack's .cairn/plugins folder.</p>
       ) : (
@@ -80,7 +83,7 @@ function PluginsSection() {
           })}
         </ul>
       )}
-    </section>
+    </>
   );
 }
 
@@ -173,7 +176,7 @@ function DateFormatField({
   );
 }
 
-export function SettingsView({ settings, onChange }: Props) {
+export function SettingsView({ settings, onChange, canManageProperties, onManageProperties }: Props) {
   const [managingThemes, setManagingThemes] = useState(false);
   const themeSelectValue =
     settings.theme === "custom" && settings.customThemes.some((t) => t.id === settings.activeCustomThemeId)
@@ -208,12 +211,6 @@ export function SettingsView({ settings, onChange }: Props) {
               </option>
             ))}
           </select>
-        </div>
-        <div className="settings-row">
-          <label>Custom themes</label>
-          <button type="button" onClick={() => setManagingThemes(true)}>
-            Manage custom themes…
-          </button>
         </div>
         {managingThemes && (
           <CustomThemesModal settings={settings} onChange={onChange} onClose={() => setManagingThemes(false)} />
@@ -279,6 +276,35 @@ export function SettingsView({ settings, onChange }: Props) {
             onChange={(e) => onChange({ ...settings, editorFontSize: Number(e.target.value) })}
           />
         </div>
+      </section>
+
+      <section className="settings-section">
+        <h2>Notes</h2>
+        <div className="settings-row">
+          <label htmlFor="setting-add-heading">Add heading to new notes</label>
+          <input
+            id="setting-add-heading"
+            type="checkbox"
+            checked={settings.addHeadingToNewNotes}
+            onChange={(e) => onChange({ ...settings, addHeadingToNewNotes: e.target.checked })}
+          />
+        </div>
+      </section>
+
+      <CodeLanguagesSection settings={settings} onChange={onChange} />
+
+      <section className="settings-section">
+        <h2>Advanced</h2>
+
+        <h3>Custom themes</h3>
+        <div className="settings-row">
+          <label>Custom themes</label>
+          <button type="button" onClick={() => setManagingThemes(true)}>
+            Manage custom themes…
+          </button>
+        </div>
+
+        <h3>Date formats</h3>
         <p className="settings-hint">
           Date format tokens: YYYY/YY, MMMM/MMM/MM/M, dddd/ddd, DD/D, HH/H, hh/h, mm/m, ss/s, A/a. Wrap literal text
           in [brackets] (e.g. "[Daily] YYYY-MM-DD"). These are the defaults for a template's {"{{date}}"},{" "}
@@ -303,24 +329,22 @@ export function SettingsView({ settings, onChange }: Props) {
           value={settings.datetimeFormat}
           onCommit={(datetimeFormat) => onChange({ ...settings, datetimeFormat })}
         />
-      </section>
 
-      <section className="settings-section">
-        <h2>Notes</h2>
+        <h3>Properties</h3>
         <div className="settings-row">
-          <label htmlFor="setting-add-heading">Add heading to new notes</label>
-          <input
-            id="setting-add-heading"
-            type="checkbox"
-            checked={settings.addHeadingToNewNotes}
-            onChange={(e) => onChange({ ...settings, addHeadingToNewNotes: e.target.checked })}
-          />
+          <label>Property schema</label>
+          <button
+            type="button"
+            disabled={!canManageProperties}
+            title={canManageProperties ? undefined : "Open a single stack (not a merged view) to manage its properties"}
+            onClick={onManageProperties}
+          >
+            Manage properties…
+          </button>
         </div>
+
+        <PluginsSection />
       </section>
-
-      <CodeLanguagesSection settings={settings} onChange={onChange} />
-
-      <PluginsSection />
     </div>
   );
 }

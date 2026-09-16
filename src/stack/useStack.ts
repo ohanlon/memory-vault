@@ -248,29 +248,6 @@ export function useStack() {
     setState((s) => ({ ...s, mergedViews }));
   }, []);
 
-  // Opens the native file picker and, on success, swaps in the uploaded
-  // image as the stack's avatar. `null` means the user cancelled the
-  // picker — nothing to update in that case.
-  const changeStackAvatar = useCallback(async (name: string) => {
-    const stacks = await window.memoryStack.changeStackAvatar(name);
-    if (stacks) setState((s) => ({ ...s, stacks }));
-  }, []);
-
-  const resetStackAvatar = useCallback(async (name: string) => {
-    const stacks = await window.memoryStack.resetStackAvatar(name);
-    setState((s) => ({ ...s, stacks }));
-  }, []);
-
-  const changeMergedViewAvatar = useCallback(async (name: string) => {
-    const mergedViews = await window.memoryStack.changeMergedViewAvatar(name);
-    if (mergedViews) setState((s) => ({ ...s, mergedViews }));
-  }, []);
-
-  const resetMergedViewAvatar = useCallback(async (name: string) => {
-    const mergedViews = await window.memoryStack.resetMergedViewAvatar(name);
-    setState((s) => ({ ...s, mergedViews }));
-  }, []);
-
   const closeStack = useCallback(() => {
     activeRootsRef.current = [];
     pendingReconcileRootsRef.current = new Set();
@@ -359,10 +336,6 @@ export function useStack() {
     removeMergedView,
     renameMergedView,
     updateMergedViewMembers,
-    changeStackAvatar,
-    resetStackAvatar,
-    changeMergedViewAvatar,
-    resetMergedViewAvatar,
     closeStack,
     refresh,
     saveSchema,

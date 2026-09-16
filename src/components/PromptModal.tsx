@@ -4,12 +4,13 @@ interface Props {
   title: string;
   initialValue?: string;
   confirmLabel?: string;
-  onSubmit: (value: string) => void;
+  onSubmit: (value: string) => void | Promise<void>;
   onCancel: () => void;
 }
 
 export function PromptModal({ title, initialValue = "", confirmLabel = "OK", onSubmit, onCancel }: Props) {
   const [value, setValue] = useState(initialValue);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -17,10 +18,15 @@ export function PromptModal({ title, initialValue = "", confirmLabel = "OK", onS
     inputRef.current?.select();
   }, []);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = value.trim();
-    if (trimmed) onSubmit(trimmed);
+    if (!trimmed) return;
+    try {
+      await onSubmit(trimmed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -30,11 +36,15 @@ export function PromptModal({ title, initialValue = "", confirmLabel = "OK", onS
         <input
           ref={inputRef}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (error) setError(null);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape") onCancel();
           }}
         />
+        {error && <p className="modal-error">{error}</p>}
         <div className="modal-actions">
           <button type="button" onClick={onCancel}>
             Cancel

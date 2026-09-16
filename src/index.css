@@ -1655,14 +1655,6 @@ body {
   color: var(--text-secondary);
 }
 
-.properties-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 8px;
-}
-
-.manage-properties-btn,
 .add-property-btn {
   background: var(--bg-control);
   color: var(--text-primary);
@@ -1673,7 +1665,6 @@ body {
   cursor: pointer;
 }
 
-.manage-properties-btn:hover,
 .add-property-btn:hover {
   background: var(--bg-control-hover);
 }
@@ -1751,6 +1742,12 @@ body {
 .property-error {
   color: var(--accent-red-soft);
   font-size: 11px;
+}
+
+.modal-error {
+  color: var(--accent-red-soft);
+  font-size: 12px;
+  margin: -4px 0 0;
 }
 
 .property-schema-list {

@@ -43,14 +43,9 @@ export function CombineStacksModal({
 
   async function handleNameNewStack(newStackName: string) {
     if (!pickedRoot) return;
-    try {
-      await onAddStack(newStackName, pickedRoot);
-      setSelected((prev) => new Set(prev).add(newStackName.trim()));
-      setPickedRoot(null);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-      // keep the naming prompt open so the user can retry with a different name
-    }
+    await onAddStack(newStackName, pickedRoot); // rejection surfaces inline in the dialog; it stays open to retry
+    setSelected((prev) => new Set(prev).add(newStackName.trim()));
+    setPickedRoot(null);
   }
 
   const canSubmit = name.trim() !== "" && selected.size >= 2;

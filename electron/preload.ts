@@ -56,14 +56,6 @@ const api = {
     ipcRenderer.invoke("mergedViews:rename", oldName, newName),
   updateMergedViewMembers: (name: string, memberStackNames: string[]): Promise<MergedViewEntry[]> =>
     ipcRenderer.invoke("mergedViews:updateMembers", name, memberStackNames),
-  changeStackAvatar: (name: string): Promise<StackEntry[] | null> =>
-    ipcRenderer.invoke("stacks:changeAvatar", name),
-  resetStackAvatar: (name: string): Promise<StackEntry[]> =>
-    ipcRenderer.invoke("stacks:resetAvatar", name),
-  changeMergedViewAvatar: (name: string): Promise<MergedViewEntry[] | null> =>
-    ipcRenderer.invoke("mergedViews:changeAvatar", name),
-  resetMergedViewAvatar: (name: string): Promise<MergedViewEntry[]> =>
-    ipcRenderer.invoke("mergedViews:resetAvatar", name),
   readNote: (absPath: string): Promise<Note> =>
     ipcRenderer.invoke("stack:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>

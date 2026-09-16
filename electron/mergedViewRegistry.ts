@@ -60,14 +60,6 @@ export function addMergedView(mergedViews: MergedViewEntry[], name: string, memb
   return [...mergedViews, { name: trimmed, memberStackNames: members, avatar }];
 }
 
-/** Map-and-replace mutator, same shape as updateMergedViewMembers — used both to
- *  persist a newly-uploaded custom avatar and to reset back to a built-in
- *  one. */
-export function setMergedViewAvatar(mergedViews: MergedViewEntry[], name: string, avatar: AvatarRef): MergedViewEntry[] {
-  const lower = name.toLowerCase();
-  return mergedViews.map((c) => (c.name.toLowerCase() === lower ? { ...c, avatar } : c));
-}
-
 export function removeMergedView(mergedViews: MergedViewEntry[], name: string): MergedViewEntry[] {
   const lower = name.toLowerCase();
   return mergedViews.filter((c) => c.name.toLowerCase() !== lower);

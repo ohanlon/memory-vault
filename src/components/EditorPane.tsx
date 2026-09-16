@@ -7,9 +7,11 @@ import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
 import { CODE_LANGUAGES, CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
+import { autocompletion } from "@codemirror/autocomplete";
 import { livePreview } from "../editor/livePreview";
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest, type PickableNote } from "../editor/editorContextMenu";
+import { wikilinkCompletionSource } from "../editor/wikilinkAutocomplete";
 import { editorSearchKeymap, searchExtension } from "../editor/editorSearch";
 import { formatShortcutsKeymap } from "../editor/formatShortcuts";
 import { registerPendingSave, unregisterPendingSave } from "../editor/pendingSave";
@@ -65,7 +67,6 @@ interface Props {
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
   onSaveProperties: (absPath: string, properties: Record<string, unknown>) => void;
-  onOpenSchemaManager: () => void;
   theme?: "dark" | "light";
 }
 
@@ -111,7 +112,6 @@ export function EditorPane({
   onSelectTitle,
   onOpenExternal,
   onSaveProperties,
-  onOpenSchemaManager,
   theme = "dark",
 }: Props) {
   const [content, setContent] = useState("");
@@ -145,6 +145,19 @@ export function EditorPane({
     const byTitle = new Map(notes.map((n) => [n.title.toLowerCase(), n]));
     return (title: string) => byTitle.get(title.toLowerCase());
   }, [notes]);
+
+  // Kept as a ref (not a useMemo dependency) so a note being added/renamed
+  // elsewhere refreshes what [[ autocomplete offers without tearing down and
+  // rebuilding the CodeMirror extensions (which would disrupt undo history).
+  const pickableNotesRef = useRef(pickableNotes);
+  useEffect(() => {
+    pickableNotesRef.current = pickableNotes;
+  }, [pickableNotes]);
+
+  const wikilinkCompletion = useMemo(
+    () => wikilinkCompletionSource(() => pickableNotesRef.current, () => note?.sourceStack),
+    [note?.sourceStack]
+  );
 
   const hasProperties = note ? Object.keys(note.frontmatter).length > 0 : false;
 
@@ -246,6 +259,7 @@ export function EditorPane({
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
       editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", note?.sourceStack, writeNote),
+      autocompletion({ override: [wikilinkCompletion] }),
       searchExtension(),
       editorSearchKeymap(),
       listIndentKeymap(),
@@ -260,6 +274,7 @@ export function EditorPane({
       note?.path,
       note?.sourceStack,
       writeNote,
+      wikilinkCompletion,
       fontTheme,
       enabledCmLanguages,
     ]
@@ -298,7 +313,6 @@ export function EditorPane({
             note={note}
             schema={schema}
             onSaveProperties={onSaveProperties}
-            onOpenSchemaManager={onOpenSchemaManager}
             readOnly={previewMode}
           />
         </div>
@@ -318,7 +332,7 @@ export function EditorPane({
           extensions={extensions}
           onChange={handleChange}
           theme={theme}
-          basicSetup={{ lineNumbers: settings.showLineNumbers }}
+          basicSetup={{ lineNumbers: settings.showLineNumbers, autocompletion: false }}
         />
       )}
       {contextMenuRequest && (

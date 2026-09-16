@@ -7,7 +7,6 @@ interface Props {
   note: Note | null;
   schema: PropertyDef[];
   onSaveProperties: (absPath: string, properties: Record<string, unknown>) => void;
-  onOpenSchemaManager: () => void;
   readOnly?: boolean;
 }
 
@@ -25,7 +24,6 @@ export function PropertiesPanel({
   note,
   schema,
   onSaveProperties,
-  onOpenSchemaManager,
   readOnly = false,
 }: Props) {
   const [boundedValues, setBoundedValues] = useState<Record<string, unknown>>({});
@@ -105,14 +103,6 @@ export function PropertiesPanel({
 
   return (
     <>
-      {!readOnly && (
-        <div className="properties-section-header">
-          <button type="button" className="manage-properties-btn" onClick={onOpenSchemaManager}>
-            Manage properties
-          </button>
-        </div>
-      )}
-
       {!note ? (
         <p className="backlinks-empty">Select a note to see its properties</p>
       ) : (

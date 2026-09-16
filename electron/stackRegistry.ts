@@ -38,14 +38,6 @@ export function addStack(stacks: StackEntry[], name: string, root: string): Stac
   return [...stacks, { name: trimmed, root, avatar }];
 }
 
-/** Map-and-replace mutator, same shape as renameStack — used both to
- *  persist a newly-uploaded custom avatar and to reset back to a built-in
- *  one. */
-export function setStackAvatar(stacks: StackEntry[], name: string, avatar: AvatarRef): StackEntry[] {
-  const lower = name.toLowerCase();
-  return stacks.map((v) => (v.name.toLowerCase() === lower ? { ...v, avatar } : v));
-}
-
 export function removeStack(stacks: StackEntry[], name: string): StackEntry[] {
   const lower = name.toLowerCase();
   return stacks.filter((v) => v.name.toLowerCase() !== lower);
