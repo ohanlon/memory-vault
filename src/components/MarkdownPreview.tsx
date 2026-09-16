@@ -27,6 +27,26 @@ const CODE_LANGUAGE_NAMES: Record<string, string> = Object.fromEntries(CODE_LANG
 const HEADING_LINE_RE = /^#{1,6}[ \t]+.*$/gm;
 const HEADING_ID_SUFFIX_RE = /[ \t]+\{#([a-zA-Z][\w-]*)\}[ \t]*$/;
 const HEADING_ID_STRIP_RE = /^(#{1,6}[ \t]+.*?)[ \t]+\{#[a-zA-Z][\w-]*\}[ \t]*$/gm;
+const FENCE_LINE_RE = /^```/;
+const BLOCK_ID_STRIP_RE = /[ \t]+\^[a-zA-Z0-9][\w-]*[ \t]*$/;
+
+/** Strips trailing " ^block-id" markers from heading/paragraph lines and closing code fences, leaving code content untouched. */
+function stripBlockIds(markdown: string): string {
+  const lines = markdown.split("\n");
+  let inFence = false;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (FENCE_LINE_RE.test(trimmed)) {
+      lines[i] = lines[i].replace(BLOCK_ID_STRIP_RE, "");
+      inFence = !inFence;
+      continue;
+    }
+    if (!inFence) {
+      lines[i] = lines[i].replace(BLOCK_ID_STRIP_RE, "");
+    }
+  }
+  return lines.join("\n");
+}
 
 function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<string>) {
   // Populated by hooks.preprocess (one entry per heading line, in document
@@ -41,7 +61,7 @@ function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<s
           const idMatch = HEADING_ID_SUFFIX_RE.exec(m[0]);
           headingIds.push(idMatch ? idMatch[1] : null);
         }
-        return markdown.replace(HEADING_ID_STRIP_RE, "$1");
+        return stripBlockIds(markdown.replace(HEADING_ID_STRIP_RE, "$1"));
       },
       postprocess(html: string) {
         let i = 0;
