@@ -13,7 +13,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   editorFontFamily: "system-ui",
   editorFontSize: 14,
   enabledCodeLanguages: DEFAULT_ENABLED_CODE_LANGUAGES,
-  hasSeenTour: false,
+  hasSeenWikilinkHint: false,
+  hasSeenTagHint: false,
+  hasSeenGraphHint: false,
   dateFormat: "YYYY-MM-DD",
   timeFormat: "HH:mm",
   datetimeFormat: "YYYY-MM-DD HH:mm",
@@ -95,7 +97,13 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       : DEFAULT_APP_SETTINGS.editorFontFamily,
     editorFontSize: clampFontSize(raw.editorFontSize, DEFAULT_APP_SETTINGS.editorFontSize),
     enabledCodeLanguages: normalizeEnabledCodeLanguages(raw.enabledCodeLanguages),
-    hasSeenTour: typeof raw.hasSeenTour === "boolean" ? raw.hasSeenTour : DEFAULT_APP_SETTINGS.hasSeenTour,
+    hasSeenWikilinkHint:
+      typeof raw.hasSeenWikilinkHint === "boolean"
+        ? raw.hasSeenWikilinkHint
+        : DEFAULT_APP_SETTINGS.hasSeenWikilinkHint,
+    hasSeenTagHint: typeof raw.hasSeenTagHint === "boolean" ? raw.hasSeenTagHint : DEFAULT_APP_SETTINGS.hasSeenTagHint,
+    hasSeenGraphHint:
+      typeof raw.hasSeenGraphHint === "boolean" ? raw.hasSeenGraphHint : DEFAULT_APP_SETTINGS.hasSeenGraphHint,
     dateFormat:
       typeof raw.dateFormat === "string" && isValidDateFormat(raw.dateFormat)
         ? raw.dateFormat

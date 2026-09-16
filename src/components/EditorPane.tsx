@@ -12,6 +12,7 @@ import { livePreview } from "../editor/livePreview";
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest, type PickableNote } from "../editor/editorContextMenu";
 import { wikilinkCompletionSource } from "../editor/wikilinkAutocomplete";
+import { onboardingHints } from "../editor/onboardingHints";
 import { editorSearchKeymap, searchExtension } from "../editor/editorSearch";
 import { formatShortcutsKeymap } from "../editor/formatShortcuts";
 import { registerPendingSave, unregisterPendingSave } from "../editor/pendingSave";
@@ -67,6 +68,9 @@ interface Props {
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
   onSaveProperties: (absPath: string, properties: Record<string, unknown>) => void;
+  /** Fired the moment "[[" / a "#tag" is typed, so App.tsx can show its one-time onboarding hint — see src/editor/onboardingHints.ts. */
+  onWikilinkStarted?: () => void;
+  onTagTyped?: () => void;
   theme?: "dark" | "light";
 }
 
@@ -112,6 +116,8 @@ export function EditorPane({
   onSelectTitle,
   onOpenExternal,
   onSaveProperties,
+  onWikilinkStarted,
+  onTagTyped,
   theme = "dark",
 }: Props) {
   const [content, setContent] = useState("");
@@ -260,6 +266,7 @@ export function EditorPane({
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
       editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", note?.sourceStack, writeNote),
       autocompletion({ override: [wikilinkCompletion] }),
+      onboardingHints({ onWikilinkStarted, onTagTyped }),
       searchExtension(),
       editorSearchKeymap(),
       listIndentKeymap(),
@@ -275,6 +282,8 @@ export function EditorPane({
       note?.sourceStack,
       writeNote,
       wikilinkCompletion,
+      onWikilinkStarted,
+      onTagTyped,
       fontTheme,
       enabledCmLanguages,
     ]

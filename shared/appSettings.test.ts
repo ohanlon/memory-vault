@@ -15,7 +15,9 @@ describe("normalizeAppSettings", () => {
         editorFontFamily: "monospace",
         editorFontSize: 18,
         enabledCodeLanguages: ["python", "rust"],
-        hasSeenTour: true,
+        hasSeenWikilinkHint: true,
+        hasSeenTagHint: true,
+        hasSeenGraphHint: true,
         dateFormat: "DD/MM/YYYY",
         timeFormat: "HH:mm",
         datetimeFormat: "DD/MM/YYYY HH:mm",
@@ -31,7 +33,9 @@ describe("normalizeAppSettings", () => {
       editorFontFamily: "monospace",
       editorFontSize: 18,
       enabledCodeLanguages: ["python", "rust"],
-      hasSeenTour: true,
+      hasSeenWikilinkHint: true,
+      hasSeenTagHint: true,
+      hasSeenGraphHint: true,
       dateFormat: "DD/MM/YYYY",
       timeFormat: "HH:mm",
       datetimeFormat: "DD/MM/YYYY HH:mm",
@@ -48,7 +52,9 @@ describe("normalizeAppSettings", () => {
         editorFontFamily: "arimo",
         editorFontSize: 12,
         enabledCodeLanguages: [],
-        hasSeenTour: false,
+        hasSeenWikilinkHint: false,
+        hasSeenTagHint: false,
+        hasSeenGraphHint: false,
         dateFormat: "YYYY-MM-DD",
         timeFormat: "HH:mm",
         datetimeFormat: "YYYY-MM-DD HH:mm",
@@ -64,7 +70,9 @@ describe("normalizeAppSettings", () => {
       editorFontFamily: "arimo",
       editorFontSize: 12,
       enabledCodeLanguages: [],
-      hasSeenTour: false,
+      hasSeenWikilinkHint: false,
+      hasSeenTagHint: false,
+      hasSeenGraphHint: false,
       dateFormat: "YYYY-MM-DD",
       timeFormat: "HH:mm",
       datetimeFormat: "YYYY-MM-DD HH:mm",
@@ -175,14 +183,18 @@ describe("normalizeAppSettings", () => {
     expect(normalizeAppSettings({ enabledCodeLanguages: [] }).enabledCodeLanguages).toEqual([]);
   });
 
-  it("falls back to the default for a non-boolean hasSeenTour", () => {
-    expect(normalizeAppSettings({ hasSeenTour: "yes" })).toEqual(DEFAULT_APP_SETTINGS);
-    expect(normalizeAppSettings({ hasSeenTour: undefined })).toEqual(DEFAULT_APP_SETTINGS);
+  it("falls back to the default for a non-boolean hint-seen flag", () => {
+    expect(normalizeAppSettings({ hasSeenWikilinkHint: "yes" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ hasSeenTagHint: "yes" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ hasSeenGraphHint: "yes" })).toEqual(DEFAULT_APP_SETTINGS);
+    expect(normalizeAppSettings({ hasSeenWikilinkHint: undefined })).toEqual(DEFAULT_APP_SETTINGS);
   });
 
-  it("accepts both boolean hasSeenTour values", () => {
-    expect(normalizeAppSettings({ hasSeenTour: true }).hasSeenTour).toBe(true);
-    expect(normalizeAppSettings({ hasSeenTour: false }).hasSeenTour).toBe(false);
+  it("accepts both boolean values for each hint-seen flag", () => {
+    expect(normalizeAppSettings({ hasSeenWikilinkHint: true }).hasSeenWikilinkHint).toBe(true);
+    expect(normalizeAppSettings({ hasSeenWikilinkHint: false }).hasSeenWikilinkHint).toBe(false);
+    expect(normalizeAppSettings({ hasSeenTagHint: true }).hasSeenTagHint).toBe(true);
+    expect(normalizeAppSettings({ hasSeenGraphHint: true }).hasSeenGraphHint).toBe(true);
   });
 
   it("accepts a valid dateFormat/timeFormat/datetimeFormat", () => {

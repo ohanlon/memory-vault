@@ -8,7 +8,7 @@ import { ConfirmModal } from "./components/ConfirmModal";
 import { ContextMenu, type ContextMenuEntry } from "./components/ContextMenu";
 import { TemplatePlaceholdersModal } from "./components/TemplatePlaceholdersModal";
 import { ShortcutsPanel } from "./components/ShortcutsPanel";
-import { OnboardingTour } from "./components/OnboardingTour";
+import { HintToast } from "./components/HintToast";
 import { DeleteIcon, LinkIcon, RenameIcon } from "./components/icons";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
@@ -136,7 +136,7 @@ export default function App() {
   const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_LAYOUT_PREFS.rightPanelWidth);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [showTour, setShowTour] = useState(false);
+  const [activeHint, setActiveHint] = useState<{ kind: "wikilink" | "tag" | "graph"; message: string } | null>(null);
   // Stack-picker/template-picker menu shown for "New Note" — for a plain
   // stack this is only ever opened via right-click (see
   // handleNewNoteContextMenu); for an open merged view, a left-click opens it too,
@@ -222,19 +222,34 @@ export default function App() {
     window.memoryStack.saveAppSettings(next);
   }
 
-  // Shows the first-run tour once a stack has at least one note to look at
-  // (rather than the instant a brand-new empty stack opens, before there's
-  // anything on screen for it to refer to), provided settings have loaded
-  // (so we know for sure it hasn't already been seen) and it hasn't been
-  // dismissed before. Never fires again once hasSeenTour is persisted.
-  useEffect(() => {
-    if (activeSession && notes.length > 0 && settingsLoaded && !settings.hasSeenTour) setShowTour(true);
-  }, [activeSession, notes.length, settingsLoaded, settings.hasSeenTour]);
-
-  function dismissTour() {
-    setShowTour(false);
-    updateSettings({ ...settings, hasSeenTour: true });
+  // Shows a one-time tip the first time the user does the thing it explains
+  // (starts a wikilink, types a tag, opens the graph) instead of front-loading
+  // all of them in a tour before the user has written anything. settingsLoaded
+  // gates this so a hint can't wrongly re-fire before the real persisted
+  // "seen" values have loaded in.
+  function showHint(kind: "wikilink" | "tag" | "graph") {
+    if (!settingsLoaded) return;
+    const key = kind === "wikilink" ? "hasSeenWikilinkHint" : kind === "tag" ? "hasSeenTagHint" : "hasSeenGraphHint";
+    if (settings[key]) return;
+    const message =
+      kind === "wikilink"
+        ? "Notes link to each other with [[double brackets]] — keep typing to search, then pick one."
+        : kind === "tag"
+          ? "Tags like this connect every note that shares it — see them together in the graph view."
+          : "This is your notes graph. Every link and tag becomes a connection — click a node to jump to it.";
+    setActiveHint({ kind, message });
+    updateSettings({ ...settings, [key]: true });
   }
+
+  function resetHints() {
+    updateSettings({ ...settings, hasSeenWikilinkHint: false, hasSeenTagHint: false, hasSeenGraphHint: false });
+  }
+
+  // Graph view has no per-keystroke trigger to hook like the editor hints do
+  // — just watch for the graph tab becoming active.
+  useEffect(() => {
+    if (activePath === GRAPH_TAB_ID) showHint("graph");
+  }, [activePath]);
 
   function resizeSidebar(deltaX: number) {
     setSidebarWidth((w) => {
@@ -1191,6 +1206,8 @@ export default function App() {
                 canManageProperties: !!currentStackRoot,
                 onManageProperties: () =>
                   currentStackRoot && pluginRegistry.runCommand("properties.manageSchema", currentStackRoot),
+                onWikilinkStarted: () => showHint("wikilink"),
+                onTagTyped: () => showHint("tag"),
               }}
             />
           </main>
@@ -1271,14 +1288,14 @@ export default function App() {
         )}
         {dialog?.kind === "shortcuts" && (
           <ShortcutsPanel
-            onReplayTour={() => {
+            onResetHints={() => {
               setDialog(null);
-              setShowTour(true);
+              resetHints();
             }}
             onClose={() => setDialog(null)}
           />
         )}
-        {showTour && <OnboardingTour onClose={dismissTour} />}
+        {activeHint && <HintToast message={activeHint.message} onDismiss={() => setActiveHint(null)} />}
         {templateMenu && (
           <ContextMenu
             x={templateMenu.x}

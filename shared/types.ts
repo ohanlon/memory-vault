@@ -231,8 +231,12 @@ export interface AppSettings {
   editorFontSize: number;
   /** highlight.js language ids (see shared/codeLanguages.ts) enabled for code-block syntax highlighting. */
   enabledCodeLanguages: string[];
-  /** Whether the first-run onboarding tour has already been shown (and dismissed/completed). */
-  hasSeenTour: boolean;
+  /** Whether the one-time "type [[ to link a note" hint has already been shown. */
+  hasSeenWikilinkHint: boolean;
+  /** Whether the one-time "#tags connect notes" hint has already been shown. */
+  hasSeenTagHint: boolean;
+  /** Whether the one-time "this is your notes graph" hint has already been shown. */
+  hasSeenGraphHint: boolean;
   /** Token-based date pattern (see shared/dateFormat.ts), e.g. "YYYY-MM-DD" — applied to daily note filenames/headings, and the default for {{date}} in templates. */
   dateFormat: string;
   /** Token-based time pattern, e.g. "HH:mm" — the default for {{time}} in templates. */

@@ -1,11 +1,11 @@
 import { SHORTCUTS } from "@shared/shortcuts";
 
 interface Props {
-  onReplayTour: () => void;
+  onResetHints: () => void;
   onClose: () => void;
 }
 
-export function ShortcutsPanel({ onReplayTour, onClose }: Props) {
+export function ShortcutsPanel({ onResetHints, onClose }: Props) {
   const contexts = Array.from(new Set(SHORTCUTS.map((s) => s.context)));
 
   return (
@@ -32,8 +32,8 @@ export function ShortcutsPanel({ onReplayTour, onClose }: Props) {
           </div>
         ))}
         <div className="modal-actions">
-          <button type="button" onClick={onReplayTour}>
-            Replay tour
+          <button type="button" onClick={onResetHints} title="Shows each onboarding tip again the next time you do the thing it explains">
+            Show tips again
           </button>
           <button type="button" onClick={onClose}>
             Close
