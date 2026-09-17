@@ -63,6 +63,7 @@
   "build": {
     "appId": "com.internal.cairn",
     "productName": "Cairn",
+    "executableName": "cairn",
     "files": [
       "dist",
       "dist-electron"
