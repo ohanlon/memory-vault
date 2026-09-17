@@ -40,6 +40,13 @@ export function TitleBarChrome({ regionId, activeName, root }: Props) {
   return (
     <div className="titlebar-drag" data-region-id={regionId}>
       <div className="titlebar-left">
+        {root != null && (
+          <div className="titlebar-notes-folder">
+            <span className="titlebar-notes-folder-name" title={root}>
+              {notesFolderLabel}
+            </span>
+          </div>
+        )}
         <div className="titlebar-app-menu">
           {APP_MENUS.map((menu) => (
             <button
@@ -56,13 +63,6 @@ export function TitleBarChrome({ regionId, activeName, root }: Props) {
             </button>
           ))}
         </div>
-        {root != null && (
-          <div className="titlebar-notes-folder">
-            <span className="titlebar-notes-folder-name" title={root}>
-              {notesFolderLabel}
-            </span>
-          </div>
-        )}
       </div>
       {openMenu && (
         <ContextMenu
