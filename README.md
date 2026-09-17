@@ -74,6 +74,10 @@ commands with `electron . <command> ...` instead of `cairn.exe <command> ...`.
   creates a note with the given title and content, optionally inside
   `PATH` (created if missing). If the title collides with an existing
   note, picks a new name (e.g. `"Idea 1"`) and reports it.
+- `update_note --folder NAME <notePath> --content TEXT` — appends `TEXT` to
+  an existing note (path relative to the notes folder root), adding a
+  newline first if the note doesn't already end with one. Reports if the
+  note doesn't exist rather than creating it.
 
 ```bash
 cairn.exe add_folder ./my-notes --name "Work"
@@ -81,6 +85,7 @@ cairn.exe list_folders
 cairn.exe get_notes --folder Work --subfolders
 cairn.exe get_note --folder Work "Idea.md"
 cairn.exe add_note --folder Work "Idea" --content "some text" --subfolder Projects
+cairn.exe update_note --folder Work "Idea.md" --content "one more line"
 ```
 
 ## Project structure

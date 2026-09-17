@@ -6,7 +6,7 @@ import type { NotesFolderEntry } from "../shared/types";
 
 export type CliResult = Record<string, unknown>;
 
-const CLI_COMMANDS = new Set(["add_folder", "get_notes", "get_note", "add_note", "list_folders"]);
+const CLI_COMMANDS = new Set(["add_folder", "get_notes", "get_note", "add_note", "update_note", "list_folders"]);
 
 // argv layout differs between `electron .` in dev (electron path, app path,
 // ...args) and a packaged executable (exe path, ...args), so rather than
@@ -179,6 +179,28 @@ async function addNote(
   };
 }
 
+async function updateNote(
+  notesFoldersFile: string,
+  folderName: string,
+  notePath: string,
+  additionalText: string
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const fullPath = path.join(entry.root, notePath);
+  ensureInside(entry.root, fullPath);
+
+  if (!fs.existsSync(fullPath)) {
+    return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
+  }
+
+  const existing = await fs.promises.readFile(fullPath, "utf-8");
+  const separator = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+  const content = existing + separator + additionalText;
+  await fs.promises.writeFile(fullPath, content, "utf-8");
+
+  return { ok: true, folder: entry.name, note: notePath, content };
+}
+
 function listFolders(notesFoldersFile: string): CliResult {
   const notesFolders = readNotesFoldersFile(notesFoldersFile);
   return { ok: true, folders: notesFolders.map((f) => ({ name: f.name, root: f.root })) };
@@ -212,6 +234,15 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
         throw new Error("Usage: add_note --folder NAME <title> [--subfolder PATH] [--content TEXT]");
       }
       return addNote(notesFoldersFile, folder, title, flagString(flags.content) ?? "", flagString(flags.subfolder));
+    }
+    case "update_note": {
+      const folder = flagString(flags.folder);
+      const note = positional[0];
+      const content = flagString(flags.content);
+      if (!folder || !note || content === undefined) {
+        throw new Error("Usage: update_note --folder NAME <notePath> --content TEXT");
+      }
+      return updateNote(notesFoldersFile, folder, note, content);
     }
     case "list_folders":
       return listFolders(notesFoldersFile);

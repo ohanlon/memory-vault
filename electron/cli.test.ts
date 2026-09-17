@@ -192,3 +192,52 @@ describe("runCliCommand: add_note", () => {
     expect(result.renamed).toBe(true);
   });
 });
+
+describe("runCliCommand: update_note", () => {
+  it("appends the given text to an existing note, adding a newline separator", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "line one", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["update_note", "--folder", "Work", "A.md", "--content", "line two"],
+      notesFoldersFile
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.content).toBe("line one\nline two");
+    expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toBe("line one\nline two");
+  });
+
+  it("does not add an extra newline when the note already ends with one", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "line one\n", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["update_note", "--folder", "Work", "A.md", "--content", "line two"],
+      notesFoldersFile
+    );
+
+    expect(result.content).toBe("line one\nline two");
+  });
+
+  it("reports when the note does not exist instead of throwing", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["update_note", "--folder", "Work", "Missing.md", "--content", "text"],
+      notesFoldersFile
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/does not exist/);
+  });
+});
