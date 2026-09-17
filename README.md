@@ -52,6 +52,37 @@ model, and how notes folders are stored on disk.
 - `npm run build:unpack` — same, but skips the installer step for a faster
   local build
 
+## Command line
+
+The packaged app (`cairn.exe`) can also run a single operation headlessly —
+no window opens, and the process exits as soon as the command completes.
+Each command prints a JSON result to stdout. In development, run the same
+commands with `electron . <command> ...` instead of `cairn.exe <command> ...`.
+
+- `add_folder <path> [--name NAME]` — registers `<path>` as a notes folder,
+  creating the directory if it doesn't exist. If `<path>` is already a
+  registered notes folder, reports its existing name instead of creating a
+  duplicate. If the requested name is already taken by another notes
+  folder, picks a new one (e.g. `"Notes 2"`) and reports it.
+- `list_folders` — lists every registered notes folder's name and path.
+- `get_notes --folder NAME [--subfolders]` — lists the `.md` files in the
+  named notes folder. Top-level files only, unless `--subfolders` is given.
+- `get_note --folder NAME <notePath>` — prints the contents of a note
+  (path relative to the notes folder root), or reports that it doesn't
+  exist.
+- `add_note --folder NAME <title> [--subfolder PATH] [--content TEXT]` —
+  creates a note with the given title and content, optionally inside
+  `PATH` (created if missing). If the title collides with an existing
+  note, picks a new name (e.g. `"Idea 1"`) and reports it.
+
+```bash
+cairn.exe add_folder ./my-notes --name "Work"
+cairn.exe list_folders
+cairn.exe get_notes --folder Work --subfolders
+cairn.exe get_note --folder Work "Idea.md"
+cairn.exe add_note --folder Work "Idea" --content "some text" --subfolder Projects
+```
+
 ## Project structure
 
 ```
