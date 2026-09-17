@@ -683,14 +683,7 @@ export default function App() {
 
     return (
       <div className="app-shell">
-        {isRegionPresent("title-bar") && TitleBar && (
-          <TitleBar
-            rightPanelCollapsed={false}
-            onToggleRightPanel={() => {}}
-            showRightPanelToggle={false}
-            regionId={regionId("title-bar")}
-          />
-        )}
+        {isRegionPresent("title-bar") && TitleBar && <TitleBar regionId={regionId("title-bar")} />}
         <div className="empty-state">
           <h1>Cairn</h1>
           {notesFolders.length === 0 ? (
@@ -788,15 +781,7 @@ export default function App() {
   return (
     <div className="app-shell">
       {isRegionPresent("title-bar") && TitleBar && (
-        <TitleBar
-          rightPanelCollapsed={rightPanelCollapsed}
-          onToggleRightPanel={() => pluginRegistry.runCommand("view.toggleRightPanel")}
-          showRightPanelToggle={isRegionPresent("right-sidebar")}
-          regionId={regionId("title-bar")}
-          activeName={activeName}
-          root={notesFolderRoot}
-          onSwitchNotesFolder={() => pluginRegistry.runCommand("stack.switchStack")}
-        />
+        <TitleBar regionId={regionId("title-bar")} activeName={activeName} root={notesFolderRoot} />
       )}
       <div
         className="app-layout"
@@ -813,8 +798,6 @@ export default function App() {
       >
         {isRegionPresent("left-ribbon") && LeftRibbon && (
           <LeftRibbon
-            sidebarCollapsed={sidebarCollapsed}
-            onToggleSidebar={() => pluginRegistry.runCommand("view.toggleSidebar")}
             onNewNote={handleNewNoteClick}
             onOpenDailyNote={handleOpenDailyNoteClick}
             onGraphView={() => pluginRegistry.runCommand("view.openGraph")}

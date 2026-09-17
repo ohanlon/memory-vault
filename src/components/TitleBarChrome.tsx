@@ -3,13 +3,9 @@ import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 import { pluginRegistry } from "../plugins/registry";
 
 interface Props {
-  rightPanelCollapsed: boolean;
-  onToggleRightPanel: () => void;
-  showRightPanelToggle: boolean;
   regionId?: string;
   activeName?: string | null;
   root?: string | null;
-  onSwitchNotesFolder?: () => void;
 }
 
 const APP_MENUS: { id: string; label: string; items: ContextMenuEntry[] }[] = [
@@ -37,15 +33,7 @@ const APP_MENUS: { id: string; label: string; items: ContextMenuEntry[] }[] = [
   },
 ];
 
-export function TitleBarChrome({
-  rightPanelCollapsed,
-  onToggleRightPanel,
-  showRightPanelToggle,
-  regionId,
-  activeName,
-  root,
-  onSwitchNotesFolder,
-}: Props) {
+export function TitleBarChrome({ regionId, activeName, root }: Props) {
   const notesFolderLabel = activeName ?? root?.split(/[\\/]/).pop();
   const [openMenu, setOpenMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
@@ -68,26 +56,14 @@ export function TitleBarChrome({
             </button>
           ))}
         </div>
-        {onSwitchNotesFolder && (
+        {root != null && (
           <div className="titlebar-notes-folder">
-            <span className="titlebar-notes-folder-name" title={root ?? undefined}>
+            <span className="titlebar-notes-folder-name" title={root}>
               {notesFolderLabel}
             </span>
-            <button className="titlebar-switch-btn" onClick={onSwitchNotesFolder} title="Switch notes folder">
-              Switch
-            </button>
           </div>
         )}
       </div>
-      {showRightPanelToggle && (
-        <button
-          className="titlebar-collapse-btn"
-          onClick={onToggleRightPanel}
-          title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
-        >
-          {rightPanelCollapsed ? "»" : "«"}
-        </button>
-      )}
       {openMenu && (
         <ContextMenu
           x={openMenu.x}

@@ -218,35 +218,6 @@ body {
   color: var(--text-primary);
 }
 
-.titlebar-switch-btn {
-  -webkit-app-region: no-drag;
-  background: none;
-  border: 1px solid var(--border-control);
-  border-radius: 4px;
-  padding: 3px 10px;
-  font-size: 12px;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.titlebar-switch-btn:hover {
-  background: var(--bg-control-hover);
-}
-
-.titlebar-collapse-btn {
-  -webkit-app-region: no-drag;
-  width: 45px;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.titlebar-collapse-btn:hover {
-  background: var(--bg-selected);
-}
-
 .empty-state {
   flex: 1;
   min-height: 0;
@@ -478,16 +449,6 @@ body {
   padding: 8px 6px;
 }
 
-.activity-bar-top {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  padding-bottom: 8px;
-  margin-bottom: 2px;
-  border-bottom: 1px solid var(--border-divider);
-}
-
 .activity-bar-btn {
   width: 32px;
   height: 32px;
@@ -507,12 +468,6 @@ body {
   background: var(--bg-surface);
   border-color: var(--border-control);
   color: var(--text-strong);
-}
-
-.activity-bar-btn-sm {
-  width: 28px;
-  height: 28px;
-  font-size: 14px;
 }
 
 .activity-bar-btn-bottom {

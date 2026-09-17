@@ -1,8 +1,6 @@
 import type { RibbonItemContribution } from "../plugins/types";
 
 interface Props {
-  sidebarCollapsed: boolean;
-  onToggleSidebar: () => void;
   onNewNote: (x: number, y: number) => void;
   onOpenDailyNote: (x: number, y: number) => void;
   onGraphView: () => void;
@@ -28,8 +26,6 @@ function RibbonIcon({ d }: { d: string }) {
 }
 
 export function ActivityBar({
-  sidebarCollapsed,
-  onToggleSidebar,
   onNewNote,
   onOpenDailyNote,
   onGraphView,
@@ -42,15 +38,6 @@ export function ActivityBar({
 }: Props) {
   return (
     <nav className="activity-bar" data-region-id={regionId}>
-      <div className="activity-bar-top">
-        <button
-          className="activity-bar-btn activity-bar-btn-sm"
-          onClick={onToggleSidebar}
-          title={sidebarCollapsed ? "Show navigation" : "Hide navigation"}
-        >
-          {sidebarCollapsed ? "»" : "«"}
-        </button>
-      </div>
       <button
         className="activity-bar-btn"
         onClick={(e) => onNewNote(e.clientX, e.clientY)}
