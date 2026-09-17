@@ -2,7 +2,7 @@
 
 Detailed syntax and behavior notes for Cairn. See the [README](../README.md)
 for a general introduction — this document assumes you already know what a
-stack and a merged view are.
+notes folder is.
 
 ## Link syntax
 
@@ -28,17 +28,16 @@ blocks (` ```...``` `) and inline spans (`` `...` ``) — so writing
 `` `[[Note]]` `` as a syntax example in a note doesn't create a real link.
 
 Typing `[[` in the editor offers matching notes as you type; picking one
-inserts the same syntax you'd get typing it by hand, qualified with the
-source stack when needed to stay unambiguous inside an open merged view.
-Right-click → "Insert Link" opens the same picker plus support for linking
-to an external URL, useful when you have text selected to turn into a link.
+inserts the same syntax you'd get typing it by hand. Right-click →
+"Insert Link" opens the same picker plus support for linking to an external
+URL, useful when you have text selected to turn into a link.
 
 ## External links
 
 - `[Alias](https://example.com)` and `mailto:` links get their own node in
-  the graph, distinct from stack notes (shown in green). They appear under
+  the graph, distinct from regular notes (shown in green). They appear under
   "Links from here" for the note that references them but never gain
-  backlinks of their own, since nothing outside the stack can link back.
+  backlinks of their own, since nothing outside the notes folder can link back.
 - Clicking an external node or link opens it in your default browser/mail
   client.
 - Any other URL scheme (`javascript:`, `data:`, `ftp:`, etc.) is ignored
@@ -85,25 +84,16 @@ document on every edit/selection change:
 This only affects editor rendering — the file on disk always stores plain
 markdown, so external edits (including by Claude Code) are unaffected.
 
-## Named stacks
+## Notes folders
 
-Stack name → folder mappings are stored in `stacks.json` in Electron's
+Notes folder name → path mappings are stored in `notesFolders.json` in
+Electron's
 [userData directory](https://www.electronjs.org/docs/latest/api/app#appgetpathname)
-(`electron/stackRegistry.ts`). Adding a stack whose name matches an existing
-one case-insensitively (e.g. `"Work"` vs `"work"`) is rejected. Removing a
-stack only deletes the mapping — the folder and its notes on disk are
-untouched. Only one stack (or merged view) is open at a time; switching
-writes nothing to the folder you're leaving.
-
-## Merged views
-
-A merged view combines two or more stacks into a single linked session —
-notes, tags, and graph edges from every member stack appear together, while
-each stack's own files stay exactly where they were (a merged view has no
-folder of its own). Definitions live in `mergedViews.json`, next to
-`stacks.json` in the same userData directory (`electron/mergedViewRegistry.ts`).
-A note whose title collides with one in another member stack is
-disambiguated with `StackName/Title` automatically wherever needed.
+(`electron/notesFolderRegistry.ts`). Adding a notes folder whose name
+matches an existing one case-insensitively (e.g. `"Work"` vs `"work"`) is
+rejected. Removing a notes folder only deletes the mapping — the folder and
+its notes on disk are untouched. Only one notes folder is open at a time;
+switching writes nothing to the folder you're leaving.
 
 ## Properties
 

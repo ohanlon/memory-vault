@@ -15,27 +15,21 @@ export interface Note {
   path: string;
   /** File name without extension, used as the link target for wikilinks */
   title: string;
-  /** Path relative to the stack root */
+  /** Path relative to the notes folder root */
   relativePath: string;
   frontmatter: Record<string, unknown>;
   tags: string[];
   links: WikiLink[];
   content: string;
   mtimeMs: number;
-  /** Origin stack's name — set only when notes are merged from more than one
-   *  stack (an open merged view); undefined for a plain single-stack session. Used
-   *  by buildGraph to disambiguate a title held by more than one note. */
-  sourceStack?: string;
 }
 
 export interface GraphNode {
-  // A note's title, unless its title collides with another note in the same
-  // graph (merged from more than one stack), in which case
-  // "sourceStack/Title"; a "#tag" id for a tag hub; or a URL for an external node.
+  // A note's title; a "#tag" id for a tag hub; or a URL for an external node.
   id: string;
   path: string;
   tags: string[];
-  /** True if this node represents an external URL rather than a stack note. */
+  /** True if this node represents an external URL rather than a note. */
   external?: boolean;
   /** True if this node represents a tag hub (id is "#tagname") rather than a note. */
   isTag?: boolean;
@@ -47,10 +41,6 @@ export interface GraphEdge {
   kind: "wikilink" | "tag" | "external-link";
   /** For kind "tag", which tag produced this edge (without the "#" prefix) */
   tag?: string;
-  /** True for a wikilink whose unqualified title matches notes in more than
-   *  one source stack, with no same-stack match to prefer — the target was
-   *  picked deterministically rather than resolved with confidence. */
-  ambiguous?: boolean;
 }
 
 export interface GraphModel {
@@ -58,29 +48,22 @@ export interface GraphModel {
   edges: GraphEdge[];
 }
 
-export interface StackIndex {
+export interface NotesFolderIndex {
   root: string;
   notes: Note[];
 }
 
-/** Returned by mergedView:load — notes merged from every member stack, each
- *  stamped with Note.sourceStack. */
-export interface MergedViewIndex {
-  roots: string[];
-  notes: Note[];
-}
-
-/** Sent when the background reconciliation pass (kicked off by stack:load)
- *  finds the on-disk vault differs from the cached index. */
-export interface StackReconciledEvent {
+/** Sent when the background reconciliation pass (kicked off by
+ *  notesFolder:load) finds the on-disk vault differs from the cached index. */
+export interface NotesFolderReconciledEvent {
   root: string;
   notes: Note[];
 }
 
-/** Brackets the background reconciliation pass (kicked off by stack:load)
- *  regardless of whether it finds any changes, so the UI can show a
- *  reindexing indicator for its duration. */
-export interface StackReconcileStatusEvent {
+/** Brackets the background reconciliation pass (kicked off by
+ *  notesFolder:load) regardless of whether it finds any changes, so the UI
+ *  can show a reindexing indicator for its duration. */
+export interface NotesFolderReconcileStatusEvent {
   root: string;
   reconciling: boolean;
 }
@@ -92,26 +75,11 @@ export interface AvatarRef {
   index: number;
 }
 
-export interface StackEntry {
+export interface NotesFolderEntry {
   /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
   name: string;
-  /** Absolute path to the stack's root folder. */
+  /** Absolute path to the notes folder's root. */
   root: string;
-  /** Absent on entries created before avatars existed — see EntryAvatar.tsx for the fallback. */
-  avatar?: AvatarRef;
-}
-
-/**
- * A named group of stacks, opened together as one merged note list/graph.
- * Members reference StackEntry.name — an entry whose name no longer exists
- * in the stack list is silently dropped when the merged view is loaded rather
- * than erroring, mirroring how a removed stack disappears gracefully.
- */
-export interface MergedViewEntry {
-  /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
-  name: string;
-  /** Names of member StackEntry entries (case-insensitively unique among themselves). */
-  memberStackNames: string[];
   /** Absent on entries created before avatars existed — see EntryAvatar.tsx for the fallback. */
   avatar?: AvatarRef;
 }
@@ -172,12 +140,10 @@ export interface LayoutPrefs {
   rightPanelWidth: number;
 }
 
-// Persisted per-stack (under <stackRoot>/.cairn/workspace.json) or per-merged view
-// (under <userData>/mergedViews/<name>/workspace.json) so reopening restores
-// which notes were open.
+// Persisted per notes folder (under <root>/.cairn/workspace.json) so
+// reopening restores which notes were open.
 /** A bare sentinel tab id (e.g. "@graph", never root-qualified) or a real
- *  note, qualified by which stack root it belongs to so a tab can be
- *  restored correctly even when notes are merged from more than one stack. */
+ *  note, qualified by which notes folder root it belongs to. */
 export type WorkspaceTabRef = string | { root: string; relativePath: string };
 
 export interface WorkspaceState {
@@ -257,10 +223,10 @@ export interface DailyNoteResult {
 }
 
 // A plugin declares itself via a manifest.json under
-// <stackRoot>/.cairn/plugins/<folder>/manifest.json. Note read/write against
-// the current stack is default-granted (see electron/pluginPermissions.ts)
+// <root>/.cairn/plugins/<folder>/manifest.json. Note read/write against
+// the current notes folder is default-granted (see electron/pluginPermissions.ts)
 // and therefore isn't a declarable permission here — only capabilities that
-// reach outside the current stack need an explicit grant.
+// reach outside the current notes folder need an explicit grant.
 export type PluginPermission = "network" | "shell:openExternal";
 
 /** A sidebar panel a plugin contributes, rendered via a sandboxed iframe (see src/plugins/PluginViewFrame.tsx). */
@@ -361,12 +327,10 @@ export interface ReplaceAllResult {
   replacements: number;
 }
 
-/** A user-created template file living in a stack's hidden .templates folder. */
+/** A user-created template file living in a notes folder's hidden .templates folder. */
 export interface FileTemplate {
   /** Absolute path to the template .md file on disk. */
   path: string;
   /** Filename without the .md extension — display label and lookup key. */
   name: string;
-  /** Owning stack's name — set client-side (mirrors Note.sourceStack) when templates are merged from more than one stack (an open merged view). */
-  sourceStack?: string;
 }

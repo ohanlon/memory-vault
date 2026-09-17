@@ -40,25 +40,25 @@ describe("listAllFileTemplates", () => {
     fs.rmSync(rootB, { recursive: true, force: true });
   });
 
-  it("merges templates from every stack, tagged with their owning stack's name", async () => {
+  it("merges templates from every notes folder", async () => {
     fs.mkdirSync(templatesDirFor(rootA), { recursive: true });
     fs.writeFileSync(path.join(templatesDirFor(rootA), "Meeting.md"), "a", "utf-8");
     fs.mkdirSync(templatesDirFor(rootB), { recursive: true });
     fs.writeFileSync(path.join(templatesDirFor(rootB), "Daily.md"), "b", "utf-8");
 
     const templates = await listAllFileTemplates([
-      { name: "Stack A", root: rootA },
-      { name: "Stack B", root: rootB },
+      { name: "Folder A", root: rootA },
+      { name: "Folder B", root: rootB },
     ]);
 
     expect(templates).toEqual([
-      { path: path.join(templatesDirFor(rootB), "Daily.md"), name: "Daily", sourceStack: "Stack B" },
-      { path: path.join(templatesDirFor(rootA), "Meeting.md"), name: "Meeting", sourceStack: "Stack A" },
+      { path: path.join(templatesDirFor(rootB), "Daily.md"), name: "Daily" },
+      { path: path.join(templatesDirFor(rootA), "Meeting.md"), name: "Meeting" },
     ]);
   });
 
-  it("returns an empty list when no stack has any templates", async () => {
-    expect(await listAllFileTemplates([{ name: "Stack A", root: rootA }])).toEqual([]);
+  it("returns an empty list when no notes folder has any templates", async () => {
+    expect(await listAllFileTemplates([{ name: "Folder A", root: rootA }])).toEqual([]);
   });
 });
 

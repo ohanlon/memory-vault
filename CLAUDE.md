@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Cairn: an Electron + React + TypeScript desktop app for browsing and
 editing a folder of markdown notes as a linked graph — a local-first,
 Obsidian-style alternative aimed at managing Claude memory files, but usable
-for any `[[wikilink]]`-based markdown stack. Notes are always plain `.md`
+for any `[[wikilink]]`-based markdown notes folder. Notes are always plain `.md`
 files on disk; nothing is stored in a database, so other tools (including
 Claude Code editing the same folder) can read/write them directly and the
 app just reflects whatever's on disk.
@@ -38,22 +38,22 @@ Three top-level source directories, each with a distinct role:
   graph construction (`buildGraph.ts`), and types (`types.ts`). This is
   where most of the business logic and its tests live.
 - `src/` — the renderer (React UI): components, the CodeMirror-based editor
-  extension, and stack state hooks.
+  extension, and notes-folder state hooks.
 
 ### IPC boundary
 
 `electron/preload.ts` exposes a single `window.memoryStack` object via
 `contextBridge` (`contextIsolation: true`, `nodeIntegration: false`). Every
 renderer-to-main call goes through this object — see
-`src/electron.d.ts`/`electron/preload.ts` for the full API surface (stack
-picking/loading, named-stack CRUD, note CRUD, `openExternal`, and the
-`onFileChanged` watcher subscription). IPC channel names follow a
-`domain:action` convention (`stack:load`, `stacks:add`, `shell:openExternal`,
-etc.), handled in `electron/main.ts`.
+`src/electron.d.ts`/`electron/preload.ts` for the full API surface (notes
+folder picking/loading, named-notes-folder CRUD, note CRUD, `openExternal`,
+and the `onFileChanged` watcher subscription). IPC channel names follow a
+`domain:action` convention (`notesFolder:load`, `notesFolders:add`,
+`shell:openExternal`, etc.), handled in `electron/main.ts`.
 
 **Because `window.memoryStack` only exists via the real preload bridge, the
 app cannot be exercised in a plain browser tab without first stubbing it**,
-and several stack-loading calls happen inside `useEffect` on mount — meaning
+and several notes-folder-loading calls happen inside `useEffect` on mount — meaning
 a stub injected after `navigate()` returns is often too late (the effect
 has already thrown). This is a known, load-bearing testing constraint, not
 a bug: don't add defensive `window.memoryStack &&` guards to production
@@ -66,7 +66,7 @@ code just to make manual browser testing easier.
 - `[[wikilinks]]` (with `|alias` and `#header` variants)
 - standard markdown links `[text](Note.md)`, resolved the same way as
   wikilinks (case-insensitive title match), with `https:`/`mailto:` links
-  flagged `external: true` instead of resolved against stack notes
+  flagged `external: true` instead of resolved against notes folder notes
 - tags, merged from frontmatter `tags:` **and** inline `#tag` in the body
 - all extraction runs on content with fenced/inline code spans masked out
   first (`maskCodeSpans`), so a literal `` `[[Note]]` `` written as a syntax
@@ -102,11 +102,12 @@ visible pane with no scrollbar — see the `.editor-pane .cm-theme-dark` /
 `.cm-editor` / `.cm-scroller` rules in `src/index.css` if touching editor
 sizing.
 
-### State (`src/stack/`)
+### State (`src/notesFolder/`)
 
-- `useStack.ts` owns the named-stack list, the currently open stack's
-  `root`/`notes`/`graph`, and re-derives the graph via `buildGraph` on every
-  reload (including the debounced reload triggered by `onFileChanged`).
+- `useNotesFolders.ts` owns the named-notes-folder list, the currently open
+  notes folder's `root`/`notes`/`graph`, and re-derives the graph via
+  `buildGraph` on every reload (including the debounced reload triggered by
+  `onFileChanged`).
 - `tabs.ts` is pure, Electron/React-free tab-list logic (add/remove/rename/
   reconcile-against-existing-notes), used by `App.tsx` and unit tested in
   isolation — this split exists specifically because `App.tsx`'s behavior
@@ -117,9 +118,9 @@ sizing.
 `vitest.config.ts` is **deliberately separate** from `vite.config.ts`: the
 latter's `vite-plugin-electron-renderer` shims `node:fs` for the renderer
 bundle, which breaks `electron/*.test.ts` files that import `node:fs`
-directly to test main-process code (e.g. `stackRegistry.test.ts`). Don't
-merge these configs.
+directly to test main-process code (e.g. `notesFolderRegistry.test.ts`).
+Don't merge these configs.
 
 Tests are colocated with source (`*.test.ts` next to the file it covers),
-in `shared/`, `electron/`, and `src/stack/`. There is no UI/component test
-runner configured — `src/components/` has no tests.
+in `shared/`, `electron/`, and `src/notesFolder/`. There is no UI/component
+test runner configured — `src/components/` has no tests.

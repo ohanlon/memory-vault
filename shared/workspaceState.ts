@@ -5,8 +5,8 @@ export const DEFAULT_WORKSPACE_STATE: WorkspaceState = {
   activeTab: null,
 };
 
-// Mirrors isSentinelTabId in src/stack/tabs.ts — duplicated rather than
-// imported since shared/ has no dependency on the renderer.
+// Mirrors isSentinelTabId in src/notesFolder/tabs.ts — duplicated rather
+// than imported since shared/ has no dependency on the renderer.
 function isSentinelId(id: string): boolean {
   return id.startsWith("@");
 }
@@ -20,8 +20,8 @@ function isTabRefObject(v: unknown): v is { root: string; relativePath: string }
   );
 }
 
-/** Migrates a pre-merged view bare relative-path string (implicitly relative to
- *  the single stack being loaded) by qualifying it with `fallbackRoot`. A
+/** Migrates a pre-existing bare relative-path string (implicitly relative to
+ *  the notes folder being loaded) by qualifying it with `fallbackRoot`. A
  *  bare sentinel id (e.g. "@graph") is never root-qualified. */
 function normalizeTabRef(value: unknown, fallbackRoot: string): WorkspaceTabRef | null {
   if (typeof value === "string") {
@@ -43,10 +43,8 @@ function normalizeTabRefs(value: unknown, fallbackRoot: string): WorkspaceTabRef
 
 /**
  * Fills in missing/invalid fields with defaults. `fallbackRoot` qualifies
- * any pre-merged view bare-string tab entries found in an old workspace.json —
- * pass the stack root being loaded for a single-stack session, or "" for a
- * merged view-scoped workspace file (which never existed in the old format, so
- * migration there is a no-op in practice).
+ * any pre-existing bare-string tab entries found in an old workspace.json —
+ * pass the notes folder root being loaded.
  */
 export function normalizeWorkspaceState(value: unknown, fallbackRoot: string): WorkspaceState {
   const raw = (value && typeof value === "object" ? value : {}) as Partial<WorkspaceState>;

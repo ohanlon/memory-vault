@@ -1,18 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  MERGED_VIEW_AVATAR_COUNT,
-  STACK_AVATAR_COUNT,
-  avatarCountFor,
-  avatarPaletteFor,
-  defaultAvatarIndexForName,
-} from "./avatars";
+import { NOTES_FOLDER_AVATAR_COUNT, avatarPaletteFor, defaultAvatarIndexForName } from "./avatars";
 
-describe("avatarCountFor", () => {
-  it("returns 12 for stacks and 6 for merged views", () => {
-    expect(avatarCountFor("stack")).toBe(12);
-    expect(avatarCountFor("mergedView")).toBe(6);
-    expect(STACK_AVATAR_COUNT).toBe(12);
-    expect(MERGED_VIEW_AVATAR_COUNT).toBe(6);
+describe("NOTES_FOLDER_AVATAR_COUNT", () => {
+  it("is 12", () => {
+    expect(NOTES_FOLDER_AVATAR_COUNT).toBe(12);
   });
 });
 
@@ -22,13 +13,11 @@ describe("defaultAvatarIndexForName", () => {
   });
 
   it("stays within [0, count) across a range of names", () => {
-    const names = ["", "a", "Work Notes", "🎉 emoji", "Very Long Stack Name With Spaces"];
+    const names = ["", "a", "Work Notes", "🎉 emoji", "Very Long Notes Folder Name With Spaces"];
     for (const name of names) {
-      for (const count of [STACK_AVATAR_COUNT, MERGED_VIEW_AVATAR_COUNT]) {
-        const index = defaultAvatarIndexForName(name, count);
-        expect(index).toBeGreaterThanOrEqual(0);
-        expect(index).toBeLessThan(count);
-      }
+      const index = defaultAvatarIndexForName(name, NOTES_FOLDER_AVATAR_COUNT);
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(NOTES_FOLDER_AVATAR_COUNT);
     }
   });
 
@@ -39,26 +28,23 @@ describe("defaultAvatarIndexForName", () => {
 });
 
 describe("avatarPaletteFor", () => {
-  it("never throws across the full index range for both kinds", () => {
-    for (const kind of ["stack", "mergedView"] as const) {
-      const count = avatarCountFor(kind);
-      for (let i = 0; i < count; i++) {
-        expect(() => avatarPaletteFor(kind, i)).not.toThrow();
-      }
+  it("never throws across the full index range", () => {
+    for (let i = 0; i < NOTES_FOLDER_AVATAR_COUNT; i++) {
+      expect(() => avatarPaletteFor(i)).not.toThrow();
     }
   });
 
-  it("is deterministic for the same (kind, index)", () => {
-    expect(avatarPaletteFor("stack", 3)).toEqual(avatarPaletteFor("stack", 3));
+  it("is deterministic for the same index", () => {
+    expect(avatarPaletteFor(3)).toEqual(avatarPaletteFor(3));
   });
 
   it("wraps an out-of-range index's hue via modulo instead of throwing", () => {
-    expect(avatarPaletteFor("mergedView", 6).hue).toBe(avatarPaletteFor("mergedView", 0).hue);
-    expect(avatarPaletteFor("mergedView", -1).hue).toBe(avatarPaletteFor("mergedView", 5).hue);
+    expect(avatarPaletteFor(NOTES_FOLDER_AVATAR_COUNT).hue).toBe(avatarPaletteFor(0).hue);
+    expect(avatarPaletteFor(-1).hue).toBe(avatarPaletteFor(NOTES_FOLDER_AVATAR_COUNT - 1).hue);
   });
 
-  it("returns a hue from the fixed set for the given kind", () => {
-    const palette = avatarPaletteFor("stack", 4);
+  it("returns a hue from the fixed set", () => {
+    const palette = avatarPaletteFor(4);
     expect(typeof palette.hue).toBe("number");
     expect(palette.blobs).toHaveLength(5);
   });

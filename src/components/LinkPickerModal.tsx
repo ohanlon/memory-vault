@@ -16,13 +16,8 @@ interface Props {
 
 function sameTarget(a: LinkTarget | null, b: LinkTarget): boolean {
   if (!a) return false;
-  if (a.kind === "note" && b.kind === "note") return a.note.title === b.note.title && a.note.sourceStack === b.note.sourceStack;
+  if (a.kind === "note" && b.kind === "note") return a.note.title === b.note.title;
   return a.kind === "external" && b.kind === "external" && a.url === b.url;
-}
-
-/** "Title (Stack)" when the note came from a specific stack (an open merged view merges more than one), otherwise just "Title". */
-function noteLabel(note: PickableNote): string {
-  return note.sourceStack ? `${note.title} (${note.sourceStack})` : note.title;
 }
 
 export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSelectExternal, onCancel }: Props) {
@@ -85,7 +80,7 @@ export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSel
             </li>
           )}
           {filtered.map((note) => (
-            <li key={`${note.sourceStack ?? ""}/${note.title}`}>
+            <li key={note.title}>
               <button
                 type="button"
                 className={`picker-row${sameTarget(target, { kind: "note", note }) ? " picker-row-selected" : ""}`}
@@ -97,7 +92,7 @@ export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSel
                   </span>
                   Note
                 </span>
-                <span className="picker-summary">{noteLabel(note)}</span>
+                <span className="picker-summary">{note.title}</span>
               </button>
             </li>
           ))}

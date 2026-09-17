@@ -2,16 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Note } from "../shared/types";
 
-export interface StackCache {
+export interface NotesFolderCache {
   notes: Note[];
 }
 
-export function stackCacheFilePath(stackRoot: string): string {
-  return path.join(stackRoot, ".cairn", "index.json");
+export function notesFolderCacheFilePath(root: string): string {
+  return path.join(root, ".cairn", "index.json");
 }
 
-export function readStackCache(stackRoot: string): StackCache | null {
-  const filePath = stackCacheFilePath(stackRoot);
+export function readNotesFolderCache(root: string): NotesFolderCache | null {
+  const filePath = notesFolderCacheFilePath(root);
   if (!fs.existsSync(filePath)) return null;
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
@@ -23,8 +23,8 @@ export function readStackCache(stackRoot: string): StackCache | null {
   }
 }
 
-export function writeStackCache(stackRoot: string, cache: StackCache): void {
-  const filePath = stackCacheFilePath(stackRoot);
+export function writeNotesFolderCache(root: string, cache: NotesFolderCache): void {
+  const filePath = notesFolderCacheFilePath(root);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, JSON.stringify(cache), "utf-8");
 }

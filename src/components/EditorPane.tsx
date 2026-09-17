@@ -139,12 +139,10 @@ export function EditorPane({
   const pickableNotes = useMemo(() => {
     const byKey = new Map<string, PickableNote>();
     for (const n of notes) {
-      const key = `${n.sourceStack ?? ""} ${n.title.toLowerCase()}`;
-      if (!byKey.has(key)) byKey.set(key, { title: n.title, sourceStack: n.sourceStack });
+      const key = n.title.toLowerCase();
+      if (!byKey.has(key)) byKey.set(key, { title: n.title });
     }
-    return Array.from(byKey.values()).sort(
-      (a, b) => a.title.localeCompare(b.title) || (a.sourceStack ?? "").localeCompare(b.sourceStack ?? "")
-    );
+    return Array.from(byKey.values()).sort((a, b) => a.title.localeCompare(b.title));
   }, [notes]);
 
   const resolveNoteByTitle = useMemo(() => {
@@ -161,8 +159,8 @@ export function EditorPane({
   }, [pickableNotes]);
 
   const wikilinkCompletion = useMemo(
-    () => wikilinkCompletionSource(() => pickableNotesRef.current, () => note?.sourceStack),
-    [note?.sourceStack]
+    () => wikilinkCompletionSource(() => pickableNotesRef.current),
+    []
   );
 
   const hasProperties = note ? Object.keys(note.frontmatter).length > 0 : false;
@@ -264,7 +262,7 @@ export function EditorPane({
       markdown({ codeLanguages: enabledCmLanguages }),
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
-      editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", note?.sourceStack, writeNote),
+      editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", writeNote),
       autocompletion({ override: [wikilinkCompletion] }),
       onboardingHints({ onWikilinkStarted, onTagTyped }),
       searchExtension(),
@@ -279,7 +277,6 @@ export function EditorPane({
       noteTitles,
       resolveNoteByTitle,
       note?.path,
-      note?.sourceStack,
       writeNote,
       wikilinkCompletion,
       onWikilinkStarted,

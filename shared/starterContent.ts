@@ -1,4 +1,4 @@
-/** One markdown file to seed into a newly-opened, empty stack. */
+/** One markdown file to seed into a newly-opened, empty notes folder. */
 export interface StarterNote {
   fileName: string;
   content: string;

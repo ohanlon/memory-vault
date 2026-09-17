@@ -14,7 +14,7 @@ describe("isDailyNote", () => {
     expect(isDailyNote("Journal/2026-08-27.md")).toBe(false);
   });
 
-  it("is false for a note at the stack root", () => {
+  it("is false for a note at the notes folder root", () => {
     expect(isDailyNote("2026-08-27.md")).toBe(false);
   });
 

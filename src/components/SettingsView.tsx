@@ -15,7 +15,7 @@ import { CustomThemesModal } from "./CustomThemesModal";
 interface Props {
   settings: AppSettings;
   onChange: (settings: AppSettings) => void;
-  /** False when no single stack is open (e.g. a merged view, or no session at all) — a property schema belongs to one stack, so there's nothing for "Manage properties" to target. */
+  /** False when no notes folder is open — a property schema belongs to one notes folder, so there's nothing for "Manage properties" to target. */
   canManageProperties?: boolean;
   onManageProperties?: () => void;
 }
@@ -52,7 +52,7 @@ function PluginsSection() {
     <>
       <h3>Plugins</h3>
       {plugins.length === 0 ? (
-        <p className="settings-empty">No plugins found in this stack's .cairn/plugins folder.</p>
+        <p className="settings-empty">No plugins found in this notes folder's .cairn/plugins folder.</p>
       ) : (
         <ul className="settings-plugin-list">
           {plugins.map((plugin) => {
@@ -336,7 +336,7 @@ export function SettingsView({ settings, onChange, canManageProperties, onManage
           <button
             type="button"
             disabled={!canManageProperties}
-            title={canManageProperties ? undefined : "Open a single stack (not a merged view) to manage its properties"}
+            title={canManageProperties ? undefined : "Open a notes folder to manage its properties"}
             onClick={onManageProperties}
           >
             Manage properties…

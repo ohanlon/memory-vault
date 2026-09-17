@@ -6,7 +6,7 @@ interface Props {
   activeTitle: string | null;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
-  /** True while the stack's background reindexing pass is in progress. */
+  /** True while the notes folder's background reindexing pass is in progress. */
   reconciling?: boolean;
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useStack, type ActiveSession } from "./stack/useStack";
+import { useNotesFolders } from "./notesFolder/useNotesFolders";
 import { StatusBar } from "./components/StatusBar";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
@@ -9,7 +9,7 @@ import { ContextMenu, type ContextMenuEntry } from "./components/ContextMenu";
 import { TemplatePlaceholdersModal } from "./components/TemplatePlaceholdersModal";
 import { ShortcutsPanel } from "./components/ShortcutsPanel";
 import { HintToast } from "./components/HintToast";
-import { DeleteIcon, LinkIcon, RenameIcon } from "./components/icons";
+import { DeleteIcon, RenameIcon } from "./components/icons";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
@@ -30,8 +30,7 @@ import {
   renameTab,
   tabIdToTabRef,
   tabRefToTabId,
-} from "./stack/tabs";
-import { CombineStacksModal } from "./components/CombineStacksModal";
+} from "./notesFolder/tabs";
 import { EntryAvatar } from "./components/EntryAvatar";
 import { basename, stripMdExtension } from "@shared/displayName";
 import { backlinkTitles } from "@shared/buildGraph";
@@ -41,7 +40,7 @@ import { DEFAULT_APP_SETTINGS } from "@shared/appSettings";
 import { NOTE_TEMPLATES } from "@shared/noteTemplates";
 import { templatePlaceholders } from "@shared/templateRender";
 import { defaultColorsFor } from "@shared/themeColors";
-import type { AppSettings, MergedViewEntry, FileTemplate, LayoutRegionName, Note, StackEntry } from "@shared/types";
+import type { AppSettings, FileTemplate, LayoutRegionName, Note, NotesFolderEntry } from "@shared/types";
 import { applyCustomThemeProperties, clearCustomThemeProperties } from "./applyCustomTheme";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
@@ -59,21 +58,9 @@ function deleteConfirmMessage(note: Note): string {
   return `Delete "${stripMdExtension(note.relativePath)}"? This can't be undone.`;
 }
 
-/** The root a note's own stack lives at — the single open stack's root for
- *  a plain session, or the matching member stack's root (via
- *  Note.sourceStack) when notes are merged from an open merged view. */
-function noteRootFor(note: Note | null, session: ActiveSession | null): string | null {
-  if (!note || !session) return null;
-  if (session.kind === "stack") return session.entry.root;
-  return session.memberStacks.find((s) => s.name === note.sourceStack)?.root ?? null;
-}
-
 type DialogState =
-  | { kind: "name-stack"; root: string }
-  | { kind: "rename-stack"; stack: StackEntry }
-  | { kind: "rename-merged-view"; mergedView: MergedViewEntry }
-  | { kind: "combine-stacks"; preselectStackName?: string }
-  | { kind: "manage-merged-view-members"; mergedView: MergedViewEntry }
+  | { kind: "name-notes-folder"; root: string }
+  | { kind: "rename-notes-folder"; notesFolder: NotesFolderEntry }
   | { kind: "manage-properties"; root: string }
   | { kind: "confirm-delete"; note: Note }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
@@ -81,34 +68,27 @@ type DialogState =
   | { kind: "fill-template"; dir: string; templatePath: string; placeholders: string[] }
   | null;
 
-type StackContextMenuState = { target: { type: "stack"; stack: StackEntry } | { type: "mergedView"; mergedView: MergedViewEntry }; x: number; y: number };
+type NotesFolderContextMenuState = { notesFolder: NotesFolderEntry; x: number; y: number };
 
 export default function App() {
   const {
-    stacks,
-    mergedViews,
-    activeSession,
+    notesFolders,
+    activeNotesFolder,
     notes,
     graph,
     propertySchemas,
     loading,
     error,
     reconciling,
-    openStackByEntry,
-    openMergedViewByEntry,
-    addStack,
-    addStackToRegistry,
-    removeStack,
-    renameStack,
-    addMergedView,
-    removeMergedView,
-    renameMergedView,
-    updateMergedViewMembers,
-    closeStack,
+    openNotesFolderByEntry,
+    addNotesFolder,
+    removeNotesFolder,
+    renameNotesFolder,
+    closeNotesFolder,
     refresh,
     saveSchema,
     saveNoteProperties,
-  } = useStack();
+  } = useNotesFolders();
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -118,17 +98,17 @@ export default function App() {
   // folding them into `notes` and having to filter them back out of the
   // graph/search/backlinks/link-picker everywhere that array is consumed.
   const [templateNotesByPath, setTemplateNotesByPath] = useState<Record<string, Note>>({});
-  // Which session (a stack's root, or "mergedView:<name>") a workspace-state
-  // restore has been kicked off for, so a refresh() of the same session
-  // doesn't retrigger it — reset to null when the session closes so
-  // reopening it (or a different one) restores again.
+  // Which session (a notes folder's root) a workspace-state restore has
+  // been kicked off for, so a refresh() of the same session doesn't
+  // retrigger it — reset to null when the session closes so reopening it
+  // (or a different one) restores again.
   const restoreStartedSessionRef = useRef<string | null>(null);
   // Which session restored data has actually landed for — gates saving so
   // the debounced save effect can't write back stale pre-restore state.
   const restoredReadySessionRef = useRef<string | null>(null);
   const workspaceSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [stackContextMenu, setStackContextMenu] = useState<StackContextMenuState | null>(null);
+  const [notesFolderContextMenu, setNotesFolderContextMenu] = useState<NotesFolderContextMenuState | null>(null);
   const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
@@ -137,28 +117,17 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [activeHint, setActiveHint] = useState<{ kind: "wikilink" | "tag" | "graph"; message: string } | null>(null);
-  // Stack-picker/template-picker menu shown for "New Note" — for a plain
-  // stack this is only ever opened via right-click (see
-  // handleNewNoteContextMenu); for an open merged view, a left-click opens it too,
-  // since there's no single implicit target stack to ask "always ask" about.
+  // Template picker menu shown for "New Note" via right-click (see
+  // handleNewNoteContextMenu).
   const [templateMenu, setTemplateMenu] = useState<{ x: number; y: number } | null>(null);
-  // Every file template across every registered stack (not just the
-  // currently open one) — so a template created in one stack is available
-  // when creating a note in any other. See loadFileTemplates.
+  // Every file template in the currently open notes folder. See loadFileTemplates.
   const [allTemplates, setAllTemplates] = useState<FileTemplate[]>([]);
-  // Stack-picker menu for "New Daily Note" in an open merged view (same "always
-  // ask" reasoning as templateMenu; a plain stack never shows this).
-  const [dailyNoteMenu, setDailyNoteMenu] = useState<{ x: number; y: number } | null>(null);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
-  const activeName = activeSession?.entry.name ?? null;
-  const singleStackRoot = activeSession?.kind === "stack" ? activeSession.entry.root : null;
+  const activeName = activeNotesFolder?.name ?? null;
+  const notesFolderRoot = activeNotesFolder?.root ?? null;
   // Stable identity for the currently-open session, used to gate the
   // workspace-state restore/save effects below.
-  const sessionKey = activeSession
-    ? activeSession.kind === "mergedView"
-      ? `mergedView:${activeSession.entry.name}`
-      : activeSession.entry.root
-    : null;
+  const sessionKey = activeNotesFolder?.root ?? null;
   // Mirrors the two widths above so the drag-end handler can save the exact
   // latest value without waiting for a re-render to read fresh state.
   const widthsRef = useRef(DEFAULT_LAYOUT_PREFS);
@@ -281,28 +250,12 @@ export default function App() {
     [notes, activePath, templateNotesByPath]
   );
 
-  // Not just activeNote.title — in an open merged view, a note whose title
-  // collides with another stack's gets a "sourceStack/Title" graph node id
-  // instead (see buildGraph.ts), and edges/backlinks/tags are keyed on that
-  // id, not the bare title.
   const activeGraphNodeId = useMemo(
     () => (activeNote ? graph.nodes.find((n) => n.path === activeNote.path)?.id ?? activeNote.title : null),
     [activeNote, graph]
   );
 
-  // Which stack root the active note's properties live under — a single
-  // stack's own root in a plain session, or the matching member stack when
-  // notes are merged from an open merged view (see noteRootFor).
-  const activeNoteRoot = useMemo(
-    () => noteRootFor(activeNote, activeSession),
-    [activeNote, activeSession]
-  );
-  const activeNoteSchema = activeNoteRoot ? propertySchemas[activeNoteRoot] ?? [] : [];
-
-  // The single stack root Settings' "Manage properties" can target — only
-  // defined for a plain single-stack session, since a merged view has no one
-  // root a property schema could unambiguously belong to.
-  const currentStackRoot = activeSession?.kind === "stack" ? activeSession.entry.root : undefined;
+  const activeNoteSchema = notesFolderRoot ? propertySchemas[notesFolderRoot] ?? [] : [];
 
   const openTabItems = useMemo<TabItem[]>(
     () =>
@@ -342,15 +295,11 @@ export default function App() {
     setActivePath((path) => (path === null || path === GRAPH_TAB_ID || existing.has(path) ? path : null));
   }, [notes, templateNotesByPath]);
 
-  // Reads workspace.json for the currently open session — a plain stack's
-  // own <stack>/.cairn/workspace.json, or an open merged view's
-  // <userData>/mergedViews/<name>/workspace.json.
+  // Reads the currently open notes folder's <root>/.cairn/workspace.json.
   const readActiveWorkspaceState = useCallback(() => {
-    if (!activeSession) return Promise.resolve(null);
-    return activeSession.kind === "mergedView"
-      ? window.memoryStack.readMergedViewWorkspaceState(activeSession.entry.name)
-      : window.memoryStack.readWorkspaceState();
-  }, [activeSession]);
+    if (!activeNotesFolder) return Promise.resolve(null);
+    return window.memoryStack.readWorkspaceState();
+  }, [activeNotesFolder]);
 
   // Restores open tabs from workspace state whenever a (newly opened or
   // reopened) session finishes loading. Guarded by restoreStartedSessionRef
@@ -386,24 +335,19 @@ export default function App() {
   // restoredReadySessionRef so this can't fire with stale state before the
   // restore above has actually landed.
   useEffect(() => {
-    if (!activeSession || !sessionKey || restoredReadySessionRef.current !== sessionKey) return;
+    if (!activeNotesFolder || !sessionKey || restoredReadySessionRef.current !== sessionKey) return;
     if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     workspaceSaveTimer.current = setTimeout(() => {
       const openTabs = openPaths
         .map((id) => tabIdToTabRef(id, notes))
         .filter((r): r is NonNullable<typeof r> => r !== null);
       const activeTab = activePath ? tabIdToTabRef(activePath, notes) : null;
-      const state = { openTabs, activeTab };
-      if (activeSession.kind === "mergedView") {
-        window.memoryStack.saveMergedViewWorkspaceState(activeSession.entry.name, state);
-      } else {
-        window.memoryStack.saveWorkspaceState(state);
-      }
+      window.memoryStack.saveWorkspaceState({ openTabs, activeTab });
     }, 300);
     return () => {
       if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     };
-  }, [activeSession, sessionKey, openPaths, activePath, notes]);
+  }, [activeNotesFolder, sessionKey, openPaths, activePath, notes]);
 
   const openTab = useCallback((path: string) => {
     setOpenPaths((paths) => addTabPath(paths, path));
@@ -451,44 +395,20 @@ export default function App() {
   }, []);
 
   const selectByTitle = useCallback(
-    (rawTitle: string) => {
-      // A qualified "StackName/Title" (see buildGraph.ts) names a specific
-      // member stack explicitly; strip it off so lookups/creation use the
-      // bare title either way.
-      const slash = rawTitle.lastIndexOf("/");
-      const qualifiedStack = slash > -1 ? rawTitle.slice(0, slash) : undefined;
-      const title = slash > -1 ? rawTitle.slice(slash + 1) : rawTitle;
-
-      const found = qualifiedStack
-        ? (notes.find(
-            (n) => n.sourceStack?.toLowerCase() === qualifiedStack.toLowerCase() && n.title.toLowerCase() === title.toLowerCase()
-          ) ?? notes.find((n) => n.title.toLowerCase() === title.toLowerCase()))
-        : notes.find((n) => n.title.toLowerCase() === title.toLowerCase());
+    (title: string) => {
+      const found = notes.find((n) => n.title.toLowerCase() === title.toLowerCase());
       if (found) {
         openTab(found.path);
         return;
       }
-      if (!activeSession) return;
-      // Clicking an unresolved wikilink to create it: prefer the stack the
-      // link explicitly named, else the stack the linking note itself lives
-      // in (so it lands next to the note that referenced it), else — with
-      // no note open at all — the first member stack. This flow keeps its
-      // immediacy instead of interrupting the click with a stack picker
-      // (New Note/New Daily Note still always ask).
-      const targetRoot =
-        activeSession.kind === "mergedView"
-          ? (qualifiedStack &&
-              activeSession.memberStacks.find((s) => s.name.toLowerCase() === qualifiedStack.toLowerCase())?.root) ??
-            activeNoteRoot ??
-            activeSession.memberStacks[0]?.root
-          : activeSession.entry.root;
-      if (!targetRoot) return;
-      window.memoryStack.createNote(targetRoot, title).then(async (newPath) => {
+      if (!notesFolderRoot) return;
+      // Clicking an unresolved wikilink creates it in the open notes folder.
+      window.memoryStack.createNote(notesFolderRoot, title).then(async (newPath) => {
         await refresh();
         openTab(newPath);
       });
     },
-    [notes, openTab, activeSession, activeNoteRoot, refresh]
+    [notes, openTab, notesFolderRoot, refresh]
   );
 
   const openExternal = useCallback((url: string) => {
@@ -519,33 +439,33 @@ export default function App() {
   );
 
   async function handlePickFolder() {
-    const root = await window.memoryStack.pickStack();
-    if (root) setDialog({ kind: "name-stack", root });
+    const root = await window.memoryStack.pickNotesFolder();
+    if (root) setDialog({ kind: "name-notes-folder", root });
   }
 
-  async function handleNameStackSubmit(name: string) {
-    if (dialog?.kind !== "name-stack") return;
-    await addStack(name, dialog.root); // rejection surfaces inline in the dialog; it stays open to retry
+  async function handleNameNotesFolderSubmit(name: string) {
+    if (dialog?.kind !== "name-notes-folder") return;
+    await addNotesFolder(name, dialog.root); // rejection surfaces inline in the dialog; it stays open to retry
     setDialog(null);
     setOpenPaths([]);
     setActivePath(null);
   }
 
-  function handleSwitchStack() {
+  function handleSwitchNotesFolder() {
     setOpenPaths([]);
     setActivePath(null);
-    closeStack();
+    closeNotesFolder();
   }
 
-  async function handleRemoveStack(name: string) {
-    if (!window.confirm(`Remove stack "${name}" from the list? The folder itself is untouched.`)) return;
-    await removeStack(name);
+  async function handleRemoveNotesFolder(name: string) {
+    if (!window.confirm(`Remove "${name}" from the list? The folder itself is untouched.`)) return;
+    await removeNotesFolder(name);
   }
 
-  async function handleRenameStackSubmit(newName: string) {
-    if (dialog?.kind !== "rename-stack") return;
-    const oldName = dialog.stack.name;
-    await renameStack(oldName, newName); // rejection surfaces inline in the dialog; it stays open to retry
+  async function handleRenameNotesFolderSubmit(newName: string) {
+    if (dialog?.kind !== "rename-notes-folder") return;
+    const oldName = dialog.notesFolder.name;
+    await renameNotesFolder(oldName, newName); // rejection surfaces inline in the dialog; it stays open to retry
     setDialog(null);
   }
 
@@ -562,77 +482,26 @@ export default function App() {
     await refresh({ showReindexing: true });
   }
 
-  async function handleOpenDailyNote(stackRoot: string) {
-    const result = await window.memoryStack.openOrCreateDailyNote(stackRoot);
+  async function handleOpenDailyNote(root: string) {
+    const result = await window.memoryStack.openOrCreateDailyNote(root);
     if (result.created) await refresh();
     openTab(result.path);
   }
 
-  // "Always ask" for a merged view: New Note/New Daily Note have no single
-  // implicit target stack once notes are merged, so both open a
-  // stack-picker menu instead of acting immediately. A plain single-stack
-  // session keeps today's one-click behavior.
-  async function handleNewNoteClick(x: number, y: number) {
-    if (!activeSession) return;
-    if (activeSession.kind === "stack") {
-      handleCreateNote(activeSession.entry.root);
-      return;
-    }
-    await loadFileTemplates();
-    setTemplateMenu({ x, y });
+  function handleNewNoteClick() {
+    if (!activeNotesFolder) return;
+    handleCreateNote(activeNotesFolder.root);
   }
 
   async function handleNewNoteContextMenu(x: number, y: number) {
-    if (!activeSession) return;
+    if (!activeNotesFolder) return;
     await loadFileTemplates();
     setTemplateMenu({ x, y });
   }
 
-  function handleOpenDailyNoteClick(x: number, y: number) {
-    if (!activeSession) return;
-    if (activeSession.kind === "stack") {
-      handleOpenDailyNote(activeSession.entry.root);
-      return;
-    }
-    setDailyNoteMenu({ x, y });
-  }
-
-  async function handleCombineStacksSubmit(name: string, memberStackNames: string[]) {
-    try {
-      await addMergedView(name, memberStackNames);
-      setDialog(null);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleManageMergedViewMembersSubmit(mergedView: MergedViewEntry, memberStackNames: string[]) {
-    try {
-      await updateMergedViewMembers(mergedView.name, memberStackNames);
-      setDialog(null);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleAddStackToMergedView(stackName: string, mergedView: MergedViewEntry) {
-    try {
-      await updateMergedViewMembers(mergedView.name, [...mergedView.memberStackNames, stackName]);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleRemoveMergedView(name: string) {
-    if (!window.confirm(`Remove merged view "${name}"? Its member stacks are untouched.`)) return;
-    await removeMergedView(name);
-  }
-
-  async function handleRenameMergedViewSubmit(newName: string) {
-    if (dialog?.kind !== "rename-merged-view") return;
-    const oldName = dialog.mergedView.name;
-    await renameMergedView(oldName, newName); // rejection surfaces inline in the dialog; it stays open to retry
-    setDialog(null);
+  function handleOpenDailyNoteClick() {
+    if (!activeNotesFolder) return;
+    handleOpenDailyNote(activeNotesFolder.root);
   }
 
   async function performDeleteNote(note: Note) {
@@ -664,31 +533,13 @@ export default function App() {
     await refresh({ showReindexing: true });
   }
 
-  // Moves a note to a different member stack of the open merged view. Unlike a
-  // rename, the title (and therefore every [[link]] to it) doesn't change —
-  // only the note's physical location and sourceStack do, so no link
-  // rewriting is needed; the graph just re-resolves against the moved
-  // note's new sourceStack on the next refresh.
-  async function handleMoveNoteToStack(note: Note, destRoot: string) {
-    try {
-      await flushPendingSave(note.path);
-      const newPath = await window.memoryStack.moveNoteToStack(note.path, destRoot);
-      setOpenPaths((paths) => renameTab(paths, note.path, newPath));
-      if (activePath === note.path) setActivePath(newPath);
-      await refresh({ showReindexing: true });
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
   async function handleConvertToTemplate(note: Note) {
-    const root = noteRootFor(note, activeSession);
-    if (!root) return;
+    if (!notesFolderRoot) return;
     try {
       // Otherwise a just-edited note's debounced save could land after this
       // reads the file, and the template would capture the stale pre-edit content.
       await flushPendingSave(note.path);
-      await window.memoryStack.convertToTemplate(root, note.path);
+      await window.memoryStack.convertToTemplate(notesFolderRoot, note.path);
       await loadFileTemplates();
       window.alert(`Saved "${note.title}" as a template — see it under Templates in the sidebar.`);
     } catch (err) {
@@ -696,11 +547,9 @@ export default function App() {
     }
   }
 
-  // Every template across every registered stack — not scoped to the
-  // currently open stack/merged view, so one created anywhere is available
-  // everywhere. The .templates folder is excluded from the file watcher
-  // (same dotfolder rule as everything else under it), so nothing else
-  // refreshes this automatically.
+  // The .templates folder is excluded from the file watcher (same dotfolder
+  // rule as everything else under it), so nothing else refreshes this
+  // automatically.
   async function loadFileTemplates() {
     setAllTemplates(await window.memoryStack.listFileTemplates());
   }
@@ -728,10 +577,6 @@ export default function App() {
     await loadFileTemplates();
   }
 
-  // Every registered stack's templates are offered regardless of which
-  // stack `root` (the note's destination) belongs to — a template created
-  // in one stack should be usable in any other. Labeled with its source
-  // stack so it's clear where each one came from.
   function templatePickerEntries(root: string): ContextMenuEntry[] {
     const builtIns: ContextMenuEntry[] = NOTE_TEMPLATES.map((template) => ({
       label: template.label,
@@ -742,7 +587,7 @@ export default function App() {
       ...builtIns,
       { separator: true as const },
       ...allTemplates.map((template) => ({
-        label: template.sourceStack ? `${template.name} (${template.sourceStack})` : template.name,
+        label: template.name,
         onClick: () => handleCreateNoteFromTemplate(root, template),
       })),
     ];
@@ -783,13 +628,9 @@ export default function App() {
   // render (cheap — a few Map.set calls) so handlers always close over
   // current state instead of going stale.
   useEffect(() => {
-    pluginRegistry.registerCommand("stack.newNote", () =>
-      handleNewNoteClick(window.innerWidth / 2, window.innerHeight / 2)
-    );
-    pluginRegistry.registerCommand("stack.openDailyNote", () =>
-      handleOpenDailyNoteClick(window.innerWidth / 2, window.innerHeight / 2)
-    );
-    pluginRegistry.registerCommand("stack.switchStack", () => handleSwitchStack());
+    pluginRegistry.registerCommand("stack.newNote", () => handleNewNoteClick());
+    pluginRegistry.registerCommand("stack.openDailyNote", () => handleOpenDailyNoteClick());
+    pluginRegistry.registerCommand("stack.switchStack", () => handleSwitchNotesFolder());
     pluginRegistry.registerCommand("stack.deleteNote", (note: Note) => requestDelete(note));
     pluginRegistry.registerCommand("stack.rename", (note: Note) => {
       setSidebarCollapsed(false);
@@ -821,71 +662,23 @@ export default function App() {
   const TitleBar = pluginRegistry.getRegion("title-bar");
   const LeftRibbon = pluginRegistry.getRegion("left-ribbon");
 
-  if (!activeSession) {
-    // Built once per render so the context menu can carry a fully-typed,
-    // narrowed `target` into its item closures (the raw union on
-    // stackContextMenu.target doesn't stay narrowed inside nested callbacks).
-    const stackContextMenuItems: ContextMenuEntry[] | null = (() => {
-      if (!stackContextMenu) return null;
-      const { target } = stackContextMenu;
-      if (target.type === "mergedView") {
-        return [
-          {
-            label: "Manage stacks…",
-            icon: <LinkIcon />,
-            onClick: () => setDialog({ kind: "manage-merged-view-members", mergedView: target.mergedView }),
-          },
+  if (!activeNotesFolder) {
+    const notesFolderContextMenuItems: ContextMenuEntry[] | null = notesFolderContextMenu
+      ? [
           {
             label: "Rename",
             shortcut: "F2",
             icon: <RenameIcon />,
-            onClick: () => setDialog({ kind: "rename-merged-view", mergedView: target.mergedView }),
+            onClick: () => setDialog({ kind: "rename-notes-folder", notesFolder: notesFolderContextMenu.notesFolder }),
           },
           {
             label: "Delete",
             shortcut: "Del",
             icon: <DeleteIcon />,
-            onClick: () => handleRemoveMergedView(target.mergedView.name),
+            onClick: () => handleRemoveNotesFolder(notesFolderContextMenu.notesFolder.name),
           },
-        ];
-      }
-      const otherMergedViews = mergedViews.filter(
-        (c) => !c.memberStackNames.some((m) => m.toLowerCase() === target.stack.name.toLowerCase())
-      );
-      return [
-        {
-          label: "Rename",
-          shortcut: "F2",
-          icon: <RenameIcon />,
-          onClick: () => setDialog({ kind: "rename-stack", stack: target.stack }),
-        },
-        ...(stacks.length >= 2
-          ? ([
-              {
-                label: "Add to merged view",
-                icon: <LinkIcon />,
-                children: [
-                  ...otherMergedViews.map((c) => ({
-                    label: c.name,
-                    onClick: () => handleAddStackToMergedView(target.stack.name, c),
-                  })),
-                  ...(otherMergedViews.length > 0 ? [{ separator: true as const }] : []),
-                  {
-                    label: "New merged view…",
-                    onClick: () => setDialog({ kind: "combine-stacks", preselectStackName: target.stack.name }),
-                  },
-                ],
-              },
-            ] satisfies ContextMenuEntry[])
-          : []),
-        {
-          label: "Delete",
-          shortcut: "Del",
-          icon: <DeleteIcon />,
-          onClick: () => handleRemoveStack(target.stack.name),
-        },
-      ];
-    })();
+        ]
+      : null;
 
     return (
       <div className="app-shell">
@@ -899,188 +692,91 @@ export default function App() {
         )}
         <div className="empty-state">
           <h1>Cairn</h1>
-          {stacks.length === 0 && mergedViews.length === 0 ? (
+          {notesFolders.length === 0 ? (
             <p>Add a folder of markdown notes to get started.</p>
           ) : (
-            <div className="stack-sections">
-              <section className="stack-section">
-                <h2 className="stack-section-label">Merged views — combine two or more stacks into one linked view</h2>
-                {mergedViews.length === 0 ? (
-                  <p className="stack-section-empty">No merged views yet.</p>
-                ) : (
-                  <ul className="stack-grid">
-                    {mergedViews.map((c) => (
-                      <li key={`mergedView:${c.name.toLowerCase()}`}>
-                        <div
-                          className="stack-list-item"
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => openMergedViewByEntry(c)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              openMergedViewByEntry(c);
-                              return;
-                            }
-                            if (e.key === "F2") {
-                              e.preventDefault();
-                              setDialog({ kind: "rename-merged-view", mergedView: c });
-                              return;
-                            }
-                            if (e.key !== "Delete") return;
+            <div className="notes-folder-sections">
+              <section className="notes-folder-section">
+                <h2 className="notes-folder-section-label">Notes</h2>
+                <ul className="notes-folder-grid">
+                  {notesFolders.map((v) => (
+                    <li key={v.name.toLowerCase()}>
+                      <div
+                        className="notes-folder-list-item"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openNotesFolderByEntry(v)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            handleRemoveMergedView(c.name);
-                          }}
-                        >
-                          <EntryAvatar kind="mergedView" name={c.name} avatar={c.avatar} size={128} className="stack-list-avatar" />
-                          <div className="stack-list-row">
-                            <span className="stack-list-text">
-                              <span className="stack-list-name">◆ {c.name}</span>
-                              <span className="stack-list-path">{c.memberStackNames.join(", ")}</span>
-                            </span>
-                            <button
-                              type="button"
-                              className="stack-list-menu-trigger"
-                              aria-label={`${c.name} options`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                setStackContextMenu({ target: { type: "mergedView", mergedView: c }, x: rect.left, y: rect.bottom + 4 });
-                              }}
-                            >
-                              ⋮
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-              <section className="stack-section">
-                <h2 className="stack-section-label">Stacks</h2>
-                {stacks.length === 0 ? (
-                  <p className="stack-section-empty">No stacks yet.</p>
-                ) : (
-                  <ul className="stack-grid">
-                    {stacks.map((v) => (
-                      <li key={v.name.toLowerCase()}>
-                        <div
-                          className="stack-list-item"
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => openStackByEntry(v)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              openStackByEntry(v);
-                              return;
-                            }
-                            if (e.key === "F2") {
-                              e.preventDefault();
-                              setDialog({ kind: "rename-stack", stack: v });
-                              return;
-                            }
-                            if (e.key !== "Delete") return;
+                            openNotesFolderByEntry(v);
+                            return;
+                          }
+                          if (e.key === "F2") {
                             e.preventDefault();
-                            handleRemoveStack(v.name);
-                          }}
-                        >
-                          <EntryAvatar kind="stack" name={v.name} avatar={v.avatar} size={128} className="stack-list-avatar" />
-                          <div className="stack-list-row">
-                            <span className="stack-list-text">
-                              <span className="stack-list-name">{v.name}</span>
-                              <span className="stack-list-path">{v.root}</span>
-                            </span>
-                            <button
-                              type="button"
-                              className="stack-list-menu-trigger"
-                              aria-label={`${v.name} options`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                setStackContextMenu({ target: { type: "stack", stack: v }, x: rect.left, y: rect.bottom + 4 });
-                              }}
-                            >
-                              ⋮
-                            </button>
-                          </div>
+                            setDialog({ kind: "rename-notes-folder", notesFolder: v });
+                            return;
+                          }
+                          if (e.key !== "Delete") return;
+                          e.preventDefault();
+                          handleRemoveNotesFolder(v.name);
+                        }}
+                      >
+                        <EntryAvatar name={v.name} avatar={v.avatar} size={128} className="notes-folder-list-avatar" />
+                        <div className="notes-folder-list-row">
+                          <span className="notes-folder-list-text">
+                            <span className="notes-folder-list-name">{v.name}</span>
+                            <span className="notes-folder-list-path">{v.root}</span>
+                          </span>
+                          <button
+                            type="button"
+                            className="notes-folder-list-menu-trigger"
+                            aria-label={`${v.name} options`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setNotesFolderContextMenu({ notesFolder: v, x: rect.left, y: rect.bottom + 4 });
+                            }}
+                          >
+                            ⋮
+                          </button>
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </section>
             </div>
           )}
           <div className="empty-state-actions">
-            <button onClick={handlePickFolder}>+ Add Stack</button>
-            <button
-              onClick={() => setDialog({ kind: "combine-stacks" })}
-              disabled={stacks.length < 2}
-              title={
-                stacks.length < 2
-                  ? "Add one more stack first — a merged view combines two or more stacks into one linked view."
-                  : "Merge two or more stacks into one linked view"
-              }
-            >
-              Combine stacks…
-            </button>
+            <button onClick={handlePickFolder}>+ Add notes folder</button>
           </div>
           {error && <p className="error">{error}</p>}
 
-          {dialog?.kind === "name-stack" && (
+          {dialog?.kind === "name-notes-folder" && (
             <PromptModal
-              title="Name this stack"
+              title="Name this notes folder"
               initialValue={basename(dialog.root)}
               confirmLabel="Add"
-              onSubmit={handleNameStackSubmit}
+              onSubmit={handleNameNotesFolderSubmit}
               onCancel={() => setDialog(null)}
             />
           )}
-          {dialog?.kind === "rename-stack" && (
+          {dialog?.kind === "rename-notes-folder" && (
             <PromptModal
-              title="Rename stack to"
-              initialValue={dialog.stack.name}
+              title="Rename notes folder to"
+              initialValue={dialog.notesFolder.name}
               confirmLabel="Rename"
-              onSubmit={handleRenameStackSubmit}
+              onSubmit={handleRenameNotesFolderSubmit}
               onCancel={() => setDialog(null)}
             />
           )}
-          {dialog?.kind === "rename-merged-view" && (
-            <PromptModal
-              title="Rename merged view to"
-              initialValue={dialog.mergedView.name}
-              confirmLabel="Rename"
-              onSubmit={handleRenameMergedViewSubmit}
-              onCancel={() => setDialog(null)}
-            />
-          )}
-          {dialog?.kind === "combine-stacks" && (
-            <CombineStacksModal
-              stacks={stacks}
-              initialSelected={dialog.preselectStackName ? [dialog.preselectStackName] : undefined}
-              onAddStack={addStackToRegistry}
-              onSubmit={handleCombineStacksSubmit}
-              onCancel={() => setDialog(null)}
-            />
-          )}
-          {dialog?.kind === "manage-merged-view-members" && (
-            <CombineStacksModal
-              stacks={stacks}
-              editingMergedViewName={dialog.mergedView.name}
-              initialSelected={dialog.mergedView.memberStackNames}
-              onAddStack={addStackToRegistry}
-              onSubmit={(_name, memberStackNames) => handleManageMergedViewMembersSubmit(dialog.mergedView, memberStackNames)}
-              onCancel={() => setDialog(null)}
-            />
-          )}
-          {stackContextMenu && stackContextMenuItems && (
+          {notesFolderContextMenu && notesFolderContextMenuItems && (
             <ContextMenu
-              x={stackContextMenu.x}
-              y={stackContextMenu.y}
-              items={stackContextMenuItems}
-              onClose={() => setStackContextMenu(null)}
+              x={notesFolderContextMenu.x}
+              y={notesFolderContextMenu.y}
+              items={notesFolderContextMenuItems}
+              onClose={() => setNotesFolderContextMenu(null)}
             />
           )}
         </div>
@@ -1097,8 +793,8 @@ export default function App() {
           showRightPanelToggle={isRegionPresent("right-sidebar")}
           regionId={regionId("title-bar")}
           activeName={activeName}
-          root={singleStackRoot}
-          onSwitchStack={() => pluginRegistry.runCommand("stack.switchStack")}
+          root={notesFolderRoot}
+          onSwitchNotesFolder={() => pluginRegistry.runCommand("stack.switchStack")}
         />
       )}
       <div
@@ -1149,9 +845,7 @@ export default function App() {
               onConvertToTemplate: (n: Note) => handleConvertToTemplate(n),
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
               onCancelRename: () => setRenamingPath(null),
-              onSeedStarterContent: activeSession.kind === "stack" ? handleSeedStarterContent : undefined,
-              memberStacks: activeSession.kind === "mergedView" ? activeSession.memberStacks : undefined,
-              onMoveNoteToStack: (n: Note, destRoot: string) => handleMoveNoteToStack(n, destRoot),
+              onSeedStarterContent: handleSeedStarterContent,
               templates: allTemplates,
               onSelectTemplate: (t: FileTemplate) => openTemplateTab(t),
               onDeleteTemplate: (t: FileTemplate) => handleDeleteTemplate(t),
@@ -1203,9 +897,9 @@ export default function App() {
                 theme: resolvedTheme,
                 schema: activeNoteSchema,
                 onSaveProperties: saveNoteProperties,
-                canManageProperties: !!currentStackRoot,
+                canManageProperties: !!notesFolderRoot,
                 onManageProperties: () =>
-                  currentStackRoot && pluginRegistry.runCommand("properties.manageSchema", currentStackRoot),
+                  notesFolderRoot && pluginRegistry.runCommand("properties.manageSchema", notesFolderRoot),
                 onWikilinkStarted: () => showHint("wikilink"),
                 onTagTyped: () => showHint("tag"),
               }}
@@ -1300,14 +994,7 @@ export default function App() {
           <ContextMenu
             x={templateMenu.x}
             y={templateMenu.y}
-            items={
-              activeSession.kind === "mergedView"
-                ? activeSession.memberStacks.map((stack) => ({
-                    label: stack.name,
-                    children: templatePickerEntries(stack.root),
-                  }))
-                : templatePickerEntries(activeSession.entry.root)
-            }
+            items={templatePickerEntries(activeNotesFolder.root)}
             onClose={() => setTemplateMenu(null)}
           />
         )}
@@ -1319,17 +1006,6 @@ export default function App() {
               await finishCreateNoteFromTemplate(dialog.dir, dialog.templatePath, values);
             }}
             onCancel={() => setDialog(null)}
-          />
-        )}
-        {dailyNoteMenu && activeSession.kind === "mergedView" && (
-          <ContextMenu
-            x={dailyNoteMenu.x}
-            y={dailyNoteMenu.y}
-            items={activeSession.memberStacks.map((stack) => ({
-              label: stack.name,
-              onClick: () => handleOpenDailyNote(stack.root),
-            }))}
-            onClose={() => setDailyNoteMenu(null)}
           />
         )}
       </div>

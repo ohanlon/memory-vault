@@ -3,32 +3,25 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
-import { loadStack, reconcileStackCache, readNote, uniqueNotePath, watchStack } from "./stack";
-import { readStackCache, writeStackCache } from "./stackCache";
+import { loadNotesFolder, reconcileNotesFolderCache, readNote, uniqueNotePath, watchNotesFolder } from "./notesFolder";
+import { readNotesFolderCache, writeNotesFolderCache } from "./notesFolderCache";
 import { runReplaceAll, runSearch } from "./search";
 import { convertToTemplate, listAllFileTemplates } from "./templates";
 import { expandBuiltInDateVars, renderTemplate } from "../shared/templateRender";
-import { addStack, readStacksFile, removeStack, renameStack, writeStacksFile } from "./stackRegistry";
 import {
-  addMergedView,
-  readMergedViewsFile,
-  removeMergedView,
-  renameMergedView,
-  updateMergedViewMembers,
-  writeMergedViewsFile,
-} from "./mergedViewRegistry";
+  addNotesFolder,
+  readNotesFoldersFile,
+  removeNotesFolder,
+  renameNotesFolder,
+  writeNotesFoldersFile,
+} from "./notesFolderRegistry";
 import { titleFromPath } from "../shared/parseNote";
 import { STARTER_NOTES } from "../shared/starterContent";
 import { findNoteTemplate } from "../shared/noteTemplates";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
-import {
-  readMergedViewWorkspaceState,
-  readWorkspaceState,
-  writeMergedViewWorkspaceState,
-  writeWorkspaceState,
-} from "./workspaceState";
+import { readWorkspaceState, writeWorkspaceState } from "./workspaceState";
 import { DEFAULT_WORKSPACE_STATE } from "../shared/workspaceState";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
@@ -82,54 +75,39 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 
 let win: BrowserWindow | null = null;
 
-// One entry per currently-open stack root. A plain single-stack session has
-// exactly one entry (`name: null`, notes never carry Note.sourceStack); an
-// open merged view has one entry per member stack (`name` set to that stack's
-// name, used to stamp Note.sourceStack on the notes handed to the
-// renderer). `notes` is always the raw, unstamped result of loadStack — the
-// same shape written to that root's on-disk cache — stamping happens only
-// when building an IPC response/event.
-interface StackSession {
-  name: string | null;
+interface NotesFolderSession {
   notes: Note[];
   watcher: FSWatcher;
 }
-const sessions = new Map<string, StackSession>();
-// Ordered roots of the currently-open session — length 1 for a plain stack,
-// length N for an open merged view's N member stacks.
-let activeRoots: string[] = [];
+let session: NotesFolderSession | null = null;
+// The currently-open notes folder's root, or null when nothing is open.
+let activeRoot: string | null = null;
 
 let searchCounter = 0;
 const activeSearchIds = new Set<string>();
 const cancelledSearchIds = new Set<string>();
 
-function stampSourceStack(notes: Note[], name: string | null): Note[] {
-  return name ? notes.map((n) => ({ ...n, sourceStack: name })) : notes;
+function sessionNotes(): Note[] {
+  return session ? session.notes : [];
 }
 
-function sessionNotes(root: string): Note[] {
-  const session = sessions.get(root);
-  if (!session) return [];
-  return stampSourceStack(session.notes, session.name);
+// Throws unless absPath lives inside the currently-open notes folder — used
+// by every handler that touches a note by absolute path.
+function assertOwnsPath(absPath: string): void {
+  if (!activeRoot) throw new Error("No notes folder open");
+  const rel = path.relative(activeRoot, absPath);
+  if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error("The open notes folder does not contain this path");
+  }
 }
 
-// Finds which currently-open root an absolute note path lives under — used
-// by handlers that used to assume a single implicit `currentRoot`.
-function ownerRootFor(absPath: string): string {
-  const owner = activeRoots.find((root) => {
-    const rel = path.relative(root, absPath);
-    return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
-  });
-  if (!owner) throw new Error("No open stack contains this path");
-  return owner;
+function requireActiveRoot(): string {
+  if (!activeRoot) throw new Error("No notes folder open");
+  return activeRoot;
 }
 
-function stacksFilePath(): string {
-  return path.join(app.getPath("userData"), "stacks.json");
-}
-
-function mergedViewsFilePath(): string {
-  return path.join(app.getPath("userData"), "mergedViews.json");
+function notesFoldersFilePath(): string {
+  return path.join(app.getPath("userData"), "notesFolders.json");
 }
 
 function layoutPrefsFilePath(): string {
@@ -202,10 +180,10 @@ function createWindow() {
   }
 }
 
-function stopAllSessions() {
-  for (const session of sessions.values()) session.watcher.close();
-  sessions.clear();
-  activeRoots = [];
+function stopSession() {
+  if (session) session.watcher.close();
+  session = null;
+  activeRoot = null;
 }
 
 function cancelAllSearches() {
@@ -233,12 +211,12 @@ ipcMain.handle("plugin:openExternal", async (_event, pluginId: string, url: stri
 // Finder on macOS, the default file manager on Linux. shell.showItemInFolder
 // is cross-platform by design, unlike shelling out to `explorer`/`open`.
 ipcMain.handle("shell:showItemInFolder", (_event, absPath: string) => {
-  ownerRootFor(absPath);
+  assertOwnsPath(absPath);
   shell.showItemInFolder(absPath);
   return true;
 });
 
-ipcMain.handle("stack:pick", async () => {
+ipcMain.handle("notesFolder:pick", async () => {
   if (!win) return null;
   const result = await dialog.showOpenDialog(win, {
     properties: ["openDirectory"],
@@ -247,153 +225,95 @@ ipcMain.handle("stack:pick", async () => {
   return result.filePaths[0];
 });
 
-ipcMain.handle("stacks:list", async () => {
-  return readStacksFile(stacksFilePath());
+ipcMain.handle("notesFolders:list", async () => {
+  return readNotesFoldersFile(notesFoldersFilePath());
 });
 
-ipcMain.handle("stacks:add", async (_event, name: string, root: string) => {
-  const stacks = readStacksFile(stacksFilePath());
-  const updated = addStack(stacks, name, root); // throws on empty/duplicate name
-  writeStacksFile(stacksFilePath(), updated);
+ipcMain.handle("notesFolders:add", async (_event, name: string, root: string) => {
+  const notesFolders = readNotesFoldersFile(notesFoldersFilePath());
+  const updated = addNotesFolder(notesFolders, name, root); // throws on empty/duplicate name
+  writeNotesFoldersFile(notesFoldersFilePath(), updated);
   return updated;
 });
 
-ipcMain.handle("stacks:remove", async (_event, name: string) => {
-  const stacks = readStacksFile(stacksFilePath());
-  const updated = removeStack(stacks, name);
-  writeStacksFile(stacksFilePath(), updated);
+ipcMain.handle("notesFolders:remove", async (_event, name: string) => {
+  const notesFolders = readNotesFoldersFile(notesFoldersFilePath());
+  const updated = removeNotesFolder(notesFolders, name);
+  writeNotesFoldersFile(notesFoldersFilePath(), updated);
   return updated;
 });
 
-ipcMain.handle("stacks:rename", async (_event, oldName: string, newName: string) => {
-  const stacks = readStacksFile(stacksFilePath());
-  const updated = renameStack(stacks, oldName, newName); // throws on empty/duplicate name
-  writeStacksFile(stacksFilePath(), updated);
+ipcMain.handle("notesFolders:rename", async (_event, oldName: string, newName: string) => {
+  const notesFolders = readNotesFoldersFile(notesFoldersFilePath());
+  const updated = renameNotesFolder(notesFolders, oldName, newName); // throws on empty/duplicate name
+  writeNotesFoldersFile(notesFoldersFilePath(), updated);
   return updated;
 });
 
-ipcMain.handle("mergedViews:list", async () => {
-  return readMergedViewsFile(mergedViewsFilePath());
-});
+// Loads (or serves from cache) a notes folder's notes and starts watching
+// it. A cached vault loads instantly; only a vault that's never been opened
+// before pays for a full synchronous walk, which then seeds the cache.
+async function openSession(root: string): Promise<void> {
+  const cached = readNotesFolderCache(root);
+  const notes = cached ? cached.notes : await loadNotesFolder(root);
+  if (!cached) writeNotesFolderCache(root, { notes });
 
-ipcMain.handle("mergedViews:add", async (_event, name: string, memberStackNames: string[]) => {
-  const mergedViews = readMergedViewsFile(mergedViewsFilePath());
-  const updated = addMergedView(mergedViews, name, memberStackNames); // throws on empty/duplicate name or <2 members
-  writeMergedViewsFile(mergedViewsFilePath(), updated);
-  return updated;
-});
-
-ipcMain.handle("mergedViews:remove", async (_event, name: string) => {
-  const mergedViews = readMergedViewsFile(mergedViewsFilePath());
-  const updated = removeMergedView(mergedViews, name);
-  writeMergedViewsFile(mergedViewsFilePath(), updated);
-  return updated;
-});
-
-ipcMain.handle("mergedViews:rename", async (_event, oldName: string, newName: string) => {
-  const mergedViews = readMergedViewsFile(mergedViewsFilePath());
-  const updated = renameMergedView(mergedViews, oldName, newName); // throws on empty/duplicate name
-  writeMergedViewsFile(mergedViewsFilePath(), updated);
-  return updated;
-});
-
-ipcMain.handle("mergedViews:updateMembers", async (_event, name: string, memberStackNames: string[]) => {
-  const mergedViews = readMergedViewsFile(mergedViewsFilePath());
-  const updated = updateMergedViewMembers(mergedViews, name, memberStackNames); // throws on <2 members
-  writeMergedViewsFile(mergedViewsFilePath(), updated);
-  return updated;
-});
-
-// Loads (or serves from cache) one root's notes and starts watching it —
-// shared by both stack:load (a session of one root) and mergedView:load (a
-// session of N member-stack roots). A cached vault loads instantly; only a
-// vault that's never been opened before pays for a full synchronous walk,
-// which then seeds the cache.
-async function openSessionRoot(root: string, name: string | null): Promise<void> {
-  const cached = readStackCache(root);
-  const notes = cached ? cached.notes : await loadStack(root);
-  if (!cached) writeStackCache(root, { notes });
-
-  const watcher = watchStack(root, (change) => {
-    win?.webContents.send("stack:file-changed", change);
+  const watcher = watchNotesFolder(root, (change) => {
+    win?.webContents.send("notesFolder:file-changed", change);
   });
-  sessions.set(root, { name, notes, watcher });
+  session = { notes, watcher };
 
   // Reconcile the cache against disk in the background — re-parses only
   // files whose mtime changed since the cache was written, and pushes the
   // reconciled result only if something actually differs (e.g. the vault
   // was edited outside the app while it was closed). The renderer treats
-  // reconciliation as started the moment stack:load/mergedView:load resolves
-  // (see openStack/openMergedView), so only the "done" transition needs to be
-  // pushed here.
-  reconcileStackCache(root, notes)
+  // reconciliation as started the moment notesFolder:load resolves (see
+  // openNotesFolder), so only the "done" transition needs to be pushed here.
+  reconcileNotesFolderCache(root, notes)
     .then((result) => {
-      const session = sessions.get(root);
       if (!result || !session) return;
       session.notes = result.notes;
-      win?.webContents.send("stack:reconciled", { root, notes: sessionNotes(root) });
+      win?.webContents.send("notesFolder:reconciled", { root, notes: sessionNotes() });
     })
     .finally(() => {
-      if (!sessions.has(root)) return;
-      win?.webContents.send("stack:reconcile-status", { root, reconciling: false });
+      if (!session) return;
+      win?.webContents.send("notesFolder:reconcile-status", { root, reconciling: false });
     });
 }
 
-async function reloadSessionRoot(root: string): Promise<Note[]> {
-  const session = sessions.get(root);
-  if (!session) throw new Error(`No open session for root: ${root}`);
+async function reloadSession(): Promise<Note[]> {
+  const root = requireActiveRoot();
+  if (!session) throw new Error("No notes folder open");
   const previous = new Map(session.notes.map((n) => [n.relativePath, n]));
-  const notes = await loadStack(root, previous);
+  const notes = await loadNotesFolder(root, previous);
   session.notes = notes;
-  writeStackCache(root, { notes });
+  writeNotesFolderCache(root, { notes });
   return notes;
 }
 
-ipcMain.handle("stack:load", async (_event, root: string) => {
-  stopAllSessions();
+ipcMain.handle("notesFolder:load", async (_event, root: string) => {
+  stopSession();
   cancelAllSearches();
-  activeRoots = [root];
-  await openSessionRoot(root, null);
-  return { root, notes: sessionNotes(root) };
+  activeRoot = root;
+  await openSession(root);
+  return { root, notes: sessionNotes() };
 });
 
-ipcMain.handle("stack:reload", async () => {
-  if (activeRoots.length !== 1) throw new Error("No stack loaded");
-  const notes = await reloadSessionRoot(activeRoots[0]);
-  return { notes };
-});
-
-ipcMain.handle("mergedView:load", async (_event, entries: { root: string; name: string }[]) => {
-  stopAllSessions();
-  cancelAllSearches();
-  activeRoots = entries.map((e) => e.root);
-  await Promise.all(entries.map((e) => openSessionRoot(e.root, e.name)));
-  const notes = activeRoots.flatMap((root) => sessionNotes(root));
-  return { roots: activeRoots, notes };
-});
-
-ipcMain.handle("mergedView:reload", async () => {
-  if (activeRoots.length === 0) throw new Error("No stack loaded");
-  await Promise.all(activeRoots.map((root) => reloadSessionRoot(root)));
-  const notes = activeRoots.flatMap((root) => sessionNotes(root));
+ipcMain.handle("notesFolder:reload", async () => {
+  const notes = await reloadSession();
   return { notes };
 });
 
 ipcMain.handle("search:start", async (_event, options: SearchOptions) => {
-  if (activeRoots.length === 0) throw new Error("No stack loaded");
-  const roots = activeRoots;
+  const root = requireActiveRoot();
   const searchId = `search-${++searchCounter}`;
   activeSearchIds.add(searchId);
 
-  Promise.all(
-    roots.map((root) =>
-      runSearch(
-        root,
-        options,
-        (result) => win?.webContents.send("search:result", { searchId, result }),
-        () => cancelledSearchIds.has(searchId)
-      )
-    )
+  runSearch(
+    root,
+    options,
+    (result) => win?.webContents.send("search:result", { searchId, result }),
+    () => cancelledSearchIds.has(searchId)
   ).finally(() => {
     activeSearchIds.delete(searchId);
     cancelledSearchIds.delete(searchId);
@@ -409,78 +329,64 @@ ipcMain.handle("search:cancel", async (_event, searchId: string) => {
 });
 
 ipcMain.handle("search:replaceAll", async (_event, options: SearchOptions, replaceText: string) => {
-  if (activeRoots.length === 0) throw new Error("No stack loaded");
-  const results = await Promise.all(activeRoots.map((root) => runReplaceAll(root, options, replaceText)));
-  return results.reduce(
-    (acc, r) => ({ filesChanged: acc.filesChanged + r.filesChanged, replacements: acc.replacements + r.replacements }),
-    { filesChanged: 0, replacements: 0 }
-  );
+  const root = requireActiveRoot();
+  return runReplaceAll(root, options, replaceText);
 });
 
 ipcMain.handle("plugin:list", async () => {
   return discoverPlugins(pluginsDirPath()).map((p) => p.manifest);
 });
 
-ipcMain.handle("stack:readNote", async (_event, absPath: string) => {
-  return readNote(ownerRootFor(absPath), absPath);
+ipcMain.handle("notesFolder:readNote", async (_event, absPath: string) => {
+  return readNote(requireActiveRoot(), absPath);
 });
 
-ipcMain.handle("stack:readRaw", async (_event, absPath: string) => {
-  ownerRootFor(absPath);
+ipcMain.handle("notesFolder:readRaw", async (_event, absPath: string) => {
+  assertOwnsPath(absPath);
   return fs.readFileSync(absPath, "utf-8");
 });
 
-ipcMain.handle("stack:saveNote", async (_event, absPath: string, body: string) => {
-  ownerRootFor(absPath);
+ipcMain.handle("notesFolder:saveNote", async (_event, absPath: string, body: string) => {
+  assertOwnsPath(absPath);
   saveNoteBody(absPath, body);
   return true;
 });
 
-ipcMain.handle("stack:readNoteBody", async (_event, absPath: string) => {
-  ownerRootFor(absPath);
+ipcMain.handle("notesFolder:readNoteBody", async (_event, absPath: string) => {
+  assertOwnsPath(absPath);
   return readNoteBody(absPath);
 });
 
-ipcMain.handle("stack:readNoteProperties", async (_event, absPath: string) => {
-  ownerRootFor(absPath);
+ipcMain.handle("notesFolder:readNoteProperties", async (_event, absPath: string) => {
+  assertOwnsPath(absPath);
   return readNoteProperties(absPath);
 });
 
 ipcMain.handle(
-  "stack:saveNoteProperties",
+  "notesFolder:saveNoteProperties",
   async (_event, absPath: string, properties: Record<string, unknown>) => {
-    ownerRootFor(absPath);
+    assertOwnsPath(absPath);
     saveNoteProperties(absPath, properties);
     return true;
   }
 );
 
-ipcMain.handle("stack:readPropertySchema", async (_event, stackRoot: string) => {
-  return readPropertySchema(stackRoot);
+ipcMain.handle("notesFolder:readPropertySchema", async (_event, root: string) => {
+  return readPropertySchema(root);
 });
 
-ipcMain.handle("stack:savePropertySchema", async (_event, stackRoot: string, properties: PropertyDef[]) => {
-  writePropertySchema(stackRoot, properties);
+ipcMain.handle("notesFolder:savePropertySchema", async (_event, root: string, properties: PropertyDef[]) => {
+  writePropertySchema(root, properties);
   return properties;
 });
 
-ipcMain.handle("stack:readWorkspaceState", async () => {
-  if (activeRoots.length !== 1) return DEFAULT_WORKSPACE_STATE;
-  return readWorkspaceState(activeRoots[0]);
+ipcMain.handle("notesFolder:readWorkspaceState", async () => {
+  if (!activeRoot) return DEFAULT_WORKSPACE_STATE;
+  return readWorkspaceState(activeRoot);
 });
 
-ipcMain.handle("stack:saveWorkspaceState", async (_event, state: WorkspaceState) => {
-  if (activeRoots.length !== 1) throw new Error("No stack loaded");
-  writeWorkspaceState(activeRoots[0], state);
-  return true;
-});
-
-ipcMain.handle("mergedView:readWorkspaceState", async (_event, mergedViewName: string) => {
-  return readMergedViewWorkspaceState(app.getPath("userData"), mergedViewName);
-});
-
-ipcMain.handle("mergedView:saveWorkspaceState", async (_event, mergedViewName: string, state: WorkspaceState) => {
-  writeMergedViewWorkspaceState(app.getPath("userData"), mergedViewName, state);
+ipcMain.handle("notesFolder:saveWorkspaceState", async (_event, state: WorkspaceState) => {
+  writeWorkspaceState(requireActiveRoot(), state);
   return true;
 });
 
@@ -515,15 +421,15 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("stack:openOrCreateDailyNote", async (_event, stackRoot: string) => {
+ipcMain.handle("notesFolder:openOrCreateDailyNote", async (_event, root: string) => {
   const dateFormat = readAppSettingsFile(appSettingsFilePath()).dateFormat;
-  return openOrCreateDailyNote(stackRoot, dateFormat, new Date());
+  return openOrCreateDailyNote(root, dateFormat, new Date());
 });
 
 ipcMain.handle(
-  "stack:createNote",
+  "notesFolder:createNote",
   async (_event, dir: string, title: string, templateId?: string) => {
-    if (activeRoots.length === 0) throw new Error("No stack loaded");
+    requireActiveRoot();
     const safeTitle = title.trim() || "New File";
     const fullPath = uniqueNotePath(dir, safeTitle);
     const addHeading = readAppSettingsFile(appSettingsFilePath()).addHeadingToNewNotes;
@@ -534,7 +440,7 @@ ipcMain.handle(
 );
 
 ipcMain.handle("templates:list", async () => {
-  return listAllFileTemplates(readStacksFile(stacksFilePath()));
+  return listAllFileTemplates(readNotesFoldersFile(notesFoldersFilePath()));
 });
 
 ipcMain.handle("templates:convert", async (_event, root: string, absPath: string) => {
@@ -544,7 +450,7 @@ ipcMain.handle("templates:convert", async (_event, root: string, absPath: string
 ipcMain.handle(
   "templates:createNote",
   async (_event, dir: string, title: string, templatePath: string, values: Record<string, string>) => {
-    if (activeRoots.length === 0) throw new Error("No stack loaded");
+    requireActiveRoot();
     const safeTitle = title.trim() || "New File";
     const fullPath = uniqueNotePath(dir, safeTitle);
     const raw = await fs.promises.readFile(templatePath, "utf-8");
@@ -560,16 +466,13 @@ ipcMain.handle(
   }
 );
 
-// Seeds the currently open (empty) stack with a few example notes — offered
-// from the sidebar in place of a blank file tree so a first-time user has
-// something to explore instead of a blank canvas. Skips any file that would
-// collide with something already on disk, so it's safe to call more than
-// once.
-ipcMain.handle("stack:seedStarterContent", async () => {
-  // Only meaningful for a single freshly-opened, empty stack — a merged view
-  // always has 2+ member stacks that already existed independently.
-  if (activeRoots.length !== 1) throw new Error("No stack loaded");
-  const root = activeRoots[0];
+// Seeds the currently open (empty) notes folder with a few example notes —
+// offered from the sidebar in place of a blank file tree so a first-time
+// user has something to explore instead of a blank canvas. Skips any file
+// that would collide with something already on disk, so it's safe to call
+// more than once.
+ipcMain.handle("notesFolder:seedStarterContent", async () => {
+  const root = requireActiveRoot();
   const created: string[] = [];
   for (const note of STARTER_NOTES) {
     const fullPath = path.join(root, note.fileName);
@@ -580,45 +483,32 @@ ipcMain.handle("stack:seedStarterContent", async () => {
   return created;
 });
 
-ipcMain.handle("stack:deleteNote", async (_event, absPath: string) => {
-  ownerRootFor(absPath);
+ipcMain.handle("notesFolder:deleteNote", async (_event, absPath: string) => {
+  assertOwnsPath(absPath);
   fs.rmSync(absPath, { force: true });
   return true;
 });
 
 ipcMain.handle(
-  "stack:renameNote",
+  "notesFolder:renameNote",
   async (_event, absPath: string, newTitle: string, updateLinks: boolean) => {
-    const ownerRoot = ownerRootFor(absPath);
-    const ownerName = sessions.get(ownerRoot)?.name ?? null;
+    const root = requireActiveRoot();
+    assertOwnsPath(absPath);
     const dir = path.dirname(absPath);
-    const oldTitle = titleFromPath(path.relative(ownerRoot, absPath));
+    const oldTitle = titleFromPath(path.relative(root, absPath));
     const newPath = path.join(dir, `${newTitle}.md`);
     fs.renameSync(absPath, newPath);
 
     if (updateLinks) {
-      // Rewrite [[oldTitle]] (and, when this note's stack is part of an
-      // open merged view, the explicitly-qualified [[StackName/oldTitle]])
-      // references, across every open root — a link to this note can live
-      // in any member stack, not just its own.
-      const bareTarget = oldTitle;
-      const qualifiedTarget = ownerName ? `${ownerName}/${oldTitle}` : null;
-      const alternation = [bareTarget, qualifiedTarget].filter((t): t is string => t !== null).map(escapeRegExp);
-      const linkRe = new RegExp(`\\[\\[(${alternation.join("|")})((?:#[^\\]|]+)?(?:\\|[^\\]]+)?)\\]\\]`, "g");
+      // Rewrite [[oldTitle]] references across the notes folder.
+      const linkRe = new RegExp(`\\[\\[(${escapeRegExp(oldTitle)})((?:#[^\\]|]+)?(?:\\|[^\\]]+)?)\\]\\]`, "g");
 
-      for (const root of activeRoots) {
-        const notes = await loadStack(root);
-        for (const note of notes) {
-          if (!note.content.includes(`[[${bareTarget}`) && !(qualifiedTarget && note.content.includes(`[[${qualifiedTarget}`))) {
-            continue;
-          }
-          const raw = await fs.promises.readFile(note.path, "utf-8");
-          const updated = raw.replace(linkRe, (_m, matchedTarget, suffix) => {
-            const newTarget = matchedTarget.includes("/") ? `${ownerName}/${newTitle}` : newTitle;
-            return `[[${newTarget}${suffix}]]`;
-          });
-          if (updated !== raw) await fs.promises.writeFile(note.path, updated, "utf-8");
-        }
+      const notes = await loadNotesFolder(root);
+      for (const note of notes) {
+        if (!note.content.includes(`[[${oldTitle}`)) continue;
+        const raw = await fs.promises.readFile(note.path, "utf-8");
+        const updated = raw.replace(linkRe, (_m, _matchedTarget, suffix) => `[[${newTitle}${suffix}]]`);
+        if (updated !== raw) await fs.promises.writeFile(note.path, updated, "utf-8");
       }
     }
 
@@ -626,72 +516,28 @@ ipcMain.handle(
   }
 );
 
-// Moves a note to a different member stack of the currently open merged view —
-// notes aren't renamed by this (title, and therefore every [[link]] to it,
-// stays valid), only their physical file/sourceStack changes.
-ipcMain.handle(
-  "stack:moveNoteToStack",
-  async (_event, absPath: string, destRoot: string) => {
-    ownerRootFor(absPath);
-    if (!activeRoots.includes(destRoot)) throw new Error("Target stack is not open");
-    if (path.dirname(absPath) === destRoot) return absPath;
-    const fileName = path.basename(absPath);
-    const target = path.join(destRoot, fileName);
-    if (fs.existsSync(target)) {
-      throw new Error(`"${fileName}" already exists in that stack`);
-    }
-    try {
-      fs.renameSync(absPath, target);
-    } catch (err) {
-      // The two stacks can live on different drives, which a plain rename
-      // can't cross — fall back to copy + delete.
-      if ((err as NodeJS.ErrnoException).code !== "EXDEV") throw err;
-      fs.copyFileSync(absPath, target);
-      fs.rmSync(absPath, { force: true });
-    }
-    return target;
-  }
-);
-
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function resolveWithinStackRoot(root: string, relativePath: string): string {
+// Resolves a plugin RPC's relative path against the currently-open notes
+// folder's root.
+function resolveWithinActiveRoot(relativePath: string): string {
+  const root = requireActiveRoot();
   const resolved = path.resolve(root, relativePath);
   const rel = path.relative(root, resolved);
   if (rel.startsWith("..") || path.isAbsolute(rel)) {
-    throw new Error("Path escapes the stack root");
+    throw new Error("Path escapes the notes folder root");
   }
   return resolved;
 }
 
-// Resolves a plugin RPC's relative path against whichever open root
-// actually has a matching file, trying each active session root in turn —
-// first match wins. A plugin call has no inherent "which stack" context of
-// its own, and this is a smaller, less-used surface than the core
-// note/graph experience, so this simple first-match resolution is a
-// deliberate simplification rather than adding root-qualified paths to the
-// plugin RPC surface.
-function resolveWithinAnyActiveRoot(relativePath: string): string {
-  if (activeRoots.length === 0) throw new Error("No stack loaded");
-  for (const root of activeRoots) {
-    try {
-      const resolved = resolveWithinStackRoot(root, relativePath);
-      if (fs.existsSync(resolved)) return resolved;
-    } catch {
-      // escapes this root — try the next one
-    }
-  }
-  return resolveWithinStackRoot(activeRoots[0], relativePath);
-}
-
 ipcMain.handle("plugin:notes:read", async (_event, relativePath: string) => {
-  return readNoteBody(resolveWithinAnyActiveRoot(relativePath));
+  return readNoteBody(resolveWithinActiveRoot(relativePath));
 });
 
 ipcMain.handle("plugin:notes:write", async (_event, relativePath: string, body: string) => {
-  saveNoteBody(resolveWithinAnyActiveRoot(relativePath), body);
+  saveNoteBody(resolveWithinActiveRoot(relativePath), body);
   return true;
 });
 
@@ -713,7 +559,7 @@ ipcMain.handle(
       cancelId: 0,
       title: "Plugin permission request",
       message: `"${pluginName}" wants to use "${permission}"`,
-      detail: "This grants the plugin capability beyond reading and writing notes in this stack.",
+      detail: "This grants the plugin capability beyond reading and writing notes in this notes folder.",
     });
     const granted = result.response === 1;
     if (granted) {
@@ -730,28 +576,41 @@ ipcMain.handle("plugin:revokePermission", async (_event, pluginId: string, permi
 });
 
 app.on("window-all-closed", () => {
-  stopAllSessions();
+  stopSession();
   if (process.platform !== "darwin") {
     app.quit();
     win = null;
   }
 });
 
-// One-time migration from the old "cairns" name for the merged-view feature
-// (renamed to avoid colliding with the app's own name) to "mergedViews".
-function migrateMergedViewStorage(): void {
+// One-time migration from the pre-rename storage layout: stacks.json ->
+// notesFolders.json, and each notes folder's <root>/.stack/properties.yaml ->
+// <root>/.cairn/properties.yaml (also fixing that it used to live in a
+// differently-named hidden folder than everything else under .cairn).
+// Follows the same rename-in-place pattern the old merged-view feature's
+// migration used.
+function migrateNotesFolderStorage(): void {
   const userDataDir = app.getPath("userData");
-  const oldFile = path.join(userDataDir, "cairns.json");
-  const newFile = path.join(userDataDir, "mergedViews.json");
+  const oldFile = path.join(userDataDir, "stacks.json");
+  const newFile = path.join(userDataDir, "notesFolders.json");
   if (fs.existsSync(oldFile) && !fs.existsSync(newFile)) fs.renameSync(oldFile, newFile);
-  const oldDir = path.join(userDataDir, "cairns");
-  const newDir = path.join(userDataDir, "mergedViews");
-  if (fs.existsSync(oldDir) && !fs.existsSync(newDir)) fs.renameSync(oldDir, newDir);
+
+  const notesFolders = readNotesFoldersFile(newFile);
+  for (const folder of notesFolders) {
+    const oldDir = path.join(folder.root, ".stack");
+    const newDir = path.join(folder.root, ".cairn");
+    if (!fs.existsSync(oldDir)) continue;
+    const oldPropertiesFile = path.join(oldDir, "properties.yaml");
+    if (!fs.existsSync(oldPropertiesFile)) continue;
+    fs.mkdirSync(newDir, { recursive: true });
+    const newPropertiesFile = path.join(newDir, "properties.yaml");
+    if (!fs.existsSync(newPropertiesFile)) fs.renameSync(oldPropertiesFile, newPropertiesFile);
+  }
 }
 
 registerPluginScheme();
 app.whenReady().then(() => {
-  migrateMergedViewStorage();
+  migrateNotesFolderStorage();
   createWindow();
   handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
 });

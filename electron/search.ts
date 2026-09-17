@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { listMarkdownFiles } from "./stack";
+import { listMarkdownFiles } from "./notesFolder";
 import { titleFromPath } from "../shared/parseNote";
 import { replaceAllInContent, searchContent } from "../shared/search";
 import type { ReplaceAllResult, SearchFileResult, SearchOptions } from "../shared/types";
@@ -38,7 +38,7 @@ export async function runSearch(
   }
 }
 
-/** Walks every markdown file under root, rewriting each one that has a match. The file watcher (see watchStack) picks up the writes and refreshes the app the same way an external edit would. */
+/** Walks every markdown file under root, rewriting each one that has a match. The file watcher (see watchNotesFolder) picks up the writes and refreshes the app the same way an external edit would. */
 export async function runReplaceAll(
   root: string,
   options: SearchOptions,

@@ -3,12 +3,12 @@ import path from "node:path";
 import * as yaml from "js-yaml";
 import type { PropertyDef } from "../shared/types";
 
-export function propertiesFilePath(stackRoot: string): string {
-  return path.join(stackRoot, ".stack", "properties.yaml");
+export function propertiesFilePath(root: string): string {
+  return path.join(root, ".cairn", "properties.yaml");
 }
 
-export function readPropertySchema(stackRoot: string): PropertyDef[] {
-  const filePath = propertiesFilePath(stackRoot);
+export function readPropertySchema(root: string): PropertyDef[] {
+  const filePath = propertiesFilePath(root);
   if (!fs.existsSync(filePath)) return [];
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
@@ -20,8 +20,8 @@ export function readPropertySchema(stackRoot: string): PropertyDef[] {
   }
 }
 
-export function writePropertySchema(stackRoot: string, properties: PropertyDef[]): void {
-  const filePath = propertiesFilePath(stackRoot);
+export function writePropertySchema(root: string, properties: PropertyDef[]): void {
+  const filePath = propertiesFilePath(root);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, yaml.dump({ properties }, { sortKeys: false }), "utf-8");
 }

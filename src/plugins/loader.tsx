@@ -16,7 +16,7 @@ function makeStatusItemComponent(manifest: PluginManifest) {
   };
 }
 
-// Discovers third-party plugins declared under the current stack's
+// Discovers third-party plugins declared under the current notes folder's
 // .cairn/plugins folder (electron/pluginRegistry.ts) and registers a
 // status-bar badge plus any declared sidebar views for each one, through
 // the same PluginRegistry API the built-in app uses (see plugins/core.tsx).

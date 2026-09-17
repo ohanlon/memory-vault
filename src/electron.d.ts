@@ -1,12 +1,14 @@
 import type {
   AppSettings,
-  MergedViewEntry,
-  MergedViewIndex,
   DailyNoteResult,
   FileChangeEvent,
   FileTemplate,
   LayoutPrefs,
   Note,
+  NotesFolderEntry,
+  NotesFolderIndex,
+  NotesFolderReconciledEvent,
+  NotesFolderReconcileStatusEvent,
   PluginManifest,
   PluginPermission,
   PluginPermissionsFile,
@@ -14,30 +16,19 @@ import type {
   ReplaceAllResult,
   SearchFileResult,
   SearchOptions,
-  StackEntry,
-  StackIndex,
-  StackReconciledEvent,
-  StackReconcileStatusEvent,
   WorkspaceState,
 } from "@shared/types";
 
 export interface MemoryStackAPI {
-  pickStack(): Promise<string | null>;
-  loadStack(root: string): Promise<StackIndex>;
-  reloadStack(): Promise<{ notes: Note[] }>;
-  loadMergedView(entries: { root: string; name: string }[]): Promise<MergedViewIndex>;
-  reloadMergedView(): Promise<{ notes: Note[] }>;
-  onReconciled(cb: (event: StackReconciledEvent) => void): () => void;
-  onReconcileStatus(cb: (event: StackReconcileStatusEvent) => void): () => void;
-  listStacks(): Promise<StackEntry[]>;
-  addStack(name: string, root: string): Promise<StackEntry[]>;
-  removeStack(name: string): Promise<StackEntry[]>;
-  renameStack(oldName: string, newName: string): Promise<StackEntry[]>;
-  listMergedViews(): Promise<MergedViewEntry[]>;
-  addMergedView(name: string, memberStackNames: string[]): Promise<MergedViewEntry[]>;
-  removeMergedView(name: string): Promise<MergedViewEntry[]>;
-  renameMergedView(oldName: string, newName: string): Promise<MergedViewEntry[]>;
-  updateMergedViewMembers(name: string, memberStackNames: string[]): Promise<MergedViewEntry[]>;
+  pickNotesFolder(): Promise<string | null>;
+  loadNotesFolder(root: string): Promise<NotesFolderIndex>;
+  reloadNotesFolder(): Promise<{ notes: Note[] }>;
+  onReconciled(cb: (event: NotesFolderReconciledEvent) => void): () => void;
+  onReconcileStatus(cb: (event: NotesFolderReconcileStatusEvent) => void): () => void;
+  listNotesFolders(): Promise<NotesFolderEntry[]>;
+  addNotesFolder(name: string, root: string): Promise<NotesFolderEntry[]>;
+  removeNotesFolder(name: string): Promise<NotesFolderEntry[]>;
+  renameNotesFolder(oldName: string, newName: string): Promise<NotesFolderEntry[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;
@@ -53,25 +44,22 @@ export interface MemoryStackAPI {
   ): Promise<string>;
   deleteNote(absPath: string): Promise<boolean>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
-  moveNoteToStack(absPath: string, destRoot: string): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;
   onFileChanged(cb: (event: FileChangeEvent) => void): () => void;
   readNoteBody(absPath: string): Promise<string>;
   readNoteProperties(absPath: string): Promise<Record<string, unknown>>;
   saveNoteProperties(absPath: string, properties: Record<string, unknown>): Promise<boolean>;
-  readPropertySchema(stackRoot: string): Promise<PropertyDef[]>;
-  savePropertySchema(stackRoot: string, properties: PropertyDef[]): Promise<PropertyDef[]>;
+  readPropertySchema(root: string): Promise<PropertyDef[]>;
+  savePropertySchema(root: string, properties: PropertyDef[]): Promise<PropertyDef[]>;
   readWorkspaceState(): Promise<WorkspaceState>;
   saveWorkspaceState(state: WorkspaceState): Promise<boolean>;
-  readMergedViewWorkspaceState(mergedViewName: string): Promise<WorkspaceState>;
-  saveMergedViewWorkspaceState(mergedViewName: string, state: WorkspaceState): Promise<boolean>;
   readLayoutPrefs(): Promise<LayoutPrefs>;
   saveLayoutPrefs(prefs: LayoutPrefs): Promise<boolean>;
   readAppSettings(): Promise<AppSettings>;
   saveAppSettings(settings: AppSettings): Promise<boolean>;
   setTitleBarOverlay(colors: { color: string; symbolColor: string }): Promise<boolean>;
-  openOrCreateDailyNote(stackRoot: string): Promise<DailyNoteResult>;
+  openOrCreateDailyNote(root: string): Promise<DailyNoteResult>;
   listPlugins(): Promise<PluginManifest[]>;
   getPluginPermissions(): Promise<PluginPermissionsFile>;
   revokePluginPermission(pluginId: string, permission: PluginPermission): Promise<boolean>;

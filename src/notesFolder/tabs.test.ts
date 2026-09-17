@@ -205,7 +205,7 @@ describe("tabRefToTabId", () => {
     expect(tabRefToTabId({ root: "/vault", relativePath: "missing.md" }, notes)).toBeNull();
   });
 
-  it("disambiguates two stacks that share the same relative path (an open merged view)", () => {
+  it("disambiguates two notes folders that share the same relative path", () => {
     const cairnNotes = [
       { path: "/work/a.md", relativePath: "a.md" },
       { path: "/personal/a.md", relativePath: "a.md" },

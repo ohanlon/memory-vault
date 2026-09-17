@@ -107,20 +107,9 @@ export interface LinkTargetOption {
   value: string;
 }
 
-/** A note offered by the link picker — enough to build an unambiguous wikilink target even when merged from more than one stack (an open merged view). */
+/** A note offered by the link picker. */
 export interface PickableNote {
   title: string;
-  sourceStack?: string;
-}
-
-/** Qualifies `note`'s title with its source stack whenever that differs from
- *  `currentSourceStack` — otherwise an open merged view's title collisions
- *  could make an unqualified [[Title]] resolve to the wrong note (see
- *  resolveWikilinkTarget in shared/buildGraph.ts). Shared by the "Insert
- *  Link" menu action and the [[ autocomplete (wikilinkAutocomplete.ts) so
- *  both produce identical output for the same pick. */
-export function qualifiedWikilinkTarget(note: PickableNote, currentSourceStack: string | undefined): string {
-  return note.sourceStack && note.sourceStack !== currentSourceStack ? `${note.sourceStack}/${note.title}` : note.title;
 }
 
 const HEADING_LINE_RE = /^#{1,6}[ \t]+(.*)$/;
@@ -426,7 +415,6 @@ export function editorContextMenu(
   onRequest: (req: EditorContextMenuRequest) => void,
   resolveNoteByTitle: (title: string) => Note | undefined,
   currentNotePath: string,
-  currentSourceStack: string | undefined,
   writeNote: (path: string, content: string) => Promise<void>
 ) {
   return EditorView.domEventHandlers({
@@ -494,8 +482,8 @@ export function editorContextMenu(
           insertLinkAction: {
             selectedText: view.state.sliceDoc(from, to),
             insertNote: (note: PickableNote, displayText: string) => {
-              const target = qualifiedWikilinkTarget(note, currentSourceStack);
-              const text = displayText && displayText !== note.title ? `[[${target}|${displayText}]]` : `[[${target}]]`;
+              const text =
+                displayText && displayText !== note.title ? `[[${note.title}|${displayText}]]` : `[[${note.title}]]`;
               view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
               view.focus();
             },

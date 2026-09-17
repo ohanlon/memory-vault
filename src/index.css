@@ -178,7 +178,7 @@ body {
   padding-right: 138px;
 }
 
-.titlebar-stack {
+.titlebar-notes-folder {
   -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
@@ -187,7 +187,7 @@ body {
   color: var(--text-secondary);
 }
 
-.titlebar-stack-name {
+.titlebar-notes-folder-name {
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -254,17 +254,6 @@ body {
   gap: 8px;
 }
 
-.combine-stacks-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 220px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .error {
   color: var(--accent-red);
 }
@@ -292,7 +281,7 @@ body {
   background: var(--bg-control-hover);
 }
 
-.stack-sections {
+.notes-folder-sections {
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -302,7 +291,7 @@ body {
   gap: 12px;
 }
 
-.stack-section {
+.notes-folder-section {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -310,7 +299,7 @@ body {
   gap: 4px;
 }
 
-.stack-section-label {
+.notes-folder-section-label {
   margin: 0;
   font-size: 11px;
   font-weight: 400;
@@ -320,14 +309,14 @@ body {
   padding: 0 4px;
 }
 
-.stack-section-empty {
+.notes-folder-section-empty {
   margin: 0;
   padding: 0 4px;
   font-size: 13px;
   color: var(--text-tertiary);
 }
 
-.stack-grid {
+.notes-folder-grid {
   flex: 1;
   min-height: 0;
   list-style: none;
@@ -341,12 +330,12 @@ body {
   overflow-y: hidden;
 }
 
-.stack-grid li {
+.notes-folder-grid li {
   width: 200px;
   flex: 0 0 auto;
 }
 
-.stack-list-item {
+.notes-folder-list-item {
   width: 100%;
   height: 100%;
   display: flex;
@@ -363,11 +352,11 @@ body {
   overflow: hidden;
 }
 
-.stack-list-item:hover {
+.notes-folder-list-item:hover {
   background: var(--bg-control);
 }
 
-.stack-list-avatar {
+.notes-folder-list-avatar {
   flex-shrink: 0;
   width: 128px;
   height: 128px;
@@ -376,14 +365,14 @@ body {
   overflow: hidden;
 }
 
-.stack-list-row {
+.notes-folder-list-row {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.stack-list-text {
+.notes-folder-list-text {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -393,7 +382,7 @@ body {
   overflow: hidden;
 }
 
-.stack-list-menu-trigger {
+.notes-folder-list-menu-trigger {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
@@ -410,16 +399,16 @@ body {
   line-height: 1;
 }
 
-.stack-list-menu-trigger:hover {
+.notes-folder-list-menu-trigger:hover {
   background: var(--bg-control-hover);
   color: var(--text-primary);
 }
 
-.stack-list-name {
+.notes-folder-list-name {
   font-weight: 600;
 }
 
-.stack-list-path {
+.notes-folder-list-path {
   font-size: 12px;
   color: var(--text-secondary);
   overflow: hidden;
@@ -541,12 +530,6 @@ body {
   display: block;
 }
 
-.file-tree-group.drag-over {
-  background: var(--bg-selected);
-  outline: 1px dashed var(--accent-violet);
-  outline-offset: -1px;
-}
-
 .file-tree-group-header {
   display: flex;
   align-items: center;
@@ -564,19 +547,7 @@ body {
   color: var(--text-strong);
 }
 
-/* Distinguishes the cross-stack daily-notes rollup from a plain per-stack
-   group — same layout, different accent so it reads as a special section. */
-.file-tree-group-daily > .file-tree-group-header {
-  color: var(--accent-violet);
-}
-
-.file-tree-group-daily > .file-tree-group-header:hover {
-  color: var(--accent-violet);
-  opacity: 0.85;
-}
-
-/* Same treatment as the daily-notes rollup — templates are also a special,
-   cross-stack section rather than a regular per-stack group. */
+/* Templates are a special section, distinguished with an accent. */
 .file-tree-group-templates > .file-tree-group-header {
   color: var(--accent-violet);
 }
@@ -1994,22 +1965,6 @@ body {
   font-size: 13px;
   color: var(--text-tertiary);
   cursor: pointer;
-}
-
-.combine-stacks-add-folder {
-  align-self: flex-start;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px dashed var(--border-control);
-  border-radius: 4px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.combine-stacks-add-folder:hover {
-  background: var(--bg-control-hover);
-  color: var(--text-primary);
 }
 
 .modal-actions {

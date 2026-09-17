@@ -21,7 +21,7 @@ npm run dev
 
 This starts Vite and launches the Electron app pointed at the dev server.
 The first time it opens, point it at a folder of markdown notes (or an
-empty one to start fresh) — that becomes a "stack."
+empty one to start fresh) — that becomes a notes folder.
 
 ## What it does
 
@@ -32,10 +32,7 @@ empty one to start fresh) — that becomes a "stack."
   external URL, and tag becomes an edge or node you can click through.
 - **Group with tags**: adding `#project` to a note links it to every other
   note tagged `project`, no manual linking required.
-- **Combine stacks**: open two or more stacks together as one "merged
-  view" when you want to browse or search across them, without moving any
-  files.
-- **Search and replace** across every note in a stack at once.
+- **Search and replace** across every note in a notes folder at once.
 - **Stay in sync**: edits made outside Cairn (by hand, or by Claude Code)
   are picked up automatically — the app never owns the files.
 - **Daily notes and templates** for recurring structure, and an optional
@@ -43,7 +40,7 @@ empty one to start fresh) — that becomes a "stack."
   validation beyond plain YAML.
 
 See [docs/reference.md](docs/reference.md) for exact link syntax, the graph
-model, and how stacks/merged views are stored on disk.
+model, and how notes folders are stored on disk.
 
 ## Scripts
 

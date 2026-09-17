@@ -12,7 +12,7 @@ import { MATH_BLOCK_RE, renderMathInto } from "./mathRender";
 export interface LivePreviewHandlers {
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
-  /** Lowercased note titles that exist in the stack, for orphan-link styling. */
+  /** Lowercased note titles that exist in the notes folder, for orphan-link styling. */
   noteTitles: Set<string>;
 }
 

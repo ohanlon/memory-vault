@@ -13,10 +13,10 @@ import { hasLivePluginFrame } from "./pluginFrameRegistry";
 
 // Single process-wide registry. The core app registers through it as a
 // statically imported module (see plugins/core.tsx); third-party plugins
-// discovered under a stack's .cairn/plugins folder (see
+// discovered under a notes folder's .cairn/plugins folder (see
 // src/plugins/loader.ts) register through the same API at runtime, tagged
 // with their plugin id so their contributions can be torn down with
-// unregisterPlugin when the stack changes.
+// unregisterPlugin when the notes folder changes.
 class PluginRegistry {
   private regions = new Map<SingleSlotRegion, ComponentType<any>>();
   private regionOwners = new Map<SingleSlotRegion, string>();
@@ -100,7 +100,7 @@ class PluginRegistry {
   }
 
   // Removes every contribution tagged with this plugin id — called when a
-  // plugin's stack is unloaded or its window is torn down.
+  // plugin's notes folder is unloaded or its window is torn down.
   unregisterPlugin(pluginId: string): void {
     for (const [region, owner] of this.regionOwners) {
       if (owner === pluginId) {

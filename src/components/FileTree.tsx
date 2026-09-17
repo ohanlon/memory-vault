@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent, KeyboardEvent, ReactNode } from "react";
-import type { FileTemplate, Note, StackEntry } from "@shared/types";
+import type { KeyboardEvent, ReactNode } from "react";
+import type { FileTemplate, Note } from "@shared/types";
 import { findDuplicateTitles } from "@shared/duplicateTitles";
-import { isDailyNote } from "@shared/dailyNote";
 import { pluginRegistry } from "../plugins/registry";
 import { pushToPlugin } from "../plugins/pluginFrameRegistry";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
@@ -19,13 +18,9 @@ interface Props {
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
   onShowInExplorer: (absPath: string) => void;
-  /** Every member stack of an open merged view, for "move to" — omitted for a
-   *  plain single-stack session (nothing to move a note to). */
-  memberStacks?: StackEntry[];
-  onMoveNoteToStack?: (note: Note, destRoot: string) => void;
-  /** Every template file available in the current session (rolled up across
-   *  every member stack for an open merged view) — shown in their own "Templates"
-   *  group, separate from the regular note list they're deliberately excluded from. */
+  /** Every template file available in the current notes folder — shown in
+   *  their own "Templates" group, separate from the regular note list
+   *  they're deliberately excluded from. */
   templates: FileTemplate[];
   onSelectTemplate: (template: FileTemplate) => void;
   onDeleteTemplate: (template: FileTemplate) => void;
@@ -34,10 +29,6 @@ interface Props {
 type ContextMenuState = { note: Note; x: number; y: number };
 type TemplateContextMenuState = { template: FileTemplate; x: number; y: number };
 
-const NOTE_DRAG_TYPE = "application/x-cairn-note";
-// Key into the same collapsedStacks Set as real stack names — namespaced so
-// it can't collide with a user-chosen stack name.
-const DAILY_GROUP_KEY = "__daily__";
 const TEMPLATES_GROUP_KEY = "__templates__";
 
 // Plugin-contributed context-menu entries for a note, hidden entirely when
@@ -121,20 +112,13 @@ export function FileTree({
   onCommitNoteRename,
   onCancelRename,
   onShowInExplorer,
-  memberStacks,
-  onMoveNoteToStack,
   templates,
   onSelectTemplate,
   onDeleteTemplate,
 }: Props) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [templateContextMenu, setTemplateContextMenu] = useState<TemplateContextMenuState | null>(null);
-  // Which source-stack groups are collapsed — only relevant for an open
-  // merged view (see groupedByStack below); session-local, not persisted.
-  const [collapsedStacks, setCollapsedStacks] = useState<Set<string>>(new Set());
-  // Which stack group a dragged note is currently over, for drop-target
-  // highlighting — only relevant for an open merged view.
-  const [dragOverStack, setDragOverStack] = useState<string | null>(null);
+  const [templatesCollapsed, setTemplatesCollapsed] = useState(false);
 
   const sorted = useMemo(() => [...notes].sort((a, b) => a.title.localeCompare(b.title)), [notes]);
 
@@ -142,91 +126,12 @@ export function FileTree({
   // path as a disambiguating hint, since the list is otherwise flat.
   const duplicateTitles = useMemo(() => findDuplicateTitles(notes), [notes]);
 
-  // Every member stack's daily notes are rolled up into one combined
-  // section instead of being scattered across per-stack groups — pulled out
-  // here so groupedByStack below doesn't also list them.
-  const dailyNotes = useMemo(
-    () => sorted.filter((n) => n.sourceStack !== undefined && isDailyNote(n.relativePath)),
-    [sorted]
-  );
-  const dailyNotePaths = useMemo(() => new Set(dailyNotes.map((n) => n.path)), [dailyNotes]);
-
-  // An open merged view stamps every note with its origin stack — group by that
-  // to simulate the folder-like separation a single stack no longer has,
-  // one collapsible section per member stack. Seeded with every member
-  // stack up front (not just ones a note happens to belong to) so a stack
-  // with no notes yet still gets a group — otherwise it silently vanishes
-  // from the tree instead of showing up empty. A plain single-stack session
-  // has no memberStacks and no sourceStack on any note, so this is a no-op
-  // there (flat list, unchanged from before).
-  const groupedByStack = useMemo(() => {
-    const groups = new Map<string, Note[]>();
-    for (const stack of memberStacks ?? []) groups.set(stack.name, []);
-    for (const note of sorted) {
-      if (!note.sourceStack || dailyNotePaths.has(note.path)) continue;
-      const group = groups.get(note.sourceStack);
-      if (group) group.push(note);
-      else groups.set(note.sourceStack, [note]);
-    }
-    return groups;
-  }, [sorted, dailyNotePaths, memberStacks]);
-
-  // memberStacks is only ever passed for an open merged view — a more reliable
-  // signal than checking sourceStack on notes, which tells us nothing when
-  // every member stack (and so every note) happens to be empty.
-  const isGrouped = !!memberStacks;
-  const canMove = isGrouped && !!onMoveNoteToStack;
-
-  function toggleStack(stackName: string) {
-    setCollapsedStacks((prev) => {
-      const next = new Set(prev);
-      if (next.has(stackName)) next.delete(stackName);
-      else next.add(stackName);
-      return next;
-    });
-  }
-
-  function acceptsNoteDrag(e: DragEvent) {
-    return e.dataTransfer.types.includes(NOTE_DRAG_TYPE);
-  }
-
-  function handleDropOnStack(e: DragEvent, stackName: string) {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverStack(null);
-    if (!canMove) return;
-    const notePath = e.dataTransfer.getData(NOTE_DRAG_TYPE);
-    const note = notes.find((n) => n.path === notePath);
-    if (!note || note.sourceStack === stackName) return;
-    const destStack = memberStacks!.find((s) => s.name === stackName);
-    if (destStack) onMoveNoteToStack!(note, destStack.root);
-  }
-
-  function moveToMenuEntries(note: Note): ContextMenuEntry[] {
-    if (!canMove) return [];
-    const targets = memberStacks!.filter((s) => s.name !== note.sourceStack);
-    if (targets.length === 0) return [];
-    return [
-      {
-        label: "Move to",
-        children: targets.map((stack) => ({
-          label: stack.name,
-          onClick: () => onMoveNoteToStack!(note, stack.root),
-        })),
-      },
-    ];
-  }
-
-  // `stackLabel` shows which stack a note came from on its own row — used
-  // for the daily-notes rollup, where notes from every member stack are
-  // mixed together and the usual per-stack group heading isn't enough to
-  // tell them apart.
-  function renderNoteRow(note: Note, indented: boolean, stackLabel?: string): ReactNode {
+  function renderNoteRow(note: Note): ReactNode {
     if (note.path === renamingPath) {
       return (
         <li key={note.path} className={note.path === activePath ? "active" : ""}>
           <EditableLabel
-            className={`file-tree-item file-tree-item-edit${indented ? " file-tree-item-indented" : ""}`}
+            className="file-tree-item file-tree-item-edit"
             initialValue={note.title}
             onCommit={(value) => onCommitNoteRename(note, value)}
             onCancel={onCancelRename}
@@ -237,13 +142,7 @@ export function FileTree({
     return (
       <li key={note.path} className={note.path === activePath ? "active" : ""}>
         <button
-          className={`file-tree-item${indented ? " file-tree-item-indented" : ""}`}
-          draggable={canMove}
-          onDragStart={(e) => {
-            if (!canMove) return;
-            e.dataTransfer.setData(NOTE_DRAG_TYPE, note.path);
-            e.dataTransfer.effectAllowed = "move";
-          }}
+          className="file-tree-item"
           onClick={() => onSelect(note)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -261,49 +160,10 @@ export function FileTree({
           }}
         >
           <span className="file-tree-item-title">{note.title}</span>
-          {stackLabel ? (
-            <span className="file-tree-item-hint">{stackLabel}</span>
-          ) : (
-            duplicateTitles.has(note.title) && (
-              <span className="file-tree-item-hint">
-                {note.sourceStack ? `${note.sourceStack}/${note.relativePath}` : note.relativePath}
-              </span>
-            )
+          {duplicateTitles.has(note.title) && (
+            <span className="file-tree-item-hint">{note.relativePath}</span>
           )}
         </button>
-      </li>
-    );
-  }
-
-  // The daily-notes rollup: one combined section merging every member
-  // stack's "daily" folder together, styled distinctly (a calendar icon
-  // instead of a plain folder) to set it apart as a special, cross-stack
-  // group rather than another member stack.
-  function renderDailyGroup(): ReactNode {
-    const collapsed = collapsedStacks.has(DAILY_GROUP_KEY);
-    return (
-      <li key={DAILY_GROUP_KEY} className="file-tree-group file-tree-group-daily">
-        <div
-          className="file-tree-group-header"
-          tabIndex={0}
-          onClick={() => toggleStack(DAILY_GROUP_KEY)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              toggleStack(DAILY_GROUP_KEY);
-            }
-          }}
-        >
-          <span className="file-tree-group-icon" aria-hidden="true">
-            {collapsed ? "🗓️" : "📆"}
-          </span>
-          <span className="file-tree-group-name">Daily</span>
-        </div>
-        {!collapsed && (
-          <ul className="file-tree-group-children">
-            {dailyNotes.map((note) => renderNoteRow(note, true, note.sourceStack))}
-          </ul>
-        )}
       </li>
     );
   }
@@ -320,7 +180,6 @@ export function FileTree({
           }}
         >
           <span className="file-tree-item-title">{template.name}</span>
-          {template.sourceStack && <span className="file-tree-item-hint">{template.sourceStack}</span>}
         </button>
       </li>
     );
@@ -328,28 +187,29 @@ export function FileTree({
 
   // Templates never enter the regular notes array (they're deliberately
   // excluded from the graph/search/watcher — see electron/templates.ts), so
-  // they get their own special group instead of folding into groupedByStack.
+  // they get their own special group instead of mixing into the flat list.
   function renderTemplateGroup(): ReactNode {
-    const collapsed = collapsedStacks.has(TEMPLATES_GROUP_KEY);
     return (
       <li key={TEMPLATES_GROUP_KEY} className="file-tree-group file-tree-group-templates">
         <div
           className="file-tree-group-header"
           tabIndex={0}
-          onClick={() => toggleStack(TEMPLATES_GROUP_KEY)}
+          onClick={() => setTemplatesCollapsed((v) => !v)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              toggleStack(TEMPLATES_GROUP_KEY);
+              setTemplatesCollapsed((v) => !v);
             }
           }}
         >
           <span className="file-tree-group-icon" aria-hidden="true">
-            {collapsed ? "📁" : "📑"}
+            {templatesCollapsed ? "📁" : "📑"}
           </span>
           <span className="file-tree-group-name">Templates</span>
         </div>
-        {!collapsed && <ul className="file-tree-group-children">{templates.map((template) => renderTemplateRow(template))}</ul>}
+        {!templatesCollapsed && (
+          <ul className="file-tree-group-children">{templates.map((template) => renderTemplateRow(template))}</ul>
+        )}
       </li>
     );
   }
@@ -358,58 +218,8 @@ export function FileTree({
     <>
       <ul className="file-tree" tabIndex={0}>
         {templates.length > 0 && renderTemplateGroup()}
-        {isGrouped
-          ? [
-              ...(dailyNotes.length > 0 ? [renderDailyGroup()] : []),
-              ...[...groupedByStack.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([stackName, stackNotes]) => {
-                const collapsed = collapsedStacks.has(stackName);
-                return (
-                  <li
-                    key={stackName}
-                    className={`file-tree-group${dragOverStack === stackName ? " drag-over" : ""}`}
-                    onDragOver={(e) => {
-                      if (!acceptsNoteDrag(e)) return;
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                    }}
-                    onDragEnter={(e) => {
-                      if (!acceptsNoteDrag(e)) return;
-                      e.preventDefault();
-                      setDragOverStack(stackName);
-                    }}
-                    onDragLeave={(e) => {
-                      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-                      setDragOverStack((cur) => (cur === stackName ? null : cur));
-                    }}
-                    onDrop={(e) => handleDropOnStack(e, stackName)}
-                  >
-                    <div
-                      className="file-tree-group-header"
-                      tabIndex={0}
-                      onClick={() => toggleStack(stackName)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          toggleStack(stackName);
-                        }
-                      }}
-                    >
-                      <span className="file-tree-group-icon" aria-hidden="true">
-                        {collapsed ? "📁" : "📂"}
-                      </span>
-                      <span className="file-tree-group-name">{stackName}</span>
-                    </div>
-                    {!collapsed && (
-                      <ul className="file-tree-group-children">
-                        {stackNotes.map((note) => renderNoteRow(note, true))}
-                      </ul>
-                    )}
-                  </li>
-                );
-              }),
-            ]
-          : sorted.map((note) => renderNoteRow(note, false))}
-        {!isGrouped && sorted.length === 0 && <li className="file-tree-empty">No notes yet</li>}
+        {sorted.map((note) => renderNoteRow(note))}
+        {sorted.length === 0 && <li className="file-tree-empty">No notes yet</li>}
       </ul>
       {contextMenu && (
         <ContextMenu
@@ -418,7 +228,6 @@ export function FileTree({
           items={[
             { label: "Rename", shortcut: "F2", icon: <RenameIcon />, onClick: () => onRename(contextMenu.note) },
             { label: "Delete", shortcut: "Del", icon: <DeleteIcon />, onClick: () => onDelete(contextMenu.note) },
-            ...moveToMenuEntries(contextMenu.note),
             ...pluginContextMenuEntries(contextMenu.note.relativePath),
             { separator: true as const },
             {

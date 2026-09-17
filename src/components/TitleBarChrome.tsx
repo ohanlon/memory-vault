@@ -5,7 +5,7 @@ interface Props {
   regionId?: string;
   activeName?: string | null;
   root?: string | null;
-  onSwitchStack?: () => void;
+  onSwitchNotesFolder?: () => void;
 }
 
 export function TitleBarChrome({
@@ -15,18 +15,18 @@ export function TitleBarChrome({
   regionId,
   activeName,
   root,
-  onSwitchStack,
+  onSwitchNotesFolder,
 }: Props) {
-  const stackLabel = activeName ?? root?.split(/[\\/]/).pop();
+  const notesFolderLabel = activeName ?? root?.split(/[\\/]/).pop();
 
   return (
     <div className="titlebar-drag" data-region-id={regionId}>
-      {onSwitchStack && (
-        <div className="titlebar-stack">
-          <span className="titlebar-stack-name" title={root ?? undefined}>
-            {stackLabel}
+      {onSwitchNotesFolder && (
+        <div className="titlebar-notes-folder">
+          <span className="titlebar-notes-folder-name" title={root ?? undefined}>
+            {notesFolderLabel}
           </span>
-          <button className="titlebar-switch-btn" onClick={onSwitchStack} title="Switch to a different stack">
+          <button className="titlebar-switch-btn" onClick={onSwitchNotesFolder} title="Switch notes folder">
             Switch
           </button>
         </div>

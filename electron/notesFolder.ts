@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { parseNote } from "../shared/parseNote";
-import { writeStackCache } from "./stackCache";
+import { writeNotesFolderCache } from "./notesFolderCache";
 import type { FileChangeEvent, Note } from "../shared/types";
 
 async function walkDir(root: string, dir: string, out: string[]): Promise<void> {
@@ -57,7 +57,7 @@ export async function readNote(root: string, absPath: string): Promise<Note> {
 // `previous` is given (keyed by relativePath), a file whose mtime matches its
 // previous entry is reused as-is instead of being re-read/re-parsed, so a
 // reload of a mostly-unchanged vault only pays for what actually changed.
-export async function loadStack(root: string, previous?: Map<string, Note>): Promise<Note[]> {
+export async function loadNotesFolder(root: string, previous?: Map<string, Note>): Promise<Note[]> {
   const files = await listMarkdownFiles(root);
   const notes: Note[] = [];
   for (const file of files) {
@@ -73,7 +73,7 @@ export async function loadStack(root: string, previous?: Map<string, Note>): Pro
       }
       notes.push(await readNote(root, file));
     } catch {
-      // skip unreadable/unparseable file rather than failing the whole stack load
+      // skip unreadable/unparseable file rather than failing the whole load
     }
   }
   return notes;
@@ -88,23 +88,23 @@ function notesChanged(previous: Note[], notes: Note[]): boolean {
   return false;
 }
 
-// Re-walks the vault, reusing unchanged notes (see loadStack's `previous`
-// param), and returns the reconciled result only if something actually
-// differs from `previousNotes` — otherwise returns null so callers can skip
-// a wasted cache write/IPC push, which is the common case on every reopen of
-// a vault nothing was edited in since it was last cached.
-export async function reconcileStackCache(
+// Re-walks the vault, reusing unchanged notes (see loadNotesFolder's
+// `previous` param), and returns the reconciled result only if something
+// actually differs from `previousNotes` — otherwise returns null so callers
+// can skip a wasted cache write/IPC push, which is the common case on every
+// reopen of a vault nothing was edited in since it was last cached.
+export async function reconcileNotesFolderCache(
   root: string,
   previousNotes: Note[]
 ): Promise<{ notes: Note[] } | null> {
   const previousByRelPath = new Map(previousNotes.map((n) => [n.relativePath, n]));
-  const notes = await loadStack(root, previousByRelPath);
+  const notes = await loadNotesFolder(root, previousByRelPath);
   if (!notesChanged(previousNotes, notes)) return null;
-  writeStackCache(root, { notes });
+  writeNotesFolderCache(root, { notes });
   return { notes };
 }
 
-export function watchStack(
+export function watchNotesFolder(
   root: string,
   onChange: (event: FileChangeEvent) => void
 ): FSWatcher {

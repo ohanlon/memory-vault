@@ -1,13 +1,15 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   AppSettings,
-  MergedViewEntry,
-  MergedViewIndex,
   DailyNoteResult,
   FileChangeEvent,
   FileTemplate,
   LayoutPrefs,
   Note,
+  NotesFolderEntry,
+  NotesFolderIndex,
+  NotesFolderReconciledEvent,
+  NotesFolderReconcileStatusEvent,
   PluginManifest,
   PluginPermission,
   PluginPermissionsFile,
@@ -15,56 +17,41 @@ import type {
   ReplaceAllResult,
   SearchFileResult,
   SearchOptions,
-  StackEntry,
-  StackIndex,
-  StackReconciledEvent,
-  StackReconcileStatusEvent,
   WorkspaceState,
 } from "../shared/types";
 
 const api = {
-  pickStack: (): Promise<string | null> => ipcRenderer.invoke("stack:pick"),
-  loadStack: (root: string): Promise<StackIndex> =>
-    ipcRenderer.invoke("stack:load", root),
-  reloadStack: (): Promise<{ notes: Note[] }> =>
-    ipcRenderer.invoke("stack:reload"),
-  loadMergedView: (entries: { root: string; name: string }[]): Promise<MergedViewIndex> =>
-    ipcRenderer.invoke("mergedView:load", entries),
-  reloadMergedView: (): Promise<{ notes: Note[] }> => ipcRenderer.invoke("mergedView:reload"),
-  onReconciled: (cb: (event: StackReconciledEvent) => void): (() => void) => {
-    const listener = (_e: unknown, event: StackReconciledEvent) => cb(event);
-    ipcRenderer.on("stack:reconciled", listener);
-    return () => ipcRenderer.removeListener("stack:reconciled", listener);
+  pickNotesFolder: (): Promise<string | null> => ipcRenderer.invoke("notesFolder:pick"),
+  loadNotesFolder: (root: string): Promise<NotesFolderIndex> =>
+    ipcRenderer.invoke("notesFolder:load", root),
+  reloadNotesFolder: (): Promise<{ notes: Note[] }> =>
+    ipcRenderer.invoke("notesFolder:reload"),
+  onReconciled: (cb: (event: NotesFolderReconciledEvent) => void): (() => void) => {
+    const listener = (_e: unknown, event: NotesFolderReconciledEvent) => cb(event);
+    ipcRenderer.on("notesFolder:reconciled", listener);
+    return () => ipcRenderer.removeListener("notesFolder:reconciled", listener);
   },
-  onReconcileStatus: (cb: (event: StackReconcileStatusEvent) => void): (() => void) => {
-    const listener = (_e: unknown, event: StackReconcileStatusEvent) => cb(event);
-    ipcRenderer.on("stack:reconcile-status", listener);
-    return () => ipcRenderer.removeListener("stack:reconcile-status", listener);
+  onReconcileStatus: (cb: (event: NotesFolderReconcileStatusEvent) => void): (() => void) => {
+    const listener = (_e: unknown, event: NotesFolderReconcileStatusEvent) => cb(event);
+    ipcRenderer.on("notesFolder:reconcile-status", listener);
+    return () => ipcRenderer.removeListener("notesFolder:reconcile-status", listener);
   },
-  listStacks: (): Promise<StackEntry[]> => ipcRenderer.invoke("stacks:list"),
-  addStack: (name: string, root: string): Promise<StackEntry[]> =>
-    ipcRenderer.invoke("stacks:add", name, root),
-  removeStack: (name: string): Promise<StackEntry[]> =>
-    ipcRenderer.invoke("stacks:remove", name),
-  renameStack: (oldName: string, newName: string): Promise<StackEntry[]> =>
-    ipcRenderer.invoke("stacks:rename", oldName, newName),
-  listMergedViews: (): Promise<MergedViewEntry[]> => ipcRenderer.invoke("mergedViews:list"),
-  addMergedView: (name: string, memberStackNames: string[]): Promise<MergedViewEntry[]> =>
-    ipcRenderer.invoke("mergedViews:add", name, memberStackNames),
-  removeMergedView: (name: string): Promise<MergedViewEntry[]> => ipcRenderer.invoke("mergedViews:remove", name),
-  renameMergedView: (oldName: string, newName: string): Promise<MergedViewEntry[]> =>
-    ipcRenderer.invoke("mergedViews:rename", oldName, newName),
-  updateMergedViewMembers: (name: string, memberStackNames: string[]): Promise<MergedViewEntry[]> =>
-    ipcRenderer.invoke("mergedViews:updateMembers", name, memberStackNames),
+  listNotesFolders: (): Promise<NotesFolderEntry[]> => ipcRenderer.invoke("notesFolders:list"),
+  addNotesFolder: (name: string, root: string): Promise<NotesFolderEntry[]> =>
+    ipcRenderer.invoke("notesFolders:add", name, root),
+  removeNotesFolder: (name: string): Promise<NotesFolderEntry[]> =>
+    ipcRenderer.invoke("notesFolders:remove", name),
+  renameNotesFolder: (oldName: string, newName: string): Promise<NotesFolderEntry[]> =>
+    ipcRenderer.invoke("notesFolders:rename", oldName, newName),
   readNote: (absPath: string): Promise<Note> =>
-    ipcRenderer.invoke("stack:readNote", absPath),
+    ipcRenderer.invoke("notesFolder:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>
-    ipcRenderer.invoke("stack:readRaw", absPath),
+    ipcRenderer.invoke("notesFolder:readRaw", absPath),
   saveNote: (absPath: string, content: string): Promise<boolean> =>
-    ipcRenderer.invoke("stack:saveNote", absPath, content),
+    ipcRenderer.invoke("notesFolder:saveNote", absPath, content),
   createNote: (dir: string, title: string, templateId?: string): Promise<string> =>
-    ipcRenderer.invoke("stack:createNote", dir, title, templateId),
-  seedStarterContent: (): Promise<string[]> => ipcRenderer.invoke("stack:seedStarterContent"),
+    ipcRenderer.invoke("notesFolder:createNote", dir, title, templateId),
+  seedStarterContent: (): Promise<string[]> => ipcRenderer.invoke("notesFolder:seedStarterContent"),
   listFileTemplates: (): Promise<FileTemplate[]> => ipcRenderer.invoke("templates:list"),
   convertToTemplate: (root: string, absPath: string): Promise<string> =>
     ipcRenderer.invoke("templates:convert", root, absPath),
@@ -75,41 +62,35 @@ const api = {
     values: Record<string, string>
   ): Promise<string> => ipcRenderer.invoke("templates:createNote", dir, title, templatePath, values),
   deleteNote: (absPath: string): Promise<boolean> =>
-    ipcRenderer.invoke("stack:deleteNote", absPath),
+    ipcRenderer.invoke("notesFolder:deleteNote", absPath),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
-    ipcRenderer.invoke("stack:renameNote", absPath, newTitle, updateLinks),
-  moveNoteToStack: (absPath: string, destRoot: string): Promise<string> =>
-    ipcRenderer.invoke("stack:moveNoteToStack", absPath, destRoot),
+    ipcRenderer.invoke("notesFolder:renameNote", absPath, newTitle, updateLinks),
   openExternal: (url: string): Promise<boolean> =>
     ipcRenderer.invoke("shell:openExternal", url),
   showItemInFolder: (absPath: string): Promise<boolean> =>
     ipcRenderer.invoke("shell:showItemInFolder", absPath),
   readNoteBody: (absPath: string): Promise<string> =>
-    ipcRenderer.invoke("stack:readNoteBody", absPath),
+    ipcRenderer.invoke("notesFolder:readNoteBody", absPath),
   readNoteProperties: (absPath: string): Promise<Record<string, unknown>> =>
-    ipcRenderer.invoke("stack:readNoteProperties", absPath),
+    ipcRenderer.invoke("notesFolder:readNoteProperties", absPath),
   saveNoteProperties: (absPath: string, properties: Record<string, unknown>): Promise<boolean> =>
-    ipcRenderer.invoke("stack:saveNoteProperties", absPath, properties),
-  readPropertySchema: (stackRoot: string): Promise<PropertyDef[]> =>
-    ipcRenderer.invoke("stack:readPropertySchema", stackRoot),
-  savePropertySchema: (stackRoot: string, properties: PropertyDef[]): Promise<PropertyDef[]> =>
-    ipcRenderer.invoke("stack:savePropertySchema", stackRoot, properties),
+    ipcRenderer.invoke("notesFolder:saveNoteProperties", absPath, properties),
+  readPropertySchema: (root: string): Promise<PropertyDef[]> =>
+    ipcRenderer.invoke("notesFolder:readPropertySchema", root),
+  savePropertySchema: (root: string, properties: PropertyDef[]): Promise<PropertyDef[]> =>
+    ipcRenderer.invoke("notesFolder:savePropertySchema", root, properties),
   readWorkspaceState: (): Promise<WorkspaceState> =>
-    ipcRenderer.invoke("stack:readWorkspaceState"),
+    ipcRenderer.invoke("notesFolder:readWorkspaceState"),
   saveWorkspaceState: (state: WorkspaceState): Promise<boolean> =>
-    ipcRenderer.invoke("stack:saveWorkspaceState", state),
-  readMergedViewWorkspaceState: (mergedViewName: string): Promise<WorkspaceState> =>
-    ipcRenderer.invoke("mergedView:readWorkspaceState", mergedViewName),
-  saveMergedViewWorkspaceState: (mergedViewName: string, state: WorkspaceState): Promise<boolean> =>
-    ipcRenderer.invoke("mergedView:saveWorkspaceState", mergedViewName, state),
+    ipcRenderer.invoke("notesFolder:saveWorkspaceState", state),
   readLayoutPrefs: (): Promise<LayoutPrefs> => ipcRenderer.invoke("layout:read"),
   saveLayoutPrefs: (prefs: LayoutPrefs): Promise<boolean> => ipcRenderer.invoke("layout:save", prefs),
   readAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke("settings:read"),
   saveAppSettings: (settings: AppSettings): Promise<boolean> => ipcRenderer.invoke("settings:save", settings),
   setTitleBarOverlay: (colors: { color: string; symbolColor: string }): Promise<boolean> =>
     ipcRenderer.invoke("window:setTitleBarOverlay", colors),
-  openOrCreateDailyNote: (stackRoot: string): Promise<DailyNoteResult> =>
-    ipcRenderer.invoke("stack:openOrCreateDailyNote", stackRoot),
+  openOrCreateDailyNote: (root: string): Promise<DailyNoteResult> =>
+    ipcRenderer.invoke("notesFolder:openOrCreateDailyNote", root),
   listPlugins: (): Promise<PluginManifest[]> => ipcRenderer.invoke("plugin:list"),
   getPluginPermissions: (): Promise<PluginPermissionsFile> =>
     ipcRenderer.invoke("plugin:getPermissions"),
@@ -128,8 +109,8 @@ const api = {
     ipcRenderer.invoke("plugin:openExternal", pluginId, url),
   onFileChanged: (cb: (event: FileChangeEvent) => void): (() => void) => {
     const listener = (_e: unknown, change: FileChangeEvent) => cb(change);
-    ipcRenderer.on("stack:file-changed", listener);
-    return () => ipcRenderer.removeListener("stack:file-changed", listener);
+    ipcRenderer.on("notesFolder:file-changed", listener);
+    return () => ipcRenderer.removeListener("notesFolder:file-changed", listener);
   },
   startSearch: (options: SearchOptions): Promise<string> =>
     ipcRenderer.invoke("search:start", options),

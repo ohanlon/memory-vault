@@ -77,7 +77,7 @@ export function buildContentSecurityPolicy(pluginId: string, permissions: Plugin
 /**
  * Resolves a request path against a plugin's own directory, refusing
  * anything that escapes it (e.g. "../../../etc/passwd") — mirrors
- * resolveWithinStackRoot in main.ts for the same reason.
+ * resolveWithinActiveRoot in main.ts for the same reason.
  */
 export function resolvePluginFilePath(pluginDir: string, requestPathname: string, mainEntry: string): string | null {
   const decoded = decodeURIComponent(requestPathname);

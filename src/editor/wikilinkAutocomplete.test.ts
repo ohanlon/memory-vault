@@ -6,11 +6,7 @@ import { CompletionContext, type Completion, type CompletionResult } from "@code
 import { wikilinkCompletionSource, wikilinkInsertText } from "./wikilinkAutocomplete";
 import type { PickableNote } from "./editorContextMenu";
 
-const NOTES: PickableNote[] = [
-  { title: "Work Notes" },
-  { title: "Work Plan", sourceStack: "Archive" },
-  { title: "Personal" },
-];
+const NOTES: PickableNote[] = [{ title: "Work Notes" }, { title: "Work Plan" }, { title: "Personal" }];
 
 function contextAtEnd(doc: string, explicit = false) {
   const state = EditorState.create({ doc, selection: { anchor: doc.length } });
@@ -20,8 +16,8 @@ function contextAtEnd(doc: string, explicit = false) {
 // The completion source is synchronous in practice; this source never
 // returns a Promise, so the cast just narrows past CompletionSource's
 // general (possibly-async) signature for the tests below.
-function source(currentSourceStack?: string) {
-  const src = wikilinkCompletionSource(() => NOTES, () => currentSourceStack);
+function source() {
+  const src = wikilinkCompletionSource(() => NOTES);
   return (context: CompletionContext) => src(context) as CompletionResult | null;
 }
 
@@ -101,22 +97,6 @@ describe("wikilinkCompletionSource", () => {
       apply(view, option!, result!.from, 5);
       expect(view.state.doc.toString()).toBe("[[Work Notes]]");
       expect(view.state.selection.main.head).toBe("[[Work Notes".length);
-    });
-
-    it("qualifies with the source stack, same as the Insert Link menu action", () => {
-      const view = viewWithAutoClosedBrackets("Work Plan");
-      const result = source("Main")(new CompletionContext(view.state, 11, false));
-      const option = result?.options.find((o) => o.label === "Work Plan");
-      apply(view, option!, result!.from, 11);
-      expect(view.state.doc.toString()).toBe("[[Archive/Work Plan]]");
-    });
-
-    it("does not qualify a note from the current stack", () => {
-      const view = viewWithAutoClosedBrackets("Work Plan");
-      const result = source("Archive")(new CompletionContext(view.state, 11, false));
-      const option = result?.options.find((o) => o.label === "Work Plan");
-      apply(view, option!, result!.from, 11);
-      expect(view.state.doc.toString()).toBe("[[Work Plan]]");
     });
 
     it("still closes the link itself when nothing auto-inserted the brackets", () => {
