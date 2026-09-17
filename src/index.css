@@ -178,6 +178,32 @@ body {
   padding-right: 138px;
 }
 
+.titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.titlebar-app-menu {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: stretch;
+}
+
+.titlebar-app-menu-btn {
+  background: none;
+  border: none;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.titlebar-app-menu-btn:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
 .titlebar-notes-folder {
   -webkit-app-region: no-drag;
   display: flex;

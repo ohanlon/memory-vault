@@ -628,6 +628,7 @@ export default function App() {
   // render (cheap — a few Map.set calls) so handlers always close over
   // current state instead of going stale.
   useEffect(() => {
+    pluginRegistry.registerCommand("notesFolder.add", () => handlePickFolder());
     pluginRegistry.registerCommand("stack.newNote", () => handleNewNoteClick());
     pluginRegistry.registerCommand("stack.openDailyNote", () => handleOpenDailyNoteClick());
     pluginRegistry.registerCommand("stack.switchStack", () => handleSwitchNotesFolder());
