@@ -51,6 +51,16 @@ function truncateLabel(label: string): string {
   return label.length > MAX_LABEL_LENGTH ? `${label.slice(0, MAX_LABEL_LENGTH - 1)}…` : label;
 }
 
+type NodeColorKey = "noteNode" | "tagNode" | "externalNode" | "orphanNode" | "activeNode";
+
+const LEGEND_ITEMS: { key: NodeColorKey; label: string }[] = [
+  { key: "noteNode", label: "Note" },
+  { key: "tagNode", label: "Tag" },
+  { key: "externalNode", label: "Link" },
+  { key: "orphanNode", label: "Unlinked" },
+  { key: "activeNode", label: "Current note" },
+];
+
 export function GraphPanel({
   graph,
   activeTitle,
@@ -108,7 +118,7 @@ export function GraphPanel({
           height={size.height}
           graphData={data}
           nodeId="id"
-          nodeLabel="id"
+          nodeLabel={(node: any) => (node.isTag ? `${node.id} (tag — not clickable)` : node.id)}
           linkColor={(link: any) => palette.edgeColor[link.kind] ?? palette.edgeColorDefault}
           linkWidth={(link: any) => (link.kind === "wikilink" ? 1.5 : 0.75)}
           nodeColor={(node: any) => {
@@ -132,9 +142,22 @@ export function GraphPanel({
             if (node.external) onOpenExternal(node.id);
             else onSelectTitle(node.id);
           }}
+          onNodeHover={(node: any) => {
+            const el = containerRef.current;
+            if (!el) return;
+            el.style.cursor = node ? (node.isTag ? "default" : "pointer") : "default";
+          }}
         />
       </div>
       <div className="graph-status-bar">
+        <div className="graph-legend">
+          {LEGEND_ITEMS.map((item) => (
+            <span key={item.key} className="graph-legend-item">
+              <span className="graph-legend-dot" style={{ background: palette[item.key] }} />
+              {item.label}
+            </span>
+          ))}
+        </div>
         <button
           className="graph-filter-toggle"
           onClick={() => setFilterPanelOpen((v) => !v)}

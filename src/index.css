@@ -1316,6 +1316,30 @@ body {
   background: var(--bg-recessed);
 }
 
+.graph-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.graph-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.graph-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .graph-filter-toggle {
   background: none;
   border: 1px solid var(--border-control);
