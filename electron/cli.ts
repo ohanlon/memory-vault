@@ -6,7 +6,15 @@ import type { NotesFolderEntry } from "../shared/types";
 
 export type CliResult = Record<string, unknown>;
 
-const CLI_COMMANDS = new Set(["add_folder", "get_notes", "get_note", "add_note", "update_note", "list_folders"]);
+const CLI_COMMANDS = new Set([
+  "add_folder",
+  "get_notes",
+  "get_note",
+  "add_note",
+  "update_note",
+  "delete_note",
+  "list_folders",
+]);
 
 // argv layout differs between `electron .` in dev (electron path, app path,
 // ...args) and a packaged executable (exe path, ...args), so rather than
@@ -220,6 +228,19 @@ async function updateNote(
   return { ok: true, folder: entry.name, note: notePath, content };
 }
 
+async function deleteNote(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const fullPath = path.join(entry.root, notePath);
+  ensureInside(entry.root, fullPath);
+
+  if (!fs.existsSync(fullPath)) {
+    return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
+  }
+
+  await fs.promises.rm(fullPath, { force: true });
+  return { ok: true, folder: entry.name, note: notePath, message: `Deleted note "${notePath}".` };
+}
+
 function listFolders(notesFoldersFile: string): CliResult {
   const notesFolders = readNotesFoldersFile(notesFoldersFile);
   return { ok: true, folders: notesFolders.map((f) => ({ name: f.name, root: f.root })) };
@@ -261,6 +282,12 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
       const content = resolveContentFlag(flags, usage, true);
       return updateNote(notesFoldersFile, folder, note, content);
+    }
+    case "delete_note": {
+      const folder = flagString(flags.folder);
+      const note = positional[0];
+      if (!folder || !note) throw new Error("Usage: delete_note --folder NAME <notePath>");
+      return deleteNote(notesFoldersFile, folder, note);
     }
     case "list_folders":
       return listFolders(notesFoldersFile);

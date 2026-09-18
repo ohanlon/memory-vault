@@ -78,6 +78,9 @@ commands with `electron . <command> ...` instead of `cairn.exe <command> ...`.
   PATH)` — appends the text to an existing note (path relative to the
   notes folder root), adding a newline first if the note doesn't already
   end with one. Reports if the note doesn't exist rather than creating it.
+- `delete_note --folder NAME <notePath>` — deletes a note (path relative
+  to the notes folder root). Reports if the note doesn't exist rather
+  than erroring.
 
 `--content-file` reads the note's text from a file instead of a shell
 argument — useful for multiline text, which is awkward to pass as a single
@@ -91,6 +94,7 @@ cairn.exe get_notes --folder Work --subfolders
 cairn.exe get_note --folder Work "Idea.md"
 cairn.exe add_note --folder Work "Idea" --content "some text" --subfolder Projects
 cairn.exe update_note --folder Work "Idea.md" --content-file ./more-text.txt
+cairn.exe delete_note --folder Work "Idea.md"
 ```
 
 ## Project structure

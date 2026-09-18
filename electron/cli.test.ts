@@ -320,3 +320,48 @@ describe("runCliCommand: update_note", () => {
     );
   });
 });
+
+describe("runCliCommand: delete_note", () => {
+  it("deletes an existing note", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "content", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["delete_note", "--folder", "Work", "A.md"], notesFoldersFile);
+
+    expect(result.ok).toBe(true);
+    expect(fs.existsSync(path.join(root, "A.md"))).toBe(false);
+  });
+
+  it("reports when the note does not exist instead of throwing", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["delete_note", "--folder", "Work", "Missing.md"], notesFoldersFile);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/does not exist/);
+  });
+
+  it("throws when the notes folder name is unknown", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    await expect(runCliCommand(["delete_note", "--folder", "Missing", "A.md"], notesFoldersFile)).rejects.toThrow(
+      /No notes folder named/
+    );
+  });
+
+  it("refuses to delete a path outside the notes folder", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(["delete_note", "--folder", "Work", "../outside.md"], notesFoldersFile)
+    ).rejects.toThrow(/escapes/);
+  });
+});
