@@ -191,6 +191,55 @@ describe("runCliCommand: add_note", () => {
     expect(result.note).toBe("My Note 1.md");
     expect(result.renamed).toBe(true);
   });
+
+  it("reads multiline content from --content-file", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const contentFile = path.join(tmpDir(), "content.txt");
+    fs.mkdirSync(path.dirname(contentFile), { recursive: true });
+    fs.writeFileSync(contentFile, "line one\nline two", "utf-8");
+
+    const result = await runCliCommand(
+      ["add_note", "--folder", "Work", "My Note", "--content-file", contentFile],
+      notesFoldersFile
+    );
+
+    expect(result.ok).toBe(true);
+    expect(fs.readFileSync(path.join(root, "My Note.md"), "utf-8")).toBe("line one\nline two");
+  });
+
+  it("rejects both --content and --content-file together", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const contentFile = path.join(tmpDir(), "content.txt");
+    fs.mkdirSync(path.dirname(contentFile), { recursive: true });
+    fs.writeFileSync(contentFile, "text", "utf-8");
+
+    await expect(
+      runCliCommand(
+        ["add_note", "--folder", "Work", "My Note", "--content", "x", "--content-file", contentFile],
+        notesFoldersFile
+      )
+    ).rejects.toThrow(/either --content or --content-file/);
+  });
+
+  it("reports a clear error when --content-file does not exist", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(
+        ["add_note", "--folder", "Work", "My Note", "--content-file", path.join(tmpDir(), "missing.txt")],
+        notesFoldersFile
+      )
+    ).rejects.toThrow(/does not exist/);
+  });
 });
 
 describe("runCliCommand: update_note", () => {
@@ -239,5 +288,35 @@ describe("runCliCommand: update_note", () => {
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/does not exist/);
+  });
+
+  it("appends multiline content from --content-file", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "line one", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const contentFile = path.join(tmpDir(), "content.txt");
+    fs.mkdirSync(path.dirname(contentFile), { recursive: true });
+    fs.writeFileSync(contentFile, "line two\nline three", "utf-8");
+
+    const result = await runCliCommand(
+      ["update_note", "--folder", "Work", "A.md", "--content-file", contentFile],
+      notesFoldersFile
+    );
+
+    expect(result.content).toBe("line one\nline two\nline three");
+  });
+
+  it("requires either --content or --content-file", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "line one", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(runCliCommand(["update_note", "--folder", "Work", "A.md"], notesFoldersFile)).rejects.toThrow(
+      /Usage: update_note/
+    );
   });
 });

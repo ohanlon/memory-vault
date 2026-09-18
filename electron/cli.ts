@@ -47,6 +47,25 @@ function flagString(value: string | boolean | undefined): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+// Resolves --content/--content-file into the actual text: --content-file
+// reads a file (useful for multiline text a shell can't easily pass as a
+// single argument), --content is used verbatim, and if neither is given
+// the caller decides whether that's an error (required) or just "".
+function resolveContentFlag(flags: ParsedArgs["flags"], usage: string, required: boolean): string {
+  const content = flagString(flags.content);
+  const contentFile = flagString(flags["content-file"]);
+  if (content !== undefined && contentFile !== undefined) {
+    throw new Error(`Specify either --content or --content-file, not both. Usage: ${usage}`);
+  }
+  if (contentFile !== undefined) {
+    if (!fs.existsSync(contentFile)) throw new Error(`Content file "${contentFile}" does not exist.`);
+    return fs.readFileSync(contentFile, "utf-8");
+  }
+  if (content !== undefined) return content;
+  if (required) throw new Error(`Usage: ${usage}`);
+  return "";
+}
+
 function resolveFolder(notesFolders: NotesFolderEntry[], name: string): NotesFolderEntry {
   const entry = findByNameCI(notesFolders, name);
   if (!entry) {
@@ -228,20 +247,19 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
       return getNote(notesFoldersFile, folder, note);
     }
     case "add_note": {
+      const usage = "add_note --folder NAME <title> [--subfolder PATH] [--content TEXT | --content-file PATH]";
       const folder = flagString(flags.folder);
       const title = positional[0];
-      if (!folder || !title) {
-        throw new Error("Usage: add_note --folder NAME <title> [--subfolder PATH] [--content TEXT]");
-      }
-      return addNote(notesFoldersFile, folder, title, flagString(flags.content) ?? "", flagString(flags.subfolder));
+      if (!folder || !title) throw new Error(`Usage: ${usage}`);
+      const content = resolveContentFlag(flags, usage, false);
+      return addNote(notesFoldersFile, folder, title, content, flagString(flags.subfolder));
     }
     case "update_note": {
+      const usage = "update_note --folder NAME <notePath> (--content TEXT | --content-file PATH)";
       const folder = flagString(flags.folder);
       const note = positional[0];
-      const content = flagString(flags.content);
-      if (!folder || !note || content === undefined) {
-        throw new Error("Usage: update_note --folder NAME <notePath> --content TEXT");
-      }
+      if (!folder || !note) throw new Error(`Usage: ${usage}`);
+      const content = resolveContentFlag(flags, usage, true);
       return updateNote(notesFoldersFile, folder, note, content);
     }
     case "list_folders":

@@ -70,14 +70,19 @@ commands with `electron . <command> ...` instead of `cairn.exe <command> ...`.
 - `get_note --folder NAME <notePath>` — prints the contents of a note
   (path relative to the notes folder root), or reports that it doesn't
   exist.
-- `add_note --folder NAME <title> [--subfolder PATH] [--content TEXT]` —
-  creates a note with the given title and content, optionally inside
-  `PATH` (created if missing). If the title collides with an existing
-  note, picks a new name (e.g. `"Idea 1"`) and reports it.
-- `update_note --folder NAME <notePath> --content TEXT` — appends `TEXT` to
-  an existing note (path relative to the notes folder root), adding a
-  newline first if the note doesn't already end with one. Reports if the
-  note doesn't exist rather than creating it.
+- `add_note --folder NAME <title> [--subfolder PATH] [--content TEXT |
+  --content-file PATH]` — creates a note with the given title and content,
+  optionally inside `PATH` (created if missing). If the title collides
+  with an existing note, picks a new name (e.g. `"Idea 1"`) and reports it.
+- `update_note --folder NAME <notePath> (--content TEXT | --content-file
+  PATH)` — appends the text to an existing note (path relative to the
+  notes folder root), adding a newline first if the note doesn't already
+  end with one. Reports if the note doesn't exist rather than creating it.
+
+`--content-file` reads the note's text from a file instead of a shell
+argument — useful for multiline text, which is awkward to pass as a single
+`--content` argument (shell-dependent: e.g. `$'line one\nline two'` in Git
+Bash, or `` "line one`nline two" `` in PowerShell).
 
 ```bash
 cairn.exe add_folder ./my-notes --name "Work"
@@ -85,7 +90,7 @@ cairn.exe list_folders
 cairn.exe get_notes --folder Work --subfolders
 cairn.exe get_note --folder Work "Idea.md"
 cairn.exe add_note --folder Work "Idea" --content "some text" --subfolder Projects
-cairn.exe update_note --folder Work "Idea.md" --content "one more line"
+cairn.exe update_note --folder Work "Idea.md" --content-file ./more-text.txt
 ```
 
 ## Project structure
