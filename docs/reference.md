@@ -104,8 +104,23 @@ render an appropriate input for it in the Properties panel. Any frontmatter
 field without a matching schema entry is still shown and editable as a
 plain custom field — the schema is opt-in, not required.
 
+## Programmatic access
+
+Beyond the GUI, a notes folder can be read and written by agents/scripts
+through two interfaces built on the same operations (`electron/cli.ts`):
+
+- A headless CLI (`cairn.exe <command> ...` / `electron . <command> ...`
+  in development) — see the README's Command line section.
+- An MCP server (`dist-electron/mcpServer.js`, built alongside the app) that
+  exposes the same operations as MCP tools over stdio, for agents like
+  Claude Desktop or Claude Code to call directly — see the README's MCP
+  server section.
+
+Both interfaces operate on the same `notesFolders.json` registry and files
+on disk as the GUI, so a folder registered by one is visible to the others.
+
 ## Out of scope
 
-Cloud sync and any programmatic API (MCP or otherwise) for agents to write
-memories directly — the only interface is the shared markdown files on
-disk. A plugin API exists for extending the app itself (see `src/plugins/`).
+Cloud sync — notes stay local; syncing them is left to whatever the user
+layers on top (a synced folder, git, etc.). A plugin API exists for
+extending the app itself (see `src/plugins/`).

@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import electron from "vite-plugin-electron/simple";
+import electronEntry from "vite-plugin-electron";
 import path from "node:path";
 
 export default defineConfig({
@@ -32,6 +33,18 @@ export default defineConfig({
         },
       },
       renderer: {},
+    }),
+    // Standalone MCP server entry point - a plain Node/stdio process, not
+    // part of the Electron app itself, so it's a separate build target
+    // (vite-plugin-electron/simple only supports the fixed main/preload/
+    // renderer shape) bundled the same way and to the same output dir.
+    electronEntry({
+      entry: "electron/mcpServer.ts",
+      vite: {
+        build: {
+          outDir: "dist-electron",
+        },
+      },
     }),
   ],
   resolve: {

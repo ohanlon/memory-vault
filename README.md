@@ -74,13 +74,26 @@ commands with `electron . <command> ...` instead of `cairn.exe <command> ...`.
   --content-file PATH]` — creates a note with the given title and content,
   optionally inside `PATH` (created if missing). If the title collides
   with an existing note, picks a new name (e.g. `"Idea 1"`) and reports it.
+- `set_note --folder NAME <notePath> (--content TEXT | --content-file
+  PATH)` — creates or overwrites a note at an exact path (path relative to
+  the notes folder root), no auto-renaming. Use this instead of `add_note`
+  when you want to maintain a specific note (e.g. a memory file an agent
+  keeps writing back to) rather than always creating a new one.
 - `update_note --folder NAME <notePath> (--content TEXT | --content-file
-  PATH)` — appends the text to an existing note (path relative to the
-  notes folder root), adding a newline first if the note doesn't already
-  end with one. Reports if the note doesn't exist rather than creating it.
+  PATH) [--heading NAME]` — appends the text to an existing note (path
+  relative to the notes folder root). By default appends at the end of the
+  file, adding a newline first if it doesn't already end with one; with
+  `--heading`, inserts at the end of that heading's section instead (its
+  content, before the next heading of the same or shallower level), and
+  reports if no heading matches. Reports if the note doesn't exist rather
+  than creating it.
 - `delete_note --folder NAME <notePath>` — deletes a note (path relative
   to the notes folder root). Reports if the note doesn't exist rather
   than erroring.
+- `search_notes --folder NAME <query> [--regex] [--case-sensitive]
+  [--whole-word]` — searches every note's contents (including subfolders)
+  for `query`, returning matching lines grouped by note. `--whole-word`
+  only applies in plain (non-regex) mode.
 
 `--content-file` reads the note's text from a file instead of a shell
 argument — useful for multiline text, which is awkward to pass as a single
@@ -93,8 +106,38 @@ cairn.exe list_folders
 cairn.exe get_notes --folder Work --subfolders
 cairn.exe get_note --folder Work "Idea.md"
 cairn.exe add_note --folder Work "Idea" --content "some text" --subfolder Projects
+cairn.exe set_note --folder Work "Preferences.md" --content "## Preferences"
 cairn.exe update_note --folder Work "Idea.md" --content-file ./more-text.txt
+cairn.exe update_note --folder Work "Preferences.md" --content "- likes dark mode" --heading Preferences
+cairn.exe search_notes --folder Work "dark mode"
 cairn.exe delete_note --folder Work "Idea.md"
+```
+
+## MCP server
+
+The same operations are also exposed as an MCP server, for agents (Claude
+Desktop, Claude Code, etc.) to read and write a notes folder directly
+instead of shelling out to the CLI. It's a standalone Node/stdio process —
+`dist-electron/mcpServer.js`, built alongside the app by `npm run build` /
+`npm run build:unpack` — and reads/writes the same `notesFolders.json`
+registry and notes as the GUI and CLI.
+
+Tools: `add_folder`, `list_folders`, `get_notes`, `get_note`, `add_note`,
+`set_note`, `update_note`, `delete_note`, `search_notes` — one per CLI
+command above, with the same behavior.
+
+Point an MCP client at it with `node`, e.g. in Claude Code's `.mcp.json` or
+Claude Desktop's config:
+
+```json
+{
+  "mcpServers": {
+    "cairn": {
+      "command": "node",
+      "args": ["/absolute/path/to/dist-electron/mcpServer.js"]
+    }
+  }
+}
 ```
 
 ## Project structure

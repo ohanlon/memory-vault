@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { listMarkdownFiles, uniqueNotePath } from "./notesFolder";
 import { addNotesFolder, findByNameCI, readNotesFoldersFile, writeNotesFoldersFile } from "./notesFolderRegistry";
-import type { NotesFolderEntry } from "../shared/types";
+import { searchContent } from "../shared/search";
+import type { NotesFolderEntry, SearchMatch, SearchOptions } from "../shared/types";
 
 export type CliResult = Record<string, unknown>;
 
@@ -11,8 +12,10 @@ const CLI_COMMANDS = new Set([
   "get_notes",
   "get_note",
   "add_note",
+  "set_note",
   "update_note",
   "delete_note",
+  "search_notes",
   "list_folders",
 ]);
 
@@ -112,7 +115,7 @@ function ensureInside(root: string, target: string): void {
   }
 }
 
-function addFolder(notesFoldersFile: string, root: string, requestedName?: string): CliResult {
+export function addFolder(notesFoldersFile: string, root: string, requestedName?: string): CliResult {
   const notesFolders = readNotesFoldersFile(notesFoldersFile);
   const resolvedRoot = path.resolve(root);
 
@@ -146,7 +149,11 @@ function addFolder(notesFoldersFile: string, root: string, requestedName?: strin
   };
 }
 
-async function getNotes(notesFoldersFile: string, folderName: string, includeSubfolders: boolean): Promise<CliResult> {
+export async function getNotes(
+  notesFoldersFile: string,
+  folderName: string,
+  includeSubfolders: boolean
+): Promise<CliResult> {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
 
   let notes: string[];
@@ -162,7 +169,7 @@ async function getNotes(notesFoldersFile: string, folderName: string, includeSub
   return { ok: true, folder: entry.name, subfolders: includeSubfolders, notes };
 }
 
-async function getNote(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
+export async function getNote(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
@@ -175,7 +182,7 @@ async function getNote(notesFoldersFile: string, folderName: string, notePath: s
   return { ok: true, folder: entry.name, note: notePath, content };
 }
 
-async function addNote(
+export async function addNote(
   notesFoldersFile: string,
   folderName: string,
   title: string,
@@ -206,11 +213,84 @@ async function addNote(
   };
 }
 
-async function updateNote(
+// Creates the note at an exact path if it's missing, or overwrites it in
+// place if it exists - the "upsert" a caller wants when maintaining a
+// specific memory file it expects to keep writing back to, as opposed to
+// addNote's auto-renaming-on-collision (right for a human clicking "New
+// Note", wrong for an agent updating "user-preferences.md").
+export async function setNote(
   notesFoldersFile: string,
   folderName: string,
   notePath: string,
-  additionalText: string
+  content: string
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const fullPath = path.join(entry.root, notePath);
+  ensureInside(entry.root, fullPath);
+
+  const created = !fs.existsSync(fullPath);
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  await fs.promises.writeFile(fullPath, content, "utf-8");
+
+  return {
+    ok: true,
+    folder: entry.name,
+    note: notePath,
+    created,
+    message: created ? `Created note "${notePath}".` : `Overwrote note "${notePath}".`,
+  };
+}
+
+function appendText(existing: string, text: string): string {
+  const separator = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+  return existing + separator + text;
+}
+
+const HEADING_RE = /^(#{1,6})\s+(.*?)\s*$/;
+
+// Inserts `text` as a new line at the end of the section under the first
+// heading matching `heading` (case-insensitive) - i.e. just before the next
+// heading of the same or shallower level, or at the end of the note if it's
+// the last section. Returns null if no heading matches.
+function insertUnderHeading(existing: string, heading: string, text: string): string | null {
+  const lines = existing.split("\n");
+  const target = heading.trim().toLowerCase();
+
+  let sectionStart = -1;
+  let sectionLevel = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(HEADING_RE);
+    if (match && match[2].trim().toLowerCase() === target) {
+      sectionStart = i;
+      sectionLevel = match[1].length;
+      break;
+    }
+  }
+  if (sectionStart === -1) return null;
+
+  let sectionEnd = lines.length;
+  for (let i = sectionStart + 1; i < lines.length; i++) {
+    const match = lines[i].match(HEADING_RE);
+    if (match && match[1].length <= sectionLevel) {
+      sectionEnd = i;
+      break;
+    }
+  }
+  // Trim trailing blank lines within the section so the new line lands
+  // directly after its existing content instead of accumulating gaps.
+  while (sectionEnd > sectionStart + 1 && lines[sectionEnd - 1].trim() === "") {
+    sectionEnd--;
+  }
+
+  return [...lines.slice(0, sectionEnd), text, ...lines.slice(sectionEnd)].join("\n");
+}
+
+export async function updateNote(
+  notesFoldersFile: string,
+  folderName: string,
+  notePath: string,
+  additionalText: string,
+  heading?: string
 ): Promise<CliResult> {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
   const fullPath = path.join(entry.root, notePath);
@@ -221,14 +301,16 @@ async function updateNote(
   }
 
   const existing = await fs.promises.readFile(fullPath, "utf-8");
-  const separator = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
-  const content = existing + separator + additionalText;
-  await fs.promises.writeFile(fullPath, content, "utf-8");
+  const content = heading !== undefined ? insertUnderHeading(existing, heading, additionalText) : appendText(existing, additionalText);
+  if (content === null) {
+    return { ok: false, message: `Heading "${heading}" was not found in note "${notePath}".` };
+  }
 
+  await fs.promises.writeFile(fullPath, content, "utf-8");
   return { ok: true, folder: entry.name, note: notePath, content };
 }
 
-async function deleteNote(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
+export async function deleteNote(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
@@ -241,7 +323,41 @@ async function deleteNote(notesFoldersFile: string, folderName: string, notePath
   return { ok: true, folder: entry.name, note: notePath, message: `Deleted note "${notePath}".` };
 }
 
-function listFolders(notesFoldersFile: string): CliResult {
+export interface SearchNotesOptions {
+  regex?: boolean;
+  caseSensitive?: boolean;
+  wholeWord?: boolean;
+}
+
+export async function searchNotes(
+  notesFoldersFile: string,
+  folderName: string,
+  query: string,
+  options: SearchNotesOptions
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const files = await listMarkdownFiles(entry.root);
+
+  const searchOptions: SearchOptions = {
+    query,
+    mode: options.regex ? "regex" : "plain",
+    caseSensitive: Boolean(options.caseSensitive),
+    wholeWord: Boolean(options.wholeWord),
+  };
+
+  const results: { note: string; matches: SearchMatch[] }[] = [];
+  for (const file of files) {
+    const content = await fs.promises.readFile(file, "utf-8");
+    const matches = searchContent(content, searchOptions);
+    if (matches.length > 0) {
+      results.push({ note: path.relative(entry.root, file), matches });
+    }
+  }
+
+  return { ok: true, folder: entry.name, query, results };
+}
+
+export function listFolders(notesFoldersFile: string): CliResult {
   const notesFolders = readNotesFoldersFile(notesFoldersFile);
   return { ok: true, folders: notesFolders.map((f) => ({ name: f.name, root: f.root })) };
 }
@@ -275,19 +391,39 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
       const content = resolveContentFlag(flags, usage, false);
       return addNote(notesFoldersFile, folder, title, content, flagString(flags.subfolder));
     }
-    case "update_note": {
-      const usage = "update_note --folder NAME <notePath> (--content TEXT | --content-file PATH)";
+    case "set_note": {
+      const usage = "set_note --folder NAME <notePath> (--content TEXT | --content-file PATH)";
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
       const content = resolveContentFlag(flags, usage, true);
-      return updateNote(notesFoldersFile, folder, note, content);
+      return setNote(notesFoldersFile, folder, note, content);
+    }
+    case "update_note": {
+      const usage =
+        "update_note --folder NAME <notePath> (--content TEXT | --content-file PATH) [--heading NAME]";
+      const folder = flagString(flags.folder);
+      const note = positional[0];
+      if (!folder || !note) throw new Error(`Usage: ${usage}`);
+      const content = resolveContentFlag(flags, usage, true);
+      return updateNote(notesFoldersFile, folder, note, content, flagString(flags.heading));
     }
     case "delete_note": {
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error("Usage: delete_note --folder NAME <notePath>");
       return deleteNote(notesFoldersFile, folder, note);
+    }
+    case "search_notes": {
+      const usage = "search_notes --folder NAME <query> [--regex] [--case-sensitive] [--whole-word]";
+      const folder = flagString(flags.folder);
+      const query = positional[0];
+      if (!folder || !query) throw new Error(`Usage: ${usage}`);
+      return searchNotes(notesFoldersFile, folder, query, {
+        regex: Boolean(flags.regex),
+        caseSensitive: Boolean(flags["case-sensitive"]),
+        wholeWord: Boolean(flags["whole-word"]),
+      });
     }
     case "list_folders":
       return listFolders(notesFoldersFile);
