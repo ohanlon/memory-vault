@@ -5,6 +5,9 @@ release
 *.log
 .DS_Store
 
+# scratch output from .claude/skills/run-cairn/driver.mjs
+out/
+
 # stray compiled output if tsc is ever run without noEmit
 electron/*.js
 shared/*.js
