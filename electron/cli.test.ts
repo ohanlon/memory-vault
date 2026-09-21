@@ -557,3 +557,155 @@ describe("runCliCommand: delete_note", () => {
     ).rejects.toThrow(/escapes/);
   });
 });
+
+describe("runCliCommand: get_properties", () => {
+  it("returns the note's frontmatter", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "---\nstatus: active\npriority: 2\n---\nBody text", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_properties", "--folder", "Work", "A.md"], notesFoldersFile);
+
+    expect(result.ok).toBe(true);
+    expect(result.properties).toEqual({ status: "active", priority: 2 });
+  });
+
+  it("returns an empty object for a note with no frontmatter", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "just body text", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_properties", "--folder", "Work", "A.md"], notesFoldersFile);
+
+    expect(result.properties).toEqual({});
+  });
+
+  it("reports when the note does not exist instead of throwing", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_properties", "--folder", "Work", "Missing.md"], notesFoldersFile);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/does not exist/);
+  });
+});
+
+describe("runCliCommand: set_properties", () => {
+  it("adds new properties to a note with none, preserving the body", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "Body text", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["set_properties", "--folder", "Work", "A.md", "--json", '{"status":"active"}'],
+      notesFoldersFile
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.properties).toEqual({ status: "active" });
+    const raw = fs.readFileSync(path.join(root, "A.md"), "utf-8");
+    expect(raw).toContain("status: active");
+    expect(raw).toContain("Body text");
+  });
+
+  it("merges into existing properties, leaving unmentioned keys alone", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "---\nstatus: active\npriority: 2\n---\nBody", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["set_properties", "--folder", "Work", "A.md", "--json", '{"status":"done"}'],
+      notesFoldersFile
+    );
+
+    expect(result.properties).toEqual({ status: "done", priority: 2 });
+  });
+
+  it("removes a key when its value is null", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "---\nstatus: active\npriority: 2\n---\nBody", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["set_properties", "--folder", "Work", "A.md", "--json", '{"priority":null}'],
+      notesFoldersFile
+    );
+
+    expect(result.properties).toEqual({ status: "active" });
+  });
+
+  it("reports a validation warning but still saves an out-of-range value", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.mkdirSync(path.join(root, ".cairn"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, ".cairn", "properties.yaml"),
+      "properties:\n  - name: priority\n    type: number\n    rules:\n      min: 1\n      max: 5\n",
+      "utf-8"
+    );
+    fs.writeFileSync(path.join(root, "A.md"), "Body", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["set_properties", "--folder", "Work", "A.md", "--json", '{"priority":9}'],
+      notesFoldersFile
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.properties).toEqual({ priority: 9 });
+    expect(result.warnings).toEqual({ priority: "Must be at most 5" });
+  });
+
+  it("reports when the note does not exist instead of throwing", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["set_properties", "--folder", "Work", "Missing.md", "--json", '{"status":"active"}'],
+      notesFoldersFile
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/does not exist/);
+  });
+
+  it("rejects invalid JSON", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "Body", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(["set_properties", "--folder", "Work", "A.md", "--json", "{not valid"], notesFoldersFile)
+    ).rejects.toThrow(/must be valid JSON/);
+  });
+
+  it("rejects a JSON value that isn't an object", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "Body", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(["set_properties", "--folder", "Work", "A.md", "--json", "[1,2,3]"], notesFoldersFile)
+    ).rejects.toThrow(/must be a JSON object/);
+  });
+});

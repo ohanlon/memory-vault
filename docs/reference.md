@@ -104,6 +104,12 @@ render an appropriate input for it in the Properties panel. Any frontmatter
 field without a matching schema entry is still shown and editable as a
 plain custom field — the schema is opt-in, not required.
 
+Properties are also readable/writable outside the GUI via the CLI/MCP
+`get_properties`/`set_properties` operations (see below) — schema
+validation applies there too, but is advisory only: an out-of-range value
+is still saved, just reported back as a warning, the same as the
+Properties panel.
+
 ## Programmatic access
 
 Beyond the GUI, a notes folder can be read and written by agents/scripts

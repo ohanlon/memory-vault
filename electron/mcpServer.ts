@@ -8,9 +8,11 @@ import {
   deleteNote,
   getNote,
   getNotes,
+  getProperties,
   listFolders,
   searchNotes,
   setNote,
+  setProperties,
   updateNote,
 } from "./cli";
 import { cairnUserDataDir } from "./userDataDir";
@@ -146,6 +148,33 @@ server.registerTool(
   },
   async ({ folder, query, regex, caseSensitive, wholeWord }) =>
     textResult(await searchNotes(notesFoldersFilePath(), folder, query, { regex, caseSensitive, wholeWord }))
+);
+
+server.registerTool(
+  "get_properties",
+  {
+    description: "Read a note's frontmatter properties.",
+    inputSchema: {
+      folder: z.string(),
+      notePath: z.string().describe("Path relative to the notes folder root"),
+    },
+  },
+  async ({ folder, notePath }) => textResult(getProperties(notesFoldersFilePath(), folder, notePath))
+);
+
+server.registerTool(
+  "set_properties",
+  {
+    description:
+      "Merge values into a note's frontmatter properties (JSON Merge Patch semantics). Existing properties not mentioned are left untouched; a property set to null is removed.",
+    inputSchema: {
+      folder: z.string(),
+      notePath: z.string().describe("Path relative to the notes folder root"),
+      properties: z.record(z.string(), z.any()).describe("Properties to set; a value of null removes that key"),
+    },
+  },
+  async ({ folder, notePath, properties }) =>
+    textResult(setProperties(notesFoldersFilePath(), folder, notePath, properties))
 );
 
 // An async IIFE rather than a top-level await, since the bundler's target

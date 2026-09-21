@@ -2,7 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { listMarkdownFiles, uniqueNotePath } from "./notesFolder";
 import { addNotesFolder, findByNameCI, readNotesFoldersFile, writeNotesFoldersFile } from "./notesFolderRegistry";
+import { readNoteProperties, saveNoteProperties } from "./noteProperties";
+import { findPropertyByNameCI, readPropertySchema } from "./propertiesSchema";
 import { searchContent } from "../shared/search";
+import { validatePropertyValue } from "../shared/validateProperty";
 import type { NotesFolderEntry, SearchMatch, SearchOptions } from "../shared/types";
 
 export type CliResult = Record<string, unknown>;
@@ -16,6 +19,8 @@ const CLI_COMMANDS = new Set([
   "update_note",
   "delete_note",
   "search_notes",
+  "get_properties",
+  "set_properties",
   "list_folders",
 ]);
 
@@ -357,6 +362,62 @@ export async function searchNotes(
   return { ok: true, folder: entry.name, query, results };
 }
 
+export function getProperties(notesFoldersFile: string, folderName: string, notePath: string): CliResult {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const fullPath = path.join(entry.root, notePath);
+  ensureInside(entry.root, fullPath);
+
+  if (!fs.existsSync(fullPath)) {
+    return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
+  }
+
+  return { ok: true, folder: entry.name, note: notePath, properties: readNoteProperties(fullPath) };
+}
+
+// Merges `patch` into the note's existing frontmatter - a JSON Merge Patch
+// (RFC 7396): keys not mentioned are left alone, and a key set to `null`
+// removes that property instead of setting it. Validates against the
+// notes folder's property schema if one exists, but (matching the GUI's
+// Properties panel) validation is advisory only - an invalid value is
+// still saved, just reported back as a warning.
+export function setProperties(
+  notesFoldersFile: string,
+  folderName: string,
+  notePath: string,
+  patch: Record<string, unknown>
+): CliResult {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const fullPath = path.join(entry.root, notePath);
+  ensureInside(entry.root, fullPath);
+
+  if (!fs.existsSync(fullPath)) {
+    return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
+  }
+
+  const merged = { ...readNoteProperties(fullPath), ...patch };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) delete merged[key];
+  }
+  saveNoteProperties(fullPath, merged);
+
+  const schema = readPropertySchema(entry.root);
+  const warnings: Record<string, string> = {};
+  for (const key of Object.keys(patch)) {
+    if (patch[key] === null) continue;
+    const def = findPropertyByNameCI(schema, key);
+    const warning = def ? validatePropertyValue(def, merged[key]) : null;
+    if (warning) warnings[key] = warning;
+  }
+
+  return {
+    ok: true,
+    folder: entry.name,
+    note: notePath,
+    properties: merged,
+    ...(Object.keys(warnings).length > 0 ? { warnings } : {}),
+  };
+}
+
 export function listFolders(notesFoldersFile: string): CliResult {
   const notesFolders = readNotesFoldersFile(notesFoldersFile);
   return { ok: true, folders: notesFolders.map((f) => ({ name: f.name, root: f.root })) };
@@ -424,6 +485,29 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
         caseSensitive: Boolean(flags["case-sensitive"]),
         wholeWord: Boolean(flags["whole-word"]),
       });
+    }
+    case "get_properties": {
+      const folder = flagString(flags.folder);
+      const note = positional[0];
+      if (!folder || !note) throw new Error("Usage: get_properties --folder NAME <notePath>");
+      return getProperties(notesFoldersFile, folder, note);
+    }
+    case "set_properties": {
+      const usage = `set_properties --folder NAME <notePath> --json '{"key":"value",...}'`;
+      const folder = flagString(flags.folder);
+      const note = positional[0];
+      const json = flagString(flags.json);
+      if (!folder || !note || json === undefined) throw new Error(`Usage: ${usage}`);
+      let patch: unknown;
+      try {
+        patch = JSON.parse(json);
+      } catch {
+        throw new Error(`--json must be valid JSON. Usage: ${usage}`);
+      }
+      if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
+        throw new Error(`--json must be a JSON object. Usage: ${usage}`);
+      }
+      return setProperties(notesFoldersFile, folder, note, patch as Record<string, unknown>);
     }
     case "list_folders":
       return listFolders(notesFoldersFile);
