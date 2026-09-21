@@ -33,7 +33,8 @@ export interface MemoryStackAPI {
   setCliAccess(name: string, allowed: boolean): Promise<string[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
-  saveNote(absPath: string, content: string): Promise<boolean>;
+  /** Resolves with the note's new mtime, so callers can tell their own save apart from a later external write. */
+  saveNote(absPath: string, content: string): Promise<number>;
   createNote(dir: string, title: string, templateId?: string): Promise<string>;
   seedStarterContent(): Promise<string[]>;
   listFileTemplates(): Promise<FileTemplate[]>;

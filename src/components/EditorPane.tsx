@@ -130,6 +130,16 @@ export function EditorPane({
   const loadedPath = useRef<string | null>(null);
   const contentRef = useRef(content);
   contentRef.current = content;
+  // The mtime and content we last knew to match what's on disk (set on load
+  // and after every save we make). If the note's mtime prop ever moves away
+  // from knownMtimeRef without us being the one who moved it, something else
+  // (a CLI/MCP write, or a hand-edit outside Cairn) wrote to the file while
+  // this tab was open — see the conflict-detection effect below.
+  const knownMtimeRef = useRef<number | null>(null);
+  const lastSyncedContentRef = useRef("");
+  const [conflict, setConflict] = useState(false);
+  const conflictRef = useRef(conflict);
+  conflictRef.current = conflict;
 
   const noteTitles = useMemo(
     () => new Set(graph.nodes.filter((n) => !n.external && !n.isTag).map((n) => n.id.toLowerCase())),
@@ -167,9 +177,11 @@ export function EditorPane({
 
   useEffect(() => {
     let cancelled = false;
+    setConflict(false);
     if (!note) {
       setContent("");
       loadedPath.current = null;
+      knownMtimeRef.current = null;
       return;
     }
     window.memoryStack
@@ -178,6 +190,8 @@ export function EditorPane({
         if (!cancelled) {
           setContent(body);
           loadedPath.current = note.path;
+          knownMtimeRef.current = note.mtimeMs;
+          lastSyncedContentRef.current = body;
         }
       })
       .catch(() => {
@@ -192,6 +206,29 @@ export function EditorPane({
     };
   }, [note?.path]);
 
+  // Fires whenever the active note's mtime changes (via the file-watcher-
+  // triggered refresh, same path our own saves go through) while this tab
+  // stays open on the same note. If our own last save already re-baselined
+  // knownMtimeRef to match, this is a no-op. Otherwise something else wrote
+  // to the file: if we have no local edits since the last known-good sync,
+  // just quietly pick up the new content; if we do, surface the conflict
+  // banner instead of risking clobbering it on the next autosave.
+  useEffect(() => {
+    if (!note || loadedPath.current !== note.path) return;
+    if (knownMtimeRef.current === null || note.mtimeMs === knownMtimeRef.current) return;
+
+    if (contentRef.current === lastSyncedContentRef.current) {
+      window.memoryStack.readNoteBody(note.path).then((body) => {
+        setContent(body);
+        knownMtimeRef.current = note.mtimeMs;
+        lastSyncedContentRef.current = body;
+      });
+    } else {
+      setConflict(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note?.path, note?.mtimeMs]);
+
   // Lets a rename/move flush the pending debounced save (see handleChange)
   // before touching the file on disk — otherwise the stale timer fires
   // after the rename and rewrites the old path with pre-rename content,
@@ -203,7 +240,13 @@ export function EditorPane({
       if (!saveTimer.current) return;
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
-      await window.memoryStack.saveNote(path, contentRef.current);
+      // An unresolved conflict means we don't know whether contentRef.current
+      // is safe to write - leave the external version on disk rather than
+      // risk silently clobbering it on the way out.
+      if (conflictRef.current) return;
+      const mtimeMs = await window.memoryStack.saveNote(path, contentRef.current);
+      knownMtimeRef.current = mtimeMs;
+      lastSyncedContentRef.current = contentRef.current;
       onSaved(path, contentRef.current);
     };
     registerPendingSave(path, flush);
@@ -212,12 +255,32 @@ export function EditorPane({
 
   function handleChange(value: string) {
     setContent(value);
-    if (!note) return;
+    if (!note || conflict) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      await window.memoryStack.saveNote(note.path, value);
+      const mtimeMs = await window.memoryStack.saveNote(note.path, value);
+      knownMtimeRef.current = mtimeMs;
+      lastSyncedContentRef.current = value;
       onSaved(note.path, value);
     }, SAVE_DEBOUNCE_MS);
+  }
+
+  async function handleKeepMine() {
+    if (!note) return;
+    const mtimeMs = await window.memoryStack.saveNote(note.path, contentRef.current);
+    knownMtimeRef.current = mtimeMs;
+    lastSyncedContentRef.current = contentRef.current;
+    onSaved(note.path, contentRef.current);
+    setConflict(false);
+  }
+
+  async function handleReloadFromDisk() {
+    if (!note) return;
+    const body = await window.memoryStack.readNoteBody(note.path);
+    setContent(body);
+    knownMtimeRef.current = note.mtimeMs;
+    lastSyncedContentRef.current = body;
+    setConflict(false);
   }
 
   const fontTheme = useMemo(
@@ -313,6 +376,19 @@ export function EditorPane({
           </button>
         </div>
       </div>
+      {conflict && (
+        <div className="conflict-banner" role="alert">
+          <span>This note changed outside Cairn while you were editing it.</span>
+          <div className="conflict-banner-actions">
+            <button type="button" onClick={handleKeepMine}>
+              Keep my version
+            </button>
+            <button type="button" onClick={handleReloadFromDisk}>
+              Reload from disk
+            </button>
+          </div>
+        </div>
+      )}
       {hasProperties && propertiesVisible && (
         <div className="editor-inline-properties">
           <PropertiesPanel

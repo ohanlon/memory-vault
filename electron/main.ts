@@ -374,10 +374,14 @@ ipcMain.handle("notesFolder:readRaw", async (_event, absPath: string) => {
   return fs.readFileSync(absPath, "utf-8");
 });
 
+// Returns the note's new mtime so the renderer can tell its own save apart
+// from a subsequent external write to the same file (see EditorPane.tsx's
+// conflict detection) - both go through the same file-watcher-triggered
+// refresh, so without this the renderer can't distinguish the two.
 ipcMain.handle("notesFolder:saveNote", async (_event, absPath: string, body: string) => {
   assertOwnsPath(absPath);
   saveNoteBody(absPath, body);
-  return true;
+  return fs.statSync(absPath).mtimeMs;
 });
 
 ipcMain.handle("notesFolder:readNoteBody", async (_event, absPath: string) => {

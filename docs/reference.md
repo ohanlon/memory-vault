@@ -155,6 +155,33 @@ folder's path and grant itself access to it just by calling `add_folder`
 again with the same path). Removing a notes folder revokes its grant;
 renaming one carries the grant over to the new name.
 
+### Conflict handling
+
+Nothing in Cairn locks a file while it's open, so two writers touching the
+same note - the GUI editor, a CLI/MCP call, or a hand-edit - can still
+collide. Two independent, non-overlapping protections cover this:
+
+- **GUI**: `EditorPane.tsx` tracks the mtime and content it last knew to
+  match disk (set on load and after every save it makes). If the active
+  note's mtime moves without the editor being the one that moved it, and
+  the editor has local edits that haven't been written back yet, it shows
+  a conflict banner ("Keep my version" / "Reload from disk") instead of
+  letting the next autosave silently overwrite whatever changed
+  externally. If there are no local edits to lose, it just quietly picks
+  up the external content instead of nagging. An unresolved conflict also
+  blocks the "flush pending save on navigate away" path (see the comment
+  in `EditorPane.tsx`), so switching tabs without resolving it leaves the
+  external version on disk rather than risk clobbering it.
+- **CLI/MCP**: `update_note`, `set_note`, `set_properties`, and
+  `delete_note` accept an optional `expectedMtimeMs` (CLI:
+  `--if-unmodified-since`; MCP: `ifUnmodifiedSince`) - the mtime from an
+  earlier `get_note`/`get_properties` call. If the note's mtime has moved
+  since, the write is rejected (`{ ok: false, conflict: true,
+  currentMtimeMs }`) rather than performed. This is optional and
+  per-call, not a lock: omitting it writes unconditionally as before, and
+  it doesn't protect against a second CLI/MCP call racing in the (narrow)
+  window between two calls that don't use it.
+
 ## Out of scope
 
 Cloud sync — notes stay local; syncing them is left to whatever the user

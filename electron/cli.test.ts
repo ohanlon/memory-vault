@@ -214,6 +214,18 @@ describe("runCliCommand: get_note", () => {
     expect(result.content).toBe("hello");
   });
 
+  it("includes the note's mtime", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "hello", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_note", "--folder", "Work", "A.md"], notesFoldersFile, accessFile());
+
+    expect(result.mtimeMs).toBe(fs.statSync(path.join(root, "A.md")).mtimeMs);
+  });
+
   it("reports when the note does not exist instead of throwing", async () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
     const root = tmpDir();
@@ -922,5 +934,133 @@ describe("runCliCommand: get_tags", () => {
     await expect(runCliCommand(["get_tags", "--folder", "Missing"], notesFoldersFile, accessFile())).rejects.toThrow(
       /No notes folder named/
     );
+  });
+});
+
+describe("runCliCommand: --if-unmodified-since (optimistic concurrency)", () => {
+  it("update_note rejects a stale mtime without modifying the note", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "original", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const staleMtime = fs.statSync(path.join(root, "A.md")).mtimeMs - 1000;
+
+    const result = await runCliCommand(
+      ["update_note", "--folder", "Work", "A.md", "--content", "appended", "--if-unmodified-since", String(staleMtime)],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.conflict).toBe(true);
+    expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toBe("original");
+  });
+
+  it("update_note succeeds when the given mtime matches", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "original", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const currentMtime = fs.statSync(path.join(root, "A.md")).mtimeMs;
+
+    const result = await runCliCommand(
+      ["update_note", "--folder", "Work", "A.md", "--content", "appended", "--if-unmodified-since", String(currentMtime)],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.content).toBe("original\nappended");
+  });
+
+  it("set_note rejects a stale mtime when overwriting an existing note", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "original", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const staleMtime = fs.statSync(path.join(root, "A.md")).mtimeMs - 1000;
+
+    const result = await runCliCommand(
+      ["set_note", "--folder", "Work", "A.md", "--content", "new", "--if-unmodified-since", String(staleMtime)],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.conflict).toBe(true);
+    expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toBe("original");
+  });
+
+  it("set_note ignores --if-unmodified-since when the note doesn't exist yet", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["set_note", "--folder", "Work", "New.md", "--content", "hi", "--if-unmodified-since", "0"],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.created).toBe(true);
+  });
+
+  it("delete_note rejects a stale mtime without deleting the note", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "content", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const staleMtime = fs.statSync(path.join(root, "A.md")).mtimeMs - 1000;
+
+    const result = await runCliCommand(
+      ["delete_note", "--folder", "Work", "A.md", "--if-unmodified-since", String(staleMtime)],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.conflict).toBe(true);
+    expect(fs.existsSync(path.join(root, "A.md"))).toBe(true);
+  });
+
+  it("set_properties rejects a stale mtime without modifying properties", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "---\nstatus: active\n---\nBody", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const staleMtime = fs.statSync(path.join(root, "A.md")).mtimeMs - 1000;
+
+    const result = await runCliCommand(
+      ["set_properties", "--folder", "Work", "A.md", "--json", '{"status":"done"}', "--if-unmodified-since", String(staleMtime)],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.conflict).toBe(true);
+    expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toContain("status: active");
+  });
+
+  it("rejects a non-numeric --if-unmodified-since", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "content", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(
+        ["update_note", "--folder", "Work", "A.md", "--content", "x", "--if-unmodified-since", "not-a-number"],
+        notesFoldersFile,
+        accessFile()
+      )
+    ).rejects.toThrow(/must be a number/);
   });
 });

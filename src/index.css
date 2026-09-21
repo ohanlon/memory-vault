@@ -1517,6 +1517,39 @@ body {
   color: var(--text-primary);
 }
 
+.conflict-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-control);
+  border-left: 3px solid var(--accent-red);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.conflict-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.conflict-banner-actions button {
+  background: var(--bg-base);
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.conflict-banner-actions button:hover {
+  border-color: var(--accent-blue);
+}
+
 .backlinks-section h4 {
   margin: 8px 0 4px;
   font-size: 12px;

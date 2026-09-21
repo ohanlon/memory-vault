@@ -81,7 +81,8 @@ server.registerTool(
 server.registerTool(
   "get_note",
   {
-    description: "Read the contents of a note.",
+    description:
+      "Read the contents of a note. The result's mtimeMs can be passed back as ifUnmodifiedSince to update_note/set_note/set_properties/delete_note to avoid clobbering a change made since this read.",
     inputSchema: {
       folder: z.string(),
       notePath: z.string().describe("Path relative to the notes folder root"),
@@ -115,10 +116,16 @@ server.registerTool(
       folder: z.string(),
       notePath: z.string().describe("Path relative to the notes folder root"),
       content: z.string(),
+      ifUnmodifiedSince: z
+        .number()
+        .optional()
+        .describe(
+          "An mtimeMs from an earlier get_note/get_properties call on this note. If the note changed since, the write is rejected instead of overwriting it. Ignored when the note doesn't exist yet."
+        ),
     },
   },
-  async ({ folder, notePath, content }) =>
-    textResult(await setNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, content))
+  async ({ folder, notePath, content, ifUnmodifiedSince }) =>
+    textResult(await setNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, content, ifUnmodifiedSince))
 );
 
 server.registerTool(
@@ -131,10 +138,18 @@ server.registerTool(
       notePath: z.string(),
       content: z.string(),
       heading: z.string().optional().describe("Insert at the end of this heading's section instead of end-of-file"),
+      ifUnmodifiedSince: z
+        .number()
+        .optional()
+        .describe(
+          "An mtimeMs from an earlier get_note/get_properties call on this note. If the note changed since, the write is rejected instead of overwriting it."
+        ),
     },
   },
-  async ({ folder, notePath, content, heading }) =>
-    textResult(await updateNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, content, heading))
+  async ({ folder, notePath, content, heading, ifUnmodifiedSince }) =>
+    textResult(
+      await updateNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, content, heading, ifUnmodifiedSince)
+    )
 );
 
 server.registerTool(
@@ -144,10 +159,14 @@ server.registerTool(
     inputSchema: {
       folder: z.string(),
       notePath: z.string().describe("Path relative to the notes folder root"),
+      ifUnmodifiedSince: z
+        .number()
+        .optional()
+        .describe("An mtimeMs from an earlier get_note/get_properties call. If the note changed since, the delete is rejected."),
     },
   },
-  async ({ folder, notePath }) =>
-    textResult(await deleteNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath))
+  async ({ folder, notePath, ifUnmodifiedSince }) =>
+    textResult(await deleteNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, ifUnmodifiedSince))
 );
 
 server.registerTool(
@@ -198,7 +217,8 @@ server.registerTool(
 server.registerTool(
   "get_properties",
   {
-    description: "Read a note's frontmatter properties.",
+    description:
+      "Read a note's frontmatter properties. The result's mtimeMs can be passed back as ifUnmodifiedSince to update_note/set_note/set_properties/delete_note to avoid clobbering a change made since this read.",
     inputSchema: {
       folder: z.string(),
       notePath: z.string().describe("Path relative to the notes folder root"),
@@ -216,10 +236,16 @@ server.registerTool(
       folder: z.string(),
       notePath: z.string().describe("Path relative to the notes folder root"),
       properties: z.record(z.string(), z.any()).describe("Properties to set; a value of null removes that key"),
+      ifUnmodifiedSince: z
+        .number()
+        .optional()
+        .describe(
+          "An mtimeMs from an earlier get_note/get_properties call on this note. If the note changed since, the write is rejected instead of overwriting it."
+        ),
     },
   },
-  async ({ folder, notePath, properties }) =>
-    textResult(setProperties(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, properties))
+  async ({ folder, notePath, properties, ifUnmodifiedSince }) =>
+    textResult(setProperties(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, properties, ifUnmodifiedSince))
 );
 
 // An async IIFE rather than a top-level await, since the bundler's target

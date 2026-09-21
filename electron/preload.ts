@@ -50,7 +50,7 @@ const api = {
     ipcRenderer.invoke("notesFolder:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>
     ipcRenderer.invoke("notesFolder:readRaw", absPath),
-  saveNote: (absPath: string, content: string): Promise<boolean> =>
+  saveNote: (absPath: string, content: string): Promise<number> =>
     ipcRenderer.invoke("notesFolder:saveNote", absPath, content),
   createNote: (dir: string, title: string, templateId?: string): Promise<string> =>
     ipcRenderer.invoke("notesFolder:createNote", dir, title, templateId),

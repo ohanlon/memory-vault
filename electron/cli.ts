@@ -68,6 +68,14 @@ function flagString(value: string | boolean | undefined): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function expectedMtimeFlag(flags: ParsedArgs["flags"], usage: string): number | undefined {
+  const raw = flagString(flags["if-unmodified-since"]);
+  if (raw === undefined) return undefined;
+  const parsed = Number(raw);
+  if (Number.isNaN(parsed)) throw new Error(`--if-unmodified-since must be a number (a note's mtimeMs). Usage: ${usage}`);
+  return parsed;
+}
+
 // Resolves --content/--content-file into the actual text: --content-file
 // reads a file (useful for multiline text a shell can't easily pass as a
 // single argument), --content is used verbatim, and if neither is given
@@ -132,6 +140,24 @@ function ensureInside(root: string, target: string): void {
   if (rel.startsWith("..") || path.isAbsolute(rel)) {
     throw new Error("Path escapes the notes folder");
   }
+}
+
+// Optimistic-concurrency guard for update_note/set_note/set_properties/
+// delete_note: a caller that captured a note's mtime from an earlier
+// get_note/get_properties call can pass it back here, so a write that would
+// clobber a change made since then (by the GUI, another CLI/MCP call, or a
+// hand-edit) is rejected instead of silently overwriting it. Omitting
+// expectedMtimeMs skips the check entirely, matching prior behavior.
+function checkExpectedMtime(fullPath: string, expectedMtimeMs: number | undefined): CliResult | null {
+  if (expectedMtimeMs === undefined) return null;
+  const currentMtimeMs = fs.statSync(fullPath).mtimeMs;
+  if (currentMtimeMs === expectedMtimeMs) return null;
+  return {
+    ok: false,
+    conflict: true,
+    message: `Note has changed since it was last read (expected mtime ${expectedMtimeMs}, found ${currentMtimeMs}). Re-fetch and retry.`,
+    currentMtimeMs,
+  };
 }
 
 // Registering a brand-new folder auto-grants it CLI/MCP access - the caller
@@ -216,8 +242,8 @@ export async function getNote(
     return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
   }
 
-  const content = await fs.promises.readFile(fullPath, "utf-8");
-  return { ok: true, folder: entry.name, note: notePath, content };
+  const [content, stat] = await Promise.all([fs.promises.readFile(fullPath, "utf-8"), fs.promises.stat(fullPath)]);
+  return { ok: true, folder: entry.name, note: notePath, content, mtimeMs: stat.mtimeMs };
 }
 
 export async function addNote(
@@ -262,13 +288,20 @@ export async function setNote(
   cliAccessFile: string,
   folderName: string,
   notePath: string,
-  content: string
+  content: string,
+  expectedMtimeMs?: number
 ): Promise<CliResult> {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
 
   const created = !fs.existsSync(fullPath);
+  // Nothing to conflict with for a note that doesn't exist yet - the check
+  // only applies when overwriting.
+  if (!created) {
+    const conflict = checkExpectedMtime(fullPath, expectedMtimeMs);
+    if (conflict) return conflict;
+  }
   fs.mkdirSync(path.dirname(fullPath), { recursive: true });
   await fs.promises.writeFile(fullPath, content, "utf-8");
 
@@ -277,6 +310,7 @@ export async function setNote(
     folder: entry.name,
     note: notePath,
     created,
+    mtimeMs: fs.statSync(fullPath).mtimeMs,
     message: created ? `Created note "${notePath}".` : `Overwrote note "${notePath}".`,
   };
 }
@@ -331,7 +365,8 @@ export async function updateNote(
   folderName: string,
   notePath: string,
   additionalText: string,
-  heading?: string
+  heading?: string,
+  expectedMtimeMs?: number
 ): Promise<CliResult> {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
@@ -340,6 +375,9 @@ export async function updateNote(
   if (!fs.existsSync(fullPath)) {
     return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
   }
+
+  const conflict = checkExpectedMtime(fullPath, expectedMtimeMs);
+  if (conflict) return conflict;
 
   const existing = await fs.promises.readFile(fullPath, "utf-8");
   const content = heading !== undefined ? insertUnderHeading(existing, heading, additionalText) : appendText(existing, additionalText);
@@ -348,14 +386,15 @@ export async function updateNote(
   }
 
   await fs.promises.writeFile(fullPath, content, "utf-8");
-  return { ok: true, folder: entry.name, note: notePath, content };
+  return { ok: true, folder: entry.name, note: notePath, content, mtimeMs: fs.statSync(fullPath).mtimeMs };
 }
 
 export async function deleteNote(
   notesFoldersFile: string,
   cliAccessFile: string,
   folderName: string,
-  notePath: string
+  notePath: string,
+  expectedMtimeMs?: number
 ): Promise<CliResult> {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
@@ -364,6 +403,9 @@ export async function deleteNote(
   if (!fs.existsSync(fullPath)) {
     return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
   }
+
+  const conflict = checkExpectedMtime(fullPath, expectedMtimeMs);
+  if (conflict) return conflict;
 
   await fs.promises.rm(fullPath, { force: true });
   return { ok: true, folder: entry.name, note: notePath, message: `Deleted note "${notePath}".` };
@@ -418,7 +460,13 @@ export function getProperties(
     return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
   }
 
-  return { ok: true, folder: entry.name, note: notePath, properties: readNoteProperties(fullPath) };
+  return {
+    ok: true,
+    folder: entry.name,
+    note: notePath,
+    properties: readNoteProperties(fullPath),
+    mtimeMs: fs.statSync(fullPath).mtimeMs,
+  };
 }
 
 // Merges `patch` into the note's existing frontmatter - a JSON Merge Patch
@@ -432,7 +480,8 @@ export function setProperties(
   cliAccessFile: string,
   folderName: string,
   notePath: string,
-  patch: Record<string, unknown>
+  patch: Record<string, unknown>,
+  expectedMtimeMs?: number
 ): CliResult {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
@@ -441,6 +490,9 @@ export function setProperties(
   if (!fs.existsSync(fullPath)) {
     return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
   }
+
+  const conflict = checkExpectedMtime(fullPath, expectedMtimeMs);
+  if (conflict) return conflict;
 
   const merged = { ...readNoteProperties(fullPath), ...patch };
   for (const [key, value] of Object.entries(patch)) {
@@ -462,6 +514,7 @@ export function setProperties(
     folder: entry.name,
     note: notePath,
     properties: merged,
+    mtimeMs: fs.statSync(fullPath).mtimeMs,
     ...(Object.keys(warnings).length > 0 ? { warnings } : {}),
   };
 }
@@ -557,27 +610,37 @@ export async function runCliCommand(args: string[], notesFoldersFile: string, cl
       return addNote(notesFoldersFile, cliAccessFile, folder, title, content, flagString(flags.subfolder));
     }
     case "set_note": {
-      const usage = "set_note --folder NAME <notePath> (--content TEXT | --content-file PATH)";
+      const usage =
+        "set_note --folder NAME <notePath> (--content TEXT | --content-file PATH) [--if-unmodified-since MTIME_MS]";
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
       const content = resolveContentFlag(flags, usage, true);
-      return setNote(notesFoldersFile, cliAccessFile, folder, note, content);
+      return setNote(notesFoldersFile, cliAccessFile, folder, note, content, expectedMtimeFlag(flags, usage));
     }
     case "update_note": {
       const usage =
-        "update_note --folder NAME <notePath> (--content TEXT | --content-file PATH) [--heading NAME]";
+        "update_note --folder NAME <notePath> (--content TEXT | --content-file PATH) [--heading NAME] [--if-unmodified-since MTIME_MS]";
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
       const content = resolveContentFlag(flags, usage, true);
-      return updateNote(notesFoldersFile, cliAccessFile, folder, note, content, flagString(flags.heading));
+      return updateNote(
+        notesFoldersFile,
+        cliAccessFile,
+        folder,
+        note,
+        content,
+        flagString(flags.heading),
+        expectedMtimeFlag(flags, usage)
+      );
     }
     case "delete_note": {
+      const usage = "delete_note --folder NAME <notePath> [--if-unmodified-since MTIME_MS]";
       const folder = flagString(flags.folder);
       const note = positional[0];
-      if (!folder || !note) throw new Error("Usage: delete_note --folder NAME <notePath>");
-      return deleteNote(notesFoldersFile, cliAccessFile, folder, note);
+      if (!folder || !note) throw new Error(`Usage: ${usage}`);
+      return deleteNote(notesFoldersFile, cliAccessFile, folder, note, expectedMtimeFlag(flags, usage));
     }
     case "search_notes": {
       const usage = "search_notes --folder NAME <query> [--regex] [--case-sensitive] [--whole-word]";
@@ -597,7 +660,7 @@ export async function runCliCommand(args: string[], notesFoldersFile: string, cl
       return getProperties(notesFoldersFile, cliAccessFile, folder, note);
     }
     case "set_properties": {
-      const usage = `set_properties --folder NAME <notePath> --json '{"key":"value",...}'`;
+      const usage = `set_properties --folder NAME <notePath> --json '{"key":"value",...}' [--if-unmodified-since MTIME_MS]`;
       const folder = flagString(flags.folder);
       const note = positional[0];
       const json = flagString(flags.json);
@@ -611,7 +674,14 @@ export async function runCliCommand(args: string[], notesFoldersFile: string, cl
       if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
         throw new Error(`--json must be a JSON object. Usage: ${usage}`);
       }
-      return setProperties(notesFoldersFile, cliAccessFile, folder, note, patch as Record<string, unknown>);
+      return setProperties(
+        notesFoldersFile,
+        cliAccessFile,
+        folder,
+        note,
+        patch as Record<string, unknown>,
+        expectedMtimeFlag(flags, usage)
+      );
     }
     case "get_backlinks": {
       const folder = flagString(flags.folder);
