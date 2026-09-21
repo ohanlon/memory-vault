@@ -4,7 +4,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
 import { loadNotesFolder, reconcileNotesFolderCache, readNote, uniqueNotePath, watchNotesFolder } from "./notesFolder";
-import { extractCliArgs, runCliCommand } from "./cli";
 import { readNotesFolderCache, writeNotesFolderCache } from "./notesFolderCache";
 import { runReplaceAll, runSearch } from "./search";
 import { convertToTemplate, listAllFileTemplates } from "./templates";
@@ -609,27 +608,9 @@ function migrateNotesFolderStorage(): void {
   }
 }
 
-// Running as `electron . add_folder <path>` etc. skips the GUI entirely:
-// run the command headless, print its result, and quit as soon as it
-// completes rather than opening a window.
-const cliArgs = extractCliArgs(process.argv);
-if (cliArgs) {
-  app.whenReady().then(async () => {
-    migrateNotesFolderStorage();
-    try {
-      const result = await runCliCommand(cliArgs, notesFoldersFilePath());
-      console.log(JSON.stringify(result, null, 2));
-      app.exit(result.ok === false ? 1 : 0);
-    } catch (err) {
-      console.error(err instanceof Error ? err.message : String(err));
-      app.exit(1);
-    }
-  });
-} else {
-  registerPluginScheme();
-  app.whenReady().then(() => {
-    migrateNotesFolderStorage();
-    createWindow();
-    handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
-  });
-}
+registerPluginScheme();
+app.whenReady().then(() => {
+  migrateNotesFolderStorage();
+  createWindow();
+  handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
+});

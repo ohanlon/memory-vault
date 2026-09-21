@@ -46,6 +46,23 @@ export default defineConfig({
         },
       },
     }),
+    // Standalone CLI entry point, bundled to CommonJS - Node's Single
+    // Executable Applications feature (see sea-config.json / the build:cli
+    // script) needs a CJS entry, regardless of this package's "type":
+    // "module", hence the explicit .cjs output extension.
+    electronEntry({
+      entry: "electron/cliMain.ts",
+      vite: {
+        build: {
+          outDir: "dist-electron",
+          lib: {
+            entry: "electron/cliMain.ts",
+            formats: ["cjs"],
+            fileName: () => "cliMain.cjs",
+          },
+        },
+      },
+    }),
   ],
   resolve: {
     alias: {

@@ -1,0 +1,5 @@
+{
+  "main": "dist-electron/cliMain.cjs",
+  "output": "dist-electron/cli.blob",
+  "disableExperimentalSEAWarning": true
+}

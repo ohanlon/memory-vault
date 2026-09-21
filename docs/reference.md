@@ -109,12 +109,18 @@ plain custom field — the schema is opt-in, not required.
 Beyond the GUI, a notes folder can be read and written by agents/scripts
 through two interfaces built on the same operations (`electron/cli.ts`):
 
-- A headless CLI (`cairn.exe <command> ...` / `electron . <command> ...`
-  in development) — see the README's Command line section.
-- An MCP server (`dist-electron/mcpServer.js`, built alongside the app) that
-  exposes the same operations as MCP tools over stdio, for agents like
-  Claude Desktop or Claude Code to call directly — see the README's MCP
-  server section.
+- A standalone CLI executable, `cairn-cli.exe` (`node
+  dist-electron/cliMain.cjs <command> ...` in development) — a separate,
+  self-contained binary from the GUI app (`electron/cliMain.ts`, packaged
+  via Node's Single Executable Applications feature, see
+  `scripts/build-cli.mjs`) that doesn't require Node.js to be installed to
+  run — see the README's Command line section.
+- An MCP server (`dist-electron/mcpServer.js`, built alongside the app,
+  `electron/mcpServer.ts`) that exposes the same operations as MCP tools
+  over stdio, for agents like Claude Desktop or Claude Code to call
+  directly. Unlike the CLI, this one does require the user to have Node.js
+  installed, since it's launched via `node <path>` from the MCP client's
+  own config — see the README's MCP server section.
 
 Both interfaces operate on the same `notesFolders.json` registry and files
 on disk as the GUI, so a folder registered by one is visible to the others.

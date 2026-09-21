@@ -51,13 +51,20 @@ model, and how notes folders are stored on disk.
   `electron-builder`
 - `npm run build:unpack` — same, but skips the installer step for a faster
   local build
+- `npm run build:cli` — packages `dist-electron/cliMain.cjs` (already built
+  by the two commands above) into the standalone `release/cairn-cli.exe`;
+  also runs automatically as the last step of `build`/`build:unpack`
 
 ## Command line
 
-The packaged app (`cairn.exe`) can also run a single operation headlessly —
-no window opens, and the process exits as soon as the command completes.
-Each command prints a JSON result to stdout. In development, run the same
-commands with `electron . <command> ...` instead of `cairn.exe <command> ...`.
+`cairn-cli.exe` is a separate, self-contained executable for scripting —
+it shares no process with the GUI app, doesn't open a window, and doesn't
+require Node.js to be installed (it's built with Node's Single Executable
+Applications feature, so it embeds its own Node runtime). It reads/writes
+the same `notesFolders.json` registry and notes as the GUI. Each command
+prints a JSON result to stdout. In development, skip the packaging step
+and run `node dist-electron/cliMain.cjs <command> ...` after `npx vite
+build` instead.
 
 - `add_folder <path> [--name NAME]` — registers `<path>` as a notes folder,
   creating the directory if it doesn't exist. If `<path>` is already a
@@ -101,16 +108,16 @@ argument — useful for multiline text, which is awkward to pass as a single
 Bash, or `` "line one`nline two" `` in PowerShell).
 
 ```bash
-cairn.exe add_folder ./my-notes --name "Work"
-cairn.exe list_folders
-cairn.exe get_notes --folder Work --subfolders
-cairn.exe get_note --folder Work "Idea.md"
-cairn.exe add_note --folder Work "Idea" --content "some text" --subfolder Projects
-cairn.exe set_note --folder Work "Preferences.md" --content "## Preferences"
-cairn.exe update_note --folder Work "Idea.md" --content-file ./more-text.txt
-cairn.exe update_note --folder Work "Preferences.md" --content "- likes dark mode" --heading Preferences
-cairn.exe search_notes --folder Work "dark mode"
-cairn.exe delete_note --folder Work "Idea.md"
+cairn-cli.exe add_folder ./my-notes --name "Work"
+cairn-cli.exe list_folders
+cairn-cli.exe get_notes --folder Work --subfolders
+cairn-cli.exe get_note --folder Work "Idea.md"
+cairn-cli.exe add_note --folder Work "Idea" --content "some text" --subfolder Projects
+cairn-cli.exe set_note --folder Work "Preferences.md" --content "## Preferences"
+cairn-cli.exe update_note --folder Work "Idea.md" --content-file ./more-text.txt
+cairn-cli.exe update_note --folder Work "Preferences.md" --content "- likes dark mode" --heading Preferences
+cairn-cli.exe search_notes --folder Work "dark mode"
+cairn-cli.exe delete_note --folder Work "Idea.md"
 ```
 
 ## MCP server
