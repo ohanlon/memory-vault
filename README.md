@@ -66,12 +66,23 @@ prints a JSON result to stdout. In development, skip the packaging step
 and run `node dist-electron/cliMain.cjs <command> ...` after `npx vite
 build` instead.
 
+**Access is deny-by-default, per notes folder.** Being registered in the
+GUI doesn't make a folder reachable via the CLI/MCP — it must be explicitly
+granted from that folder's "..." menu ("Allow CLI/MCP access") before any
+command below can touch it; an ungranted folder is invisible to
+`list_folders` and every other command reports it as not granted. The one
+exception: `add_folder` auto-grants access to a folder it registers for the
+first time (not one that was already registered under a different name),
+since whatever called it already has CLI/MCP access by definition.
+
 - `add_folder <path> [--name NAME]` — registers `<path>` as a notes folder,
-  creating the directory if it doesn't exist. If `<path>` is already a
-  registered notes folder, reports its existing name instead of creating a
-  duplicate. If the requested name is already taken by another notes
+  creating the directory if it doesn't exist, and grants it CLI/MCP access
+  (see above). If `<path>` is already a registered notes folder, reports
+  its existing name instead of creating a duplicate (and does not change
+  its access). If the requested name is already taken by another notes
   folder, picks a new one (e.g. `"Notes 2"`) and reports it.
-- `list_folders` — lists every registered notes folder's name and path.
+- `list_folders` — lists every notes folder that has been granted CLI/MCP
+  access (registered folders without that grant are omitted).
 - `get_notes --folder NAME [--subfolders]` — lists the `.md` files in the
   named notes folder. Top-level files only, unless `--subfolders` is given.
 - `get_note --folder NAME <notePath>` — prints the contents of a note
@@ -153,7 +164,8 @@ registry and notes as the GUI and CLI.
 Tools: `add_folder`, `list_folders`, `get_notes`, `get_note`, `add_note`,
 `set_note`, `update_note`, `delete_note`, `search_notes`, `get_properties`,
 `set_properties`, `get_backlinks`, `get_tags` — one per CLI command above,
-with the same behavior.
+with the same behavior, including the same deny-by-default per-folder
+access control described above.
 
 Point an MCP client at it with `node`, e.g. in Claude Code's `.mcp.json` or
 Claude Desktop's config:

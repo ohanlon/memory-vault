@@ -80,10 +80,12 @@ export default function App() {
     loading,
     error,
     reconciling,
+    cliAccessFolders,
     openNotesFolderByEntry,
     addNotesFolder,
     removeNotesFolder,
     renameNotesFolder,
+    setCliAccess,
     closeNotesFolder,
     refresh,
     saveSchema,
@@ -677,6 +679,16 @@ export default function App() {
             shortcut: "Del",
             icon: <DeleteIcon />,
             onClick: () => handleRemoveNotesFolder(notesFolderContextMenu.notesFolder.name),
+          },
+          {
+            label: cliAccessFolders.some((n) => n.toLowerCase() === notesFolderContextMenu.notesFolder.name.toLowerCase())
+              ? "Revoke CLI/MCP access"
+              : "Allow CLI/MCP access",
+            onClick: () => {
+              const { name } = notesFolderContextMenu.notesFolder;
+              const currentlyAllowed = cliAccessFolders.some((n) => n.toLowerCase() === name.toLowerCase());
+              setCliAccess(name, !currentlyAllowed);
+            },
           },
         ]
       : null;

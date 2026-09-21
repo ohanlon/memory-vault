@@ -15,6 +15,13 @@ import {
   renameNotesFolder,
   writeNotesFoldersFile,
 } from "./notesFolderRegistry";
+import {
+  allowFolder,
+  denyFolder,
+  readCliAccessFile,
+  renameFolderAccess,
+  writeCliAccessFile,
+} from "./cliAccess";
 import { titleFromPath } from "../shared/parseNote";
 import { STARTER_NOTES } from "../shared/starterContent";
 import { findNoteTemplate } from "../shared/noteTemplates";
@@ -108,6 +115,11 @@ function requireActiveRoot(): string {
 
 function notesFoldersFilePath(): string {
   return path.join(app.getPath("userData"), "notesFolders.json");
+}
+
+// Which notes folders the CLI/MCP server may touch - see cliAccess.ts.
+function cliAccessFilePath(): string {
+  return path.join(app.getPath("userData"), "cli-access.json");
 }
 
 function layoutPrefsFilePath(): string {
@@ -240,13 +252,29 @@ ipcMain.handle("notesFolders:remove", async (_event, name: string) => {
   const notesFolders = readNotesFoldersFile(notesFoldersFilePath());
   const updated = removeNotesFolder(notesFolders, name);
   writeNotesFoldersFile(notesFoldersFilePath(), updated);
+  // Otherwise a later folder re-registered under the same name would
+  // silently inherit whatever access this one had, without the grant
+  // decision ever being re-made for it.
+  writeCliAccessFile(cliAccessFilePath(), denyFolder(readCliAccessFile(cliAccessFilePath()), name));
   return updated;
+});
+
+ipcMain.handle("cliAccess:list", async () => {
+  return readCliAccessFile(cliAccessFilePath()).allowed;
+});
+
+ipcMain.handle("cliAccess:set", async (_event, name: string, allowed: boolean) => {
+  const access = readCliAccessFile(cliAccessFilePath());
+  const updated = allowed ? allowFolder(access, name) : denyFolder(access, name);
+  writeCliAccessFile(cliAccessFilePath(), updated);
+  return updated.allowed;
 });
 
 ipcMain.handle("notesFolders:rename", async (_event, oldName: string, newName: string) => {
   const notesFolders = readNotesFoldersFile(notesFoldersFilePath());
   const updated = renameNotesFolder(notesFolders, oldName, newName); // throws on empty/duplicate name
   writeNotesFoldersFile(notesFoldersFilePath(), updated);
+  writeCliAccessFile(cliAccessFilePath(), renameFolderAccess(readCliAccessFile(cliAccessFilePath()), oldName, newName));
   return updated;
 });
 

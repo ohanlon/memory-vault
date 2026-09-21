@@ -16,6 +16,8 @@ export interface NotesFoldersState {
   /** True while the active root's background reconciliation pass (kicked
    *  off by openNotesFolder) is still in progress. */
   reconciling: boolean;
+  /** Names of notes folders granted CLI/MCP access (see electron/cliAccess.ts) - deny-by-default, so a folder's absence here means the CLI/MCP server can't touch it. */
+  cliAccessFolders: string[];
 }
 
 const EMPTY_GRAPH: GraphModel = { nodes: [], edges: [] };
@@ -30,6 +32,7 @@ export function useNotesFolders() {
     loading: false,
     error: null,
     reconciling: false,
+    cliAccessFolders: [],
   });
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirrors the currently open root outside React state so the
@@ -39,6 +42,7 @@ export function useNotesFolders() {
 
   useEffect(() => {
     window.memoryStack.listNotesFolders().then((notesFolders) => setState((s) => ({ ...s, notesFolders })));
+    window.memoryStack.listCliAccess().then((cliAccessFolders) => setState((s) => ({ ...s, cliAccessFolders })));
   }, []);
 
   // Opens/switches to a notes folder. The main process serves this from a
@@ -113,10 +117,11 @@ export function useNotesFolders() {
   );
 
   const removeNotesFolder = useCallback(async (name: string) => {
-    const notesFolders = await window.memoryStack.removeNotesFolder(name);
+    const notesFolders = await window.memoryStack.removeNotesFolder(name); // also revokes CLI/MCP access server-side
     setState((s) => ({
       ...s,
       notesFolders,
+      cliAccessFolders: s.cliAccessFolders.filter((n) => n.toLowerCase() !== name.toLowerCase()),
       ...(s.activeNotesFolder?.name.toLowerCase() === name.toLowerCase()
         ? {
             activeNotesFolder: null,
@@ -130,15 +135,22 @@ export function useNotesFolders() {
   }, []);
 
   const renameNotesFolder = useCallback(async (oldName: string, newName: string) => {
-    const notesFolders = await window.memoryStack.renameNotesFolder(oldName, newName); // throws on empty/duplicate name
+    const notesFolders = await window.memoryStack.renameNotesFolder(oldName, newName); // throws on empty/duplicate name; also moves any CLI/MCP grant server-side
+    const trimmedNewName = newName.trim();
     setState((s) => ({
       ...s,
       notesFolders,
+      cliAccessFolders: s.cliAccessFolders.map((n) => (n.toLowerCase() === oldName.toLowerCase() ? trimmedNewName : n)),
       activeNotesFolder:
         s.activeNotesFolder?.name.toLowerCase() === oldName.toLowerCase()
-          ? { ...s.activeNotesFolder, name: newName.trim() }
+          ? { ...s.activeNotesFolder, name: trimmedNewName }
           : s.activeNotesFolder,
     }));
+  }, []);
+
+  const setCliAccess = useCallback(async (name: string, allowed: boolean) => {
+    const cliAccessFolders = await window.memoryStack.setCliAccess(name, allowed);
+    setState((s) => ({ ...s, cliAccessFolders }));
   }, []);
 
   const closeNotesFolder = useCallback(() => {
@@ -220,6 +232,7 @@ export function useNotesFolders() {
     addNotesFolderToRegistry,
     removeNotesFolder,
     renameNotesFolder,
+    setCliAccess,
     closeNotesFolder,
     refresh,
     saveSchema,

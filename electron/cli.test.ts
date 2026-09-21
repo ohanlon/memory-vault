@@ -12,6 +12,20 @@ function tmpDir(): string {
   return path.join(tmpRoot, `case-${counter}`);
 }
 
+// A cli-access.json granting CLI/MCP access to "Work" - the folder name
+// nearly every test below registers. Tests that exercise add_folder or an
+// unknown-folder error don't need the grant to matter (add_folder doesn't
+// check access, and an unknown folder is rejected before access is even
+// checked), so using this same helper everywhere keeps every call site
+// uniform.
+function accessFile(): string {
+  const dir = tmpDir();
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, "cli-access.json");
+  fs.writeFileSync(file, JSON.stringify({ allowed: ["Work"] }), "utf-8");
+  return file;
+}
+
 afterEach(() => {
   fs.rmSync(tmpRoot, { recursive: true, force: true });
   fs.mkdirSync(tmpRoot, { recursive: true });
@@ -34,7 +48,7 @@ describe("runCliCommand: add_folder", () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
     const folderPath = path.join(tmpDir(), "Work");
 
-    const result = await runCliCommand(["add_folder", folderPath], notesFoldersFile);
+    const result = await runCliCommand(["add_folder", folderPath], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(true);
     expect(result.alreadyExists).toBe(false);
@@ -46,7 +60,7 @@ describe("runCliCommand: add_folder", () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
     const folderPath = path.join(tmpDir(), "some-dir");
 
-    const result = await runCliCommand(["add_folder", folderPath, "--name", "My Notes"], notesFoldersFile);
+    const result = await runCliCommand(["add_folder", folderPath, "--name", "My Notes"], notesFoldersFile, accessFile());
 
     expect(result.name).toBe("My Notes");
   });
@@ -55,8 +69,8 @@ describe("runCliCommand: add_folder", () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
     const folderPath = path.join(tmpDir(), "Work");
 
-    await runCliCommand(["add_folder", folderPath], notesFoldersFile);
-    const second = await runCliCommand(["add_folder", folderPath], notesFoldersFile);
+    await runCliCommand(["add_folder", folderPath], notesFoldersFile, accessFile());
+    const second = await runCliCommand(["add_folder", folderPath], notesFoldersFile, accessFile());
 
     expect(second.alreadyExists).toBe(true);
     expect(second.name).toBe("Work");
@@ -66,11 +80,64 @@ describe("runCliCommand: add_folder", () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
     const dir = tmpDir();
 
-    await runCliCommand(["add_folder", path.join(dir, "a")], notesFoldersFile);
-    const result = await runCliCommand(["add_folder", path.join(dir, "b"), "--name", "a"], notesFoldersFile);
+    await runCliCommand(["add_folder", path.join(dir, "a")], notesFoldersFile, accessFile());
+    const result = await runCliCommand(["add_folder", path.join(dir, "b"), "--name", "a"], notesFoldersFile, accessFile());
 
     expect(result.name).toBe("a 2");
     expect(result.renamed).toBe(true);
+  });
+
+  it("auto-grants CLI/MCP access to a brand-new folder it registers", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const ungranted = path.join(tmpDir(), "cli-access.json"); // no prior grants
+
+    await runCliCommand(["add_folder", root, "--name", "Work"], notesFoldersFile, ungranted);
+    const result = await runCliCommand(["get_notes", "--folder", "Work"], notesFoldersFile, ungranted);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("does not auto-grant access when the folder was already registered", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const firstAccessFile = path.join(tmpDir(), "cli-access.json");
+    await runCliCommand(["add_folder", root, "--name", "Work"], notesFoldersFile, firstAccessFile);
+
+    // A second, unrelated CLI/MCP "session" (its own access file, nothing
+    // granted yet) registers the *same* already-registered folder again.
+    const secondAccessFile = path.join(tmpDir(), "cli-access.json");
+    const addResult = await runCliCommand(["add_folder", root, "--name", "Work"], notesFoldersFile, secondAccessFile);
+    expect(addResult.alreadyExists).toBe(true);
+
+    await expect(
+      runCliCommand(["get_notes", "--folder", "Work"], notesFoldersFile, secondAccessFile)
+    ).rejects.toThrow(/has not been granted/);
+  });
+});
+
+describe("runCliCommand: CLI/MCP access gating", () => {
+  it("rejects an operation on a registered folder that hasn't been granted access", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const ungranted = path.join(tmpDir(), "cli-access.json"); // never written - no grants
+
+    await expect(runCliCommand(["get_notes", "--folder", "Work"], notesFoldersFile, ungranted)).rejects.toThrow(
+      /has not been granted/
+    );
+  });
+
+  it("succeeds once the folder is granted access", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_notes", "--folder", "Work"], notesFoldersFile, accessFile());
+
+    expect(result.ok).toBe(true);
   });
 });
 
@@ -79,7 +146,20 @@ describe("runCliCommand: list_folders", () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root: "/notes/work" }]);
 
-    const result = await runCliCommand(["list_folders"], notesFoldersFile);
+    const result = await runCliCommand(["list_folders"], notesFoldersFile, accessFile());
+
+    expect(result.folders).toEqual([{ name: "Work", root: "/notes/work" }]);
+  });
+
+  it("omits registered folders that haven't been granted CLI/MCP access", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    writeNotesFoldersFile(notesFoldersFile, [
+      { name: "Work", root: "/notes/work" },
+      { name: "Personal", root: "/notes/personal" },
+    ]);
+
+    // accessFile() only grants "Work" - "Personal" is registered but ungranted.
+    const result = await runCliCommand(["list_folders"], notesFoldersFile, accessFile());
 
     expect(result.folders).toEqual([{ name: "Work", root: "/notes/work" }]);
   });
@@ -94,7 +174,7 @@ describe("runCliCommand: get_notes", () => {
     fs.writeFileSync(path.join(root, "Sub", "B.md"), "b", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_notes", "--folder", "Work"], notesFoldersFile);
+    const result = await runCliCommand(["get_notes", "--folder", "Work"], notesFoldersFile, accessFile());
 
     expect(result.notes).toEqual(["A.md"]);
   });
@@ -107,14 +187,14 @@ describe("runCliCommand: get_notes", () => {
     fs.writeFileSync(path.join(root, "Sub", "B.md"), "b", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_notes", "--folder", "Work", "--subfolders"], notesFoldersFile);
+    const result = await runCliCommand(["get_notes", "--folder", "Work", "--subfolders"], notesFoldersFile, accessFile());
 
     expect((result.notes as string[]).sort()).toEqual(["A.md", path.join("Sub", "B.md")].sort());
   });
 
   it("throws when the notes folder name is unknown", async () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
-    await expect(runCliCommand(["get_notes", "--folder", "Missing"], notesFoldersFile)).rejects.toThrow(
+    await expect(runCliCommand(["get_notes", "--folder", "Missing"], notesFoldersFile, accessFile())).rejects.toThrow(
       /No notes folder named/
     );
   });
@@ -128,7 +208,7 @@ describe("runCliCommand: get_note", () => {
     fs.writeFileSync(path.join(root, "A.md"), "hello", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_note", "--folder", "Work", "A.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_note", "--folder", "Work", "A.md"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(true);
     expect(result.content).toBe("hello");
@@ -140,7 +220,7 @@ describe("runCliCommand: get_note", () => {
     fs.mkdirSync(root, { recursive: true });
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_note", "--folder", "Work", "Missing.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_note", "--folder", "Work", "Missing.md"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/does not exist/);
@@ -156,7 +236,8 @@ describe("runCliCommand: add_note", () => {
 
     const result = await runCliCommand(
       ["add_note", "--folder", "Work", "My Note", "--content", "hello world"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(true);
@@ -172,7 +253,8 @@ describe("runCliCommand: add_note", () => {
 
     const result = await runCliCommand(
       ["add_note", "--folder", "Work", "My Note", "--subfolder", "Projects"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.note).toBe(path.join("Projects", "My Note.md"));
@@ -186,7 +268,7 @@ describe("runCliCommand: add_note", () => {
     fs.writeFileSync(path.join(root, "My Note.md"), "existing", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["add_note", "--folder", "Work", "My Note"], notesFoldersFile);
+    const result = await runCliCommand(["add_note", "--folder", "Work", "My Note"], notesFoldersFile, accessFile());
 
     expect(result.note).toBe("My Note 1.md");
     expect(result.renamed).toBe(true);
@@ -203,7 +285,8 @@ describe("runCliCommand: add_note", () => {
 
     const result = await runCliCommand(
       ["add_note", "--folder", "Work", "My Note", "--content-file", contentFile],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(true);
@@ -222,7 +305,8 @@ describe("runCliCommand: add_note", () => {
     await expect(
       runCliCommand(
         ["add_note", "--folder", "Work", "My Note", "--content", "x", "--content-file", contentFile],
-        notesFoldersFile
+        notesFoldersFile,
+      accessFile()
       )
     ).rejects.toThrow(/either --content or --content-file/);
   });
@@ -236,7 +320,8 @@ describe("runCliCommand: add_note", () => {
     await expect(
       runCliCommand(
         ["add_note", "--folder", "Work", "My Note", "--content-file", path.join(tmpDir(), "missing.txt")],
-        notesFoldersFile
+        notesFoldersFile,
+      accessFile()
       )
     ).rejects.toThrow(/does not exist/);
   });
@@ -252,7 +337,8 @@ describe("runCliCommand: update_note", () => {
 
     const result = await runCliCommand(
       ["update_note", "--folder", "Work", "A.md", "--content", "line two"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(true);
@@ -269,7 +355,8 @@ describe("runCliCommand: update_note", () => {
 
     const result = await runCliCommand(
       ["update_note", "--folder", "Work", "A.md", "--content", "line two"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.content).toBe("line one\nline two");
@@ -283,7 +370,8 @@ describe("runCliCommand: update_note", () => {
 
     const result = await runCliCommand(
       ["update_note", "--folder", "Work", "Missing.md", "--content", "text"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(false);
@@ -302,7 +390,8 @@ describe("runCliCommand: update_note", () => {
 
     const result = await runCliCommand(
       ["update_note", "--folder", "Work", "A.md", "--content-file", contentFile],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.content).toBe("line one\nline two\nline three");
@@ -315,7 +404,7 @@ describe("runCliCommand: update_note", () => {
     fs.writeFileSync(path.join(root, "A.md"), "line one", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    await expect(runCliCommand(["update_note", "--folder", "Work", "A.md"], notesFoldersFile)).rejects.toThrow(
+    await expect(runCliCommand(["update_note", "--folder", "Work", "A.md"], notesFoldersFile, accessFile())).rejects.toThrow(
       /Usage: update_note/
     );
   });
@@ -333,7 +422,8 @@ describe("runCliCommand: update_note", () => {
 
     const result = await runCliCommand(
       ["update_note", "--folder", "Work", "A.md", "--content", "- likes dark mode", "--heading", "Preferences"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(true);
@@ -351,7 +441,8 @@ describe("runCliCommand: update_note", () => {
 
     const result = await runCliCommand(
       ["update_note", "--folder", "Work", "A.md", "--content", "- likes dark mode", "--heading", "Preferences"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.content).toBe(["## Preferences", "- likes tabs", "- likes dark mode"].join("\n"));
@@ -366,7 +457,8 @@ describe("runCliCommand: update_note", () => {
 
     const result = await runCliCommand(
       ["update_note", "--folder", "Work", "A.md", "--content", "- b", "--heading", "preferences"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.content).toBe("## Preferences\n- a\n- b");
@@ -381,7 +473,8 @@ describe("runCliCommand: update_note", () => {
 
     const result = await runCliCommand(
       ["update_note", "--folder", "Work", "A.md", "--content", "- b", "--heading", "Missing"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(false);
@@ -398,7 +491,8 @@ describe("runCliCommand: set_note", () => {
 
     const result = await runCliCommand(
       ["set_note", "--folder", "Work", "Prefs.md", "--content", "hello"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(true);
@@ -415,7 +509,8 @@ describe("runCliCommand: set_note", () => {
 
     const result = await runCliCommand(
       ["set_note", "--folder", "Work", "Prefs.md", "--content", "new content"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.created).toBe(false);
@@ -431,7 +526,8 @@ describe("runCliCommand: set_note", () => {
 
     await runCliCommand(
       ["set_note", "--folder", "Work", path.join("Nested", "Prefs.md"), "--content", "hello"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(fs.existsSync(path.join(root, "Nested", "Prefs.md"))).toBe(true);
@@ -444,7 +540,7 @@ describe("runCliCommand: set_note", () => {
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
     await expect(
-      runCliCommand(["set_note", "--folder", "Work", "../outside.md", "--content", "x"], notesFoldersFile)
+      runCliCommand(["set_note", "--folder", "Work", "../outside.md", "--content", "x"], notesFoldersFile, accessFile())
     ).rejects.toThrow(/escapes/);
   });
 });
@@ -458,7 +554,7 @@ describe("runCliCommand: search_notes", () => {
     fs.writeFileSync(path.join(root, "B.md"), "no match here", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["search_notes", "--folder", "Work", "dark mode"], notesFoldersFile);
+    const result = await runCliCommand(["search_notes", "--folder", "Work", "dark mode"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(true);
     expect(result.results).toEqual([
@@ -473,7 +569,7 @@ describe("runCliCommand: search_notes", () => {
     fs.writeFileSync(path.join(root, "Sub", "A.md"), "target text", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["search_notes", "--folder", "Work", "target"], notesFoldersFile);
+    const result = await runCliCommand(["search_notes", "--folder", "Work", "target"], notesFoldersFile, accessFile());
 
     expect((result.results as { note: string }[])[0].note).toBe(path.join("Sub", "A.md"));
   });
@@ -487,7 +583,8 @@ describe("runCliCommand: search_notes", () => {
 
     const result = await runCliCommand(
       ["search_notes", "--folder", "Work", "\\d+", "--regex"],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect((result.results as { matches: unknown[] }[])[0].matches).toHaveLength(1);
@@ -500,14 +597,14 @@ describe("runCliCommand: search_notes", () => {
     fs.writeFileSync(path.join(root, "A.md"), "nothing relevant", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["search_notes", "--folder", "Work", "missing"], notesFoldersFile);
+    const result = await runCliCommand(["search_notes", "--folder", "Work", "missing"], notesFoldersFile, accessFile());
 
     expect(result.results).toEqual([]);
   });
 
   it("throws when the notes folder name is unknown", async () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
-    await expect(runCliCommand(["search_notes", "--folder", "Missing", "text"], notesFoldersFile)).rejects.toThrow(
+    await expect(runCliCommand(["search_notes", "--folder", "Missing", "text"], notesFoldersFile, accessFile())).rejects.toThrow(
       /No notes folder named/
     );
   });
@@ -521,7 +618,7 @@ describe("runCliCommand: delete_note", () => {
     fs.writeFileSync(path.join(root, "A.md"), "content", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["delete_note", "--folder", "Work", "A.md"], notesFoldersFile);
+    const result = await runCliCommand(["delete_note", "--folder", "Work", "A.md"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(true);
     expect(fs.existsSync(path.join(root, "A.md"))).toBe(false);
@@ -533,7 +630,7 @@ describe("runCliCommand: delete_note", () => {
     fs.mkdirSync(root, { recursive: true });
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["delete_note", "--folder", "Work", "Missing.md"], notesFoldersFile);
+    const result = await runCliCommand(["delete_note", "--folder", "Work", "Missing.md"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/does not exist/);
@@ -541,7 +638,7 @@ describe("runCliCommand: delete_note", () => {
 
   it("throws when the notes folder name is unknown", async () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
-    await expect(runCliCommand(["delete_note", "--folder", "Missing", "A.md"], notesFoldersFile)).rejects.toThrow(
+    await expect(runCliCommand(["delete_note", "--folder", "Missing", "A.md"], notesFoldersFile, accessFile())).rejects.toThrow(
       /No notes folder named/
     );
   });
@@ -553,7 +650,7 @@ describe("runCliCommand: delete_note", () => {
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
     await expect(
-      runCliCommand(["delete_note", "--folder", "Work", "../outside.md"], notesFoldersFile)
+      runCliCommand(["delete_note", "--folder", "Work", "../outside.md"], notesFoldersFile, accessFile())
     ).rejects.toThrow(/escapes/);
   });
 });
@@ -566,7 +663,7 @@ describe("runCliCommand: get_properties", () => {
     fs.writeFileSync(path.join(root, "A.md"), "---\nstatus: active\npriority: 2\n---\nBody text", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_properties", "--folder", "Work", "A.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_properties", "--folder", "Work", "A.md"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(true);
     expect(result.properties).toEqual({ status: "active", priority: 2 });
@@ -579,7 +676,7 @@ describe("runCliCommand: get_properties", () => {
     fs.writeFileSync(path.join(root, "A.md"), "just body text", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_properties", "--folder", "Work", "A.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_properties", "--folder", "Work", "A.md"], notesFoldersFile, accessFile());
 
     expect(result.properties).toEqual({});
   });
@@ -590,7 +687,7 @@ describe("runCliCommand: get_properties", () => {
     fs.mkdirSync(root, { recursive: true });
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_properties", "--folder", "Work", "Missing.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_properties", "--folder", "Work", "Missing.md"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/does not exist/);
@@ -607,7 +704,8 @@ describe("runCliCommand: set_properties", () => {
 
     const result = await runCliCommand(
       ["set_properties", "--folder", "Work", "A.md", "--json", '{"status":"active"}'],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(true);
@@ -626,7 +724,8 @@ describe("runCliCommand: set_properties", () => {
 
     const result = await runCliCommand(
       ["set_properties", "--folder", "Work", "A.md", "--json", '{"status":"done"}'],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.properties).toEqual({ status: "done", priority: 2 });
@@ -641,7 +740,8 @@ describe("runCliCommand: set_properties", () => {
 
     const result = await runCliCommand(
       ["set_properties", "--folder", "Work", "A.md", "--json", '{"priority":null}'],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.properties).toEqual({ status: "active" });
@@ -662,7 +762,8 @@ describe("runCliCommand: set_properties", () => {
 
     const result = await runCliCommand(
       ["set_properties", "--folder", "Work", "A.md", "--json", '{"priority":9}'],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(true);
@@ -678,7 +779,8 @@ describe("runCliCommand: set_properties", () => {
 
     const result = await runCliCommand(
       ["set_properties", "--folder", "Work", "Missing.md", "--json", '{"status":"active"}'],
-      notesFoldersFile
+      notesFoldersFile,
+      accessFile()
     );
 
     expect(result.ok).toBe(false);
@@ -693,7 +795,7 @@ describe("runCliCommand: set_properties", () => {
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
     await expect(
-      runCliCommand(["set_properties", "--folder", "Work", "A.md", "--json", "{not valid"], notesFoldersFile)
+      runCliCommand(["set_properties", "--folder", "Work", "A.md", "--json", "{not valid"], notesFoldersFile, accessFile())
     ).rejects.toThrow(/must be valid JSON/);
   });
 
@@ -705,7 +807,7 @@ describe("runCliCommand: set_properties", () => {
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
     await expect(
-      runCliCommand(["set_properties", "--folder", "Work", "A.md", "--json", "[1,2,3]"], notesFoldersFile)
+      runCliCommand(["set_properties", "--folder", "Work", "A.md", "--json", "[1,2,3]"], notesFoldersFile, accessFile())
     ).rejects.toThrow(/must be a JSON object/);
   });
 });
@@ -720,7 +822,7 @@ describe("runCliCommand: get_backlinks", () => {
     fs.writeFileSync(path.join(root, "B.md"), "No links here", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(true);
     expect(result.backlinks).toEqual(["A.md"]);
@@ -734,7 +836,7 @@ describe("runCliCommand: get_backlinks", () => {
     fs.writeFileSync(path.join(root, "A.md"), "Links to [[target]]", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile, accessFile());
 
     expect(result.backlinks).toEqual(["A.md"]);
   });
@@ -747,7 +849,7 @@ describe("runCliCommand: get_backlinks", () => {
     fs.writeFileSync(path.join(root, "A.md"), "#project", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile, accessFile());
 
     expect(result.backlinks).toEqual([]);
   });
@@ -759,7 +861,7 @@ describe("runCliCommand: get_backlinks", () => {
     fs.writeFileSync(path.join(root, "A.md"), "Nothing links here", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "A.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "A.md"], notesFoldersFile, accessFile());
 
     expect(result.backlinks).toEqual([]);
   });
@@ -770,7 +872,7 @@ describe("runCliCommand: get_backlinks", () => {
     fs.mkdirSync(root, { recursive: true });
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Missing.md"], notesFoldersFile);
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Missing.md"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/does not exist/);
@@ -778,7 +880,7 @@ describe("runCliCommand: get_backlinks", () => {
 
   it("throws when the notes folder name is unknown", async () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
-    await expect(runCliCommand(["get_backlinks", "--folder", "Missing", "A.md"], notesFoldersFile)).rejects.toThrow(
+    await expect(runCliCommand(["get_backlinks", "--folder", "Missing", "A.md"], notesFoldersFile, accessFile())).rejects.toThrow(
       /No notes folder named/
     );
   });
@@ -794,7 +896,7 @@ describe("runCliCommand: get_tags", () => {
     fs.writeFileSync(path.join(root, "C.md"), "#other", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_tags", "--folder", "Work"], notesFoldersFile);
+    const result = await runCliCommand(["get_tags", "--folder", "Work"], notesFoldersFile, accessFile());
 
     expect(result.ok).toBe(true);
     expect(result.tags).toEqual([
@@ -810,14 +912,14 @@ describe("runCliCommand: get_tags", () => {
     fs.writeFileSync(path.join(root, "A.md"), "no tags here", "utf-8");
     writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
 
-    const result = await runCliCommand(["get_tags", "--folder", "Work"], notesFoldersFile);
+    const result = await runCliCommand(["get_tags", "--folder", "Work"], notesFoldersFile, accessFile());
 
     expect(result.tags).toEqual([]);
   });
 
   it("throws when the notes folder name is unknown", async () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
-    await expect(runCliCommand(["get_tags", "--folder", "Missing"], notesFoldersFile)).rejects.toThrow(
+    await expect(runCliCommand(["get_tags", "--folder", "Missing"], notesFoldersFile, accessFile())).rejects.toThrow(
       /No notes folder named/
     );
   });

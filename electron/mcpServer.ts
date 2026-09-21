@@ -30,6 +30,13 @@ function notesFoldersFilePath(): string {
   return path.join(cairnUserDataDir(), "notesFolders.json");
 }
 
+// Every call below goes through electron/cli.ts's resolveFolder, which
+// checks this file (see cliAccess.ts) - a notes folder only becomes
+// reachable here once explicitly granted CLI/MCP access in the GUI.
+function cliAccessFilePath(): string {
+  return path.join(cairnUserDataDir(), "cli-access.json");
+}
+
 function textResult(result: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
 }
@@ -45,13 +52,17 @@ server.registerTool(
       name: z.string().optional().describe("Name to register it under; defaults to the folder's basename"),
     },
   },
-  async ({ path: folderPath, name }) => textResult(addFolder(notesFoldersFilePath(), folderPath, name))
+  async ({ path: folderPath, name }) =>
+    textResult(addFolder(notesFoldersFilePath(), cliAccessFilePath(), folderPath, name))
 );
 
 server.registerTool(
   "list_folders",
-  { description: "List every registered Cairn notes folder's name and path.", inputSchema: {} },
-  async () => textResult(listFolders(notesFoldersFilePath()))
+  {
+    description: "List every Cairn notes folder that CLI/MCP access has been granted for.",
+    inputSchema: {},
+  },
+  async () => textResult(listFolders(notesFoldersFilePath(), cliAccessFilePath()))
 );
 
 server.registerTool(
@@ -63,7 +74,8 @@ server.registerTool(
       subfolders: z.boolean().optional().describe("Include notes in subfolders (default: top-level only)"),
     },
   },
-  async ({ folder, subfolders }) => textResult(await getNotes(notesFoldersFilePath(), folder, Boolean(subfolders)))
+  async ({ folder, subfolders }) =>
+    textResult(await getNotes(notesFoldersFilePath(), cliAccessFilePath(), folder, Boolean(subfolders)))
 );
 
 server.registerTool(
@@ -75,7 +87,7 @@ server.registerTool(
       notePath: z.string().describe("Path relative to the notes folder root"),
     },
   },
-  async ({ folder, notePath }) => textResult(await getNote(notesFoldersFilePath(), folder, notePath))
+  async ({ folder, notePath }) => textResult(await getNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath))
 );
 
 server.registerTool(
@@ -91,7 +103,7 @@ server.registerTool(
     },
   },
   async ({ folder, title, content, subfolder }) =>
-    textResult(await addNote(notesFoldersFilePath(), folder, title, content ?? "", subfolder))
+    textResult(await addNote(notesFoldersFilePath(), cliAccessFilePath(), folder, title, content ?? "", subfolder))
 );
 
 server.registerTool(
@@ -105,7 +117,8 @@ server.registerTool(
       content: z.string(),
     },
   },
-  async ({ folder, notePath, content }) => textResult(await setNote(notesFoldersFilePath(), folder, notePath, content))
+  async ({ folder, notePath, content }) =>
+    textResult(await setNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, content))
 );
 
 server.registerTool(
@@ -121,7 +134,7 @@ server.registerTool(
     },
   },
   async ({ folder, notePath, content, heading }) =>
-    textResult(await updateNote(notesFoldersFilePath(), folder, notePath, content, heading))
+    textResult(await updateNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, content, heading))
 );
 
 server.registerTool(
@@ -133,7 +146,8 @@ server.registerTool(
       notePath: z.string().describe("Path relative to the notes folder root"),
     },
   },
-  async ({ folder, notePath }) => textResult(await deleteNote(notesFoldersFilePath(), folder, notePath))
+  async ({ folder, notePath }) =>
+    textResult(await deleteNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath))
 );
 
 server.registerTool(
@@ -149,7 +163,13 @@ server.registerTool(
     },
   },
   async ({ folder, query, regex, caseSensitive, wholeWord }) =>
-    textResult(await searchNotes(notesFoldersFilePath(), folder, query, { regex, caseSensitive, wholeWord }))
+    textResult(
+      await searchNotes(notesFoldersFilePath(), cliAccessFilePath(), folder, query, {
+        regex,
+        caseSensitive,
+        wholeWord,
+      })
+    )
 );
 
 server.registerTool(
@@ -162,7 +182,8 @@ server.registerTool(
       notePath: z.string().describe("Path relative to the notes folder root"),
     },
   },
-  async ({ folder, notePath }) => textResult(await getBacklinks(notesFoldersFilePath(), folder, notePath))
+  async ({ folder, notePath }) =>
+    textResult(await getBacklinks(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath))
 );
 
 server.registerTool(
@@ -171,7 +192,7 @@ server.registerTool(
     description: "List every tag in a notes folder, each with the notes that carry it.",
     inputSchema: { folder: z.string() },
   },
-  async ({ folder }) => textResult(await getTags(notesFoldersFilePath(), folder))
+  async ({ folder }) => textResult(await getTags(notesFoldersFilePath(), cliAccessFilePath(), folder))
 );
 
 server.registerTool(
@@ -183,7 +204,7 @@ server.registerTool(
       notePath: z.string().describe("Path relative to the notes folder root"),
     },
   },
-  async ({ folder, notePath }) => textResult(getProperties(notesFoldersFilePath(), folder, notePath))
+  async ({ folder, notePath }) => textResult(getProperties(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath))
 );
 
 server.registerTool(
@@ -198,7 +219,7 @@ server.registerTool(
     },
   },
   async ({ folder, notePath, properties }) =>
-    textResult(setProperties(notesFoldersFilePath(), folder, notePath, properties))
+    textResult(setProperties(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, properties))
 );
 
 // An async IIFE rather than a top-level await, since the bundler's target

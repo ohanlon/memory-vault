@@ -137,6 +137,24 @@ through two interfaces built on the same operations (`electron/cli.ts`):
 Both interfaces operate on the same `notesFolders.json` registry and files
 on disk as the GUI, so a folder registered by one is visible to the others.
 
+### Access control
+
+Being registered in `notesFolders.json` does not make a folder reachable
+via the CLI/MCP — that's a separate, deny-by-default gate
+(`electron/cliAccess.ts`, `<userData>/cli-access.json`), the same opt-in
+philosophy as the plugin permission system (`electron/pluginPermissions.ts`)
+applied to a different kind of caller. A folder must be explicitly granted
+from its "..." menu in the notes-folder switcher ("Allow CLI/MCP access")
+before any CLI/MCP operation can touch it; `list_folders` only shows
+granted folders, and every other operation on an ungranted folder fails
+with a clear error naming the missing grant. `add_folder` is the one
+exception: it auto-grants the folder it just registered for the first time
+(not one that already existed under a different name — that branch
+deliberately does not grant, so a caller can't learn/guess an existing
+folder's path and grant itself access to it just by calling `add_folder`
+again with the same path). Removing a notes folder revokes its grant;
+renaming one carries the grant over to the new name.
+
 ## Out of scope
 
 Cloud sync — notes stay local; syncing them is left to whatever the user

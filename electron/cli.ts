@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { listMarkdownFiles, loadNotesFolder, uniqueNotePath } from "./notesFolder";
 import { addNotesFolder, findByNameCI, readNotesFoldersFile, writeNotesFoldersFile } from "./notesFolderRegistry";
+import { allowFolder, isFolderAllowed, readCliAccessFile, writeCliAccessFile } from "./cliAccess";
 import { readNoteProperties, saveNoteProperties } from "./noteProperties";
 import { findPropertyByNameCI, readPropertySchema } from "./propertiesSchema";
 import { backlinkTitles, buildGraph } from "../shared/buildGraph";
@@ -86,11 +87,20 @@ function resolveContentFlag(flags: ParsedArgs["flags"], usage: string, required:
   return "";
 }
 
-function resolveFolder(notesFolders: NotesFolderEntry[], name: string): NotesFolderEntry {
+// The single choke point every operation below goes through, so a folder
+// that hasn't been explicitly granted CLI/MCP access (see cliAccess.ts) is
+// unreachable no matter which entry point (CLI dispatcher below, or an MCP
+// tool calling an exported function directly) made the call.
+function resolveFolder(notesFolders: NotesFolderEntry[], cliAccessFile: string, name: string): NotesFolderEntry {
   const entry = findByNameCI(notesFolders, name);
   if (!entry) {
     const known = notesFolders.map((f) => f.name).join(", ") || "(none)";
     throw new Error(`No notes folder named "${name}". Known notes folders: ${known}`);
+  }
+  if (!isFolderAllowed(readCliAccessFile(cliAccessFile), entry.name)) {
+    throw new Error(
+      `CLI/MCP access to notes folder "${entry.name}" has not been granted. Enable it from that folder's "..." menu in Cairn ("Allow CLI/MCP access").`
+    );
   }
   return entry;
 }
@@ -124,7 +134,19 @@ function ensureInside(root: string, target: string): void {
   }
 }
 
-export function addFolder(notesFoldersFile: string, root: string, requestedName?: string): CliResult {
+// Registering a brand-new folder auto-grants it CLI/MCP access - the caller
+// invoking add_folder already has CLI/MCP access by definition, so this
+// just lets an agent bootstrap a fresh notes folder end-to-end. An already-
+// registered folder (the alreadyExists branch) is deliberately NOT
+// auto-granted: without that, a CLI/MCP caller could learn/guess the path
+// of a folder a human registered through the GUI and grant itself access
+// to it just by calling add_folder again with the same path.
+export function addFolder(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  root: string,
+  requestedName?: string
+): CliResult {
   const notesFolders = readNotesFoldersFile(notesFoldersFile);
   const resolvedRoot = path.resolve(root);
 
@@ -144,6 +166,7 @@ export function addFolder(notesFoldersFile: string, root: string, requestedName?
   const desiredName = (requestedName ?? path.basename(resolvedRoot)).trim() || "Untitled";
   const finalName = uniqueFolderName(notesFolders, desiredName);
   writeNotesFoldersFile(notesFoldersFile, addNotesFolder(notesFolders, finalName, resolvedRoot));
+  writeCliAccessFile(cliAccessFile, allowFolder(readCliAccessFile(cliAccessFile), finalName));
 
   return {
     ok: true,
@@ -160,10 +183,11 @@ export function addFolder(notesFoldersFile: string, root: string, requestedName?
 
 export async function getNotes(
   notesFoldersFile: string,
+  cliAccessFile: string,
   folderName: string,
   includeSubfolders: boolean
 ): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
 
   let notes: string[];
   if (includeSubfolders) {
@@ -178,8 +202,13 @@ export async function getNotes(
   return { ok: true, folder: entry.name, subfolders: includeSubfolders, notes };
 }
 
-export async function getNote(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+export async function getNote(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  folderName: string,
+  notePath: string
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
 
@@ -193,12 +222,13 @@ export async function getNote(notesFoldersFile: string, folderName: string, note
 
 export async function addNote(
   notesFoldersFile: string,
+  cliAccessFile: string,
   folderName: string,
   title: string,
   content: string,
   subfolder?: string
 ): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
 
   const dir = subfolder ? path.join(entry.root, subfolder) : entry.root;
   ensureInside(entry.root, dir);
@@ -229,11 +259,12 @@ export async function addNote(
 // Note", wrong for an agent updating "user-preferences.md").
 export async function setNote(
   notesFoldersFile: string,
+  cliAccessFile: string,
   folderName: string,
   notePath: string,
   content: string
 ): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
 
@@ -296,12 +327,13 @@ function insertUnderHeading(existing: string, heading: string, text: string): st
 
 export async function updateNote(
   notesFoldersFile: string,
+  cliAccessFile: string,
   folderName: string,
   notePath: string,
   additionalText: string,
   heading?: string
 ): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
 
@@ -319,8 +351,13 @@ export async function updateNote(
   return { ok: true, folder: entry.name, note: notePath, content };
 }
 
-export async function deleteNote(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+export async function deleteNote(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  folderName: string,
+  notePath: string
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
 
@@ -340,11 +377,12 @@ export interface SearchNotesOptions {
 
 export async function searchNotes(
   notesFoldersFile: string,
+  cliAccessFile: string,
   folderName: string,
   query: string,
   options: SearchNotesOptions
 ): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const files = await listMarkdownFiles(entry.root);
 
   const searchOptions: SearchOptions = {
@@ -366,8 +404,13 @@ export async function searchNotes(
   return { ok: true, folder: entry.name, query, results };
 }
 
-export function getProperties(notesFoldersFile: string, folderName: string, notePath: string): CliResult {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+export function getProperties(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  folderName: string,
+  notePath: string
+): CliResult {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
 
@@ -386,11 +429,12 @@ export function getProperties(notesFoldersFile: string, folderName: string, note
 // still saved, just reported back as a warning.
 export function setProperties(
   notesFoldersFile: string,
+  cliAccessFile: string,
   folderName: string,
   notePath: string,
   patch: Record<string, unknown>
 ): CliResult {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
 
@@ -426,8 +470,13 @@ export function setProperties(
 // title (case-insensitively, same as the GUI's graph) - excludes notes that
 // merely share a tag with it, which get_tags covers instead. Reuses
 // shared/buildGraph.ts rather than re-implementing link resolution.
-export async function getBacklinks(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+export async function getBacklinks(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  folderName: string,
+  notePath: string
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const fullPath = path.join(entry.root, notePath);
   ensureInside(entry.root, fullPath);
 
@@ -447,8 +496,8 @@ export async function getBacklinks(notesFoldersFile: string, folderName: string,
   return { ok: true, folder: entry.name, note: notePath, backlinks };
 }
 
-export async function getTags(notesFoldersFile: string, folderName: string): Promise<CliResult> {
-  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+export async function getTags(notesFoldersFile: string, cliAccessFile: string, folderName: string): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
   const notes = await loadNotesFolder(entry.root);
 
   const notesByTag = new Map<string, string[]>();
@@ -467,12 +516,18 @@ export async function getTags(notesFoldersFile: string, folderName: string): Pro
   return { ok: true, folder: entry.name, tags };
 }
 
-export function listFolders(notesFoldersFile: string): CliResult {
+// Only lists folders that have been granted CLI/MCP access - an agent's
+// view of what notes folders exist should match what it can actually
+// touch, same reasoning as gating every other operation through
+// resolveFolder above.
+export function listFolders(notesFoldersFile: string, cliAccessFile: string): CliResult {
   const notesFolders = readNotesFoldersFile(notesFoldersFile);
-  return { ok: true, folders: notesFolders.map((f) => ({ name: f.name, root: f.root })) };
+  const access = readCliAccessFile(cliAccessFile);
+  const folders = notesFolders.filter((f) => isFolderAllowed(access, f.name)).map((f) => ({ name: f.name, root: f.root }));
+  return { ok: true, folders };
 }
 
-export async function runCliCommand(args: string[], notesFoldersFile: string): Promise<CliResult> {
+export async function runCliCommand(args: string[], notesFoldersFile: string, cliAccessFile: string): Promise<CliResult> {
   const [command, ...rest] = args;
   const { positional, flags } = parseArgs(rest);
 
@@ -480,18 +535,18 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
     case "add_folder": {
       const root = positional[0];
       if (!root) throw new Error("Usage: add_folder <path> [--name NAME]");
-      return addFolder(notesFoldersFile, root, flagString(flags.name));
+      return addFolder(notesFoldersFile, cliAccessFile, root, flagString(flags.name));
     }
     case "get_notes": {
       const folder = flagString(flags.folder);
       if (!folder) throw new Error("Usage: get_notes --folder NAME [--subfolders]");
-      return getNotes(notesFoldersFile, folder, Boolean(flags.subfolders));
+      return getNotes(notesFoldersFile, cliAccessFile, folder, Boolean(flags.subfolders));
     }
     case "get_note": {
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error("Usage: get_note --folder NAME <notePath>");
-      return getNote(notesFoldersFile, folder, note);
+      return getNote(notesFoldersFile, cliAccessFile, folder, note);
     }
     case "add_note": {
       const usage = "add_note --folder NAME <title> [--subfolder PATH] [--content TEXT | --content-file PATH]";
@@ -499,7 +554,7 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
       const title = positional[0];
       if (!folder || !title) throw new Error(`Usage: ${usage}`);
       const content = resolveContentFlag(flags, usage, false);
-      return addNote(notesFoldersFile, folder, title, content, flagString(flags.subfolder));
+      return addNote(notesFoldersFile, cliAccessFile, folder, title, content, flagString(flags.subfolder));
     }
     case "set_note": {
       const usage = "set_note --folder NAME <notePath> (--content TEXT | --content-file PATH)";
@@ -507,7 +562,7 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
       const content = resolveContentFlag(flags, usage, true);
-      return setNote(notesFoldersFile, folder, note, content);
+      return setNote(notesFoldersFile, cliAccessFile, folder, note, content);
     }
     case "update_note": {
       const usage =
@@ -516,20 +571,20 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
       const content = resolveContentFlag(flags, usage, true);
-      return updateNote(notesFoldersFile, folder, note, content, flagString(flags.heading));
+      return updateNote(notesFoldersFile, cliAccessFile, folder, note, content, flagString(flags.heading));
     }
     case "delete_note": {
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error("Usage: delete_note --folder NAME <notePath>");
-      return deleteNote(notesFoldersFile, folder, note);
+      return deleteNote(notesFoldersFile, cliAccessFile, folder, note);
     }
     case "search_notes": {
       const usage = "search_notes --folder NAME <query> [--regex] [--case-sensitive] [--whole-word]";
       const folder = flagString(flags.folder);
       const query = positional[0];
       if (!folder || !query) throw new Error(`Usage: ${usage}`);
-      return searchNotes(notesFoldersFile, folder, query, {
+      return searchNotes(notesFoldersFile, cliAccessFile, folder, query, {
         regex: Boolean(flags.regex),
         caseSensitive: Boolean(flags["case-sensitive"]),
         wholeWord: Boolean(flags["whole-word"]),
@@ -539,7 +594,7 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error("Usage: get_properties --folder NAME <notePath>");
-      return getProperties(notesFoldersFile, folder, note);
+      return getProperties(notesFoldersFile, cliAccessFile, folder, note);
     }
     case "set_properties": {
       const usage = `set_properties --folder NAME <notePath> --json '{"key":"value",...}'`;
@@ -556,21 +611,21 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
       if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
         throw new Error(`--json must be a JSON object. Usage: ${usage}`);
       }
-      return setProperties(notesFoldersFile, folder, note, patch as Record<string, unknown>);
+      return setProperties(notesFoldersFile, cliAccessFile, folder, note, patch as Record<string, unknown>);
     }
     case "get_backlinks": {
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error("Usage: get_backlinks --folder NAME <notePath>");
-      return getBacklinks(notesFoldersFile, folder, note);
+      return getBacklinks(notesFoldersFile, cliAccessFile, folder, note);
     }
     case "get_tags": {
       const folder = flagString(flags.folder);
       if (!folder) throw new Error("Usage: get_tags --folder NAME");
-      return getTags(notesFoldersFile, folder);
+      return getTags(notesFoldersFile, cliAccessFile, folder);
     }
     case "list_folders":
-      return listFolders(notesFoldersFile);
+      return listFolders(notesFoldersFile, cliAccessFile);
     default:
       throw new Error(`Unknown command "${command}"`);
   }

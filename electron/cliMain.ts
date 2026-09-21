@@ -14,8 +14,15 @@ function notesFoldersFilePath(): string {
   return path.join(cairnUserDataDir(), "notesFolders.json");
 }
 
+// See electron/cliAccess.ts - a notes folder is only reachable via the CLI
+// once explicitly granted access in the GUI.
+function cliAccessFilePath(): string {
+  return path.join(cairnUserDataDir(), "cli-access.json");
+}
+
 const KNOWN_COMMANDS =
-  "add_folder, get_notes, get_note, add_note, set_note, update_note, delete_note, search_notes, list_folders";
+  "add_folder, get_notes, get_note, add_note, set_note, update_note, delete_note, search_notes, " +
+  "get_properties, set_properties, get_backlinks, get_tags, list_folders";
 
 async function main(): Promise<void> {
   const cliArgs = extractCliArgs(process.argv);
@@ -26,7 +33,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    const result = await runCliCommand(cliArgs, notesFoldersFilePath());
+    const result = await runCliCommand(cliArgs, notesFoldersFilePath(), cliAccessFilePath());
     console.log(JSON.stringify(result, null, 2));
     process.exitCode = result.ok === false ? 1 : 0;
   } catch (err) {

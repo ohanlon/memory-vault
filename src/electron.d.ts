@@ -29,6 +29,8 @@ export interface MemoryStackAPI {
   addNotesFolder(name: string, root: string): Promise<NotesFolderEntry[]>;
   removeNotesFolder(name: string): Promise<NotesFolderEntry[]>;
   renameNotesFolder(oldName: string, newName: string): Promise<NotesFolderEntry[]>;
+  listCliAccess(): Promise<string[]>;
+  setCliAccess(name: string, allowed: boolean): Promise<string[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   saveNote(absPath: string, content: string): Promise<boolean>;

@@ -43,6 +43,9 @@ const api = {
     ipcRenderer.invoke("notesFolders:remove", name),
   renameNotesFolder: (oldName: string, newName: string): Promise<NotesFolderEntry[]> =>
     ipcRenderer.invoke("notesFolders:rename", oldName, newName),
+  listCliAccess: (): Promise<string[]> => ipcRenderer.invoke("cliAccess:list"),
+  setCliAccess: (name: string, allowed: boolean): Promise<string[]> =>
+    ipcRenderer.invoke("cliAccess:set", name, allowed),
   readNote: (absPath: string): Promise<Note> =>
     ipcRenderer.invoke("notesFolder:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>
