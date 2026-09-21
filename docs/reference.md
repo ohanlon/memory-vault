@@ -58,6 +58,12 @@ URL, useful when you have text selected to turn into a link.
   (`[[Note#Header]]`, `[text](Note.md#Header)`) is not treated as a tag
   either.
 
+Backlinks and tags are also readable outside the GUI via the CLI/MCP
+`get_backlinks`/`get_tags` operations (see below) — `get_backlinks` mirrors
+the sidebar's wikilink/markdown-backlinks section (tag-only relationships
+excluded), and `get_tags` mirrors the sidebar's Tags section but for the
+whole notes folder at once.
+
 ## Linking to a specific block
 
 The "Link to Block" action (in a note's link picker) links to one paragraph,

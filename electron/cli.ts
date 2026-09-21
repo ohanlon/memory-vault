@@ -1,12 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import { listMarkdownFiles, uniqueNotePath } from "./notesFolder";
+import { listMarkdownFiles, loadNotesFolder, uniqueNotePath } from "./notesFolder";
 import { addNotesFolder, findByNameCI, readNotesFoldersFile, writeNotesFoldersFile } from "./notesFolderRegistry";
 import { readNoteProperties, saveNoteProperties } from "./noteProperties";
 import { findPropertyByNameCI, readPropertySchema } from "./propertiesSchema";
+import { backlinkTitles, buildGraph } from "../shared/buildGraph";
+import { titleFromPath } from "../shared/parseNote";
 import { searchContent } from "../shared/search";
 import { validatePropertyValue } from "../shared/validateProperty";
-import type { NotesFolderEntry, SearchMatch, SearchOptions } from "../shared/types";
+import type { Note, NotesFolderEntry, SearchMatch, SearchOptions } from "../shared/types";
 
 export type CliResult = Record<string, unknown>;
 
@@ -21,6 +23,8 @@ const CLI_COMMANDS = new Set([
   "search_notes",
   "get_properties",
   "set_properties",
+  "get_backlinks",
+  "get_tags",
   "list_folders",
 ]);
 
@@ -418,6 +422,51 @@ export function setProperties(
   };
 }
 
+// Backlinks only, i.e. wikilinks/markdown links that resolve to this note's
+// title (case-insensitively, same as the GUI's graph) - excludes notes that
+// merely share a tag with it, which get_tags covers instead. Reuses
+// shared/buildGraph.ts rather than re-implementing link resolution.
+export async function getBacklinks(notesFoldersFile: string, folderName: string, notePath: string): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const fullPath = path.join(entry.root, notePath);
+  ensureInside(entry.root, fullPath);
+
+  if (!fs.existsSync(fullPath)) {
+    return { ok: false, message: `Note "${notePath}" does not exist in notes folder "${entry.name}".` };
+  }
+
+  const notes = await loadNotesFolder(entry.root);
+  const graph = buildGraph(notes);
+  const byLowerTitle = new Map(notes.map((n) => [n.title.toLowerCase(), n]));
+
+  const backlinks = backlinkTitles(graph, titleFromPath(notePath))
+    .map((title) => byLowerTitle.get(title.toLowerCase()))
+    .filter((n): n is Note => n !== undefined)
+    .map((n) => n.relativePath);
+
+  return { ok: true, folder: entry.name, note: notePath, backlinks };
+}
+
+export async function getTags(notesFoldersFile: string, folderName: string): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), folderName);
+  const notes = await loadNotesFolder(entry.root);
+
+  const notesByTag = new Map<string, string[]>();
+  for (const note of notes) {
+    for (const tag of note.tags) {
+      const list = notesByTag.get(tag);
+      if (list) list.push(note.relativePath);
+      else notesByTag.set(tag, [note.relativePath]);
+    }
+  }
+
+  const tags = Array.from(notesByTag.entries())
+    .map(([tag, notesWithTag]) => ({ tag, notes: notesWithTag }))
+    .sort((a, b) => a.tag.localeCompare(b.tag));
+
+  return { ok: true, folder: entry.name, tags };
+}
+
 export function listFolders(notesFoldersFile: string): CliResult {
   const notesFolders = readNotesFoldersFile(notesFoldersFile);
   return { ok: true, folders: notesFolders.map((f) => ({ name: f.name, root: f.root })) };
@@ -508,6 +557,17 @@ export async function runCliCommand(args: string[], notesFoldersFile: string): P
         throw new Error(`--json must be a JSON object. Usage: ${usage}`);
       }
       return setProperties(notesFoldersFile, folder, note, patch as Record<string, unknown>);
+    }
+    case "get_backlinks": {
+      const folder = flagString(flags.folder);
+      const note = positional[0];
+      if (!folder || !note) throw new Error("Usage: get_backlinks --folder NAME <notePath>");
+      return getBacklinks(notesFoldersFile, folder, note);
+    }
+    case "get_tags": {
+      const folder = flagString(flags.folder);
+      if (!folder) throw new Error("Usage: get_tags --folder NAME");
+      return getTags(notesFoldersFile, folder);
     }
     case "list_folders":
       return listFolders(notesFoldersFile);

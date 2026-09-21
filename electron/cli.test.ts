@@ -709,3 +709,116 @@ describe("runCliCommand: set_properties", () => {
     ).rejects.toThrow(/must be a JSON object/);
   });
 });
+
+describe("runCliCommand: get_backlinks", () => {
+  it("returns notes that wikilink to the target note", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "Target.md"), "The target note", "utf-8");
+    fs.writeFileSync(path.join(root, "A.md"), "Links to [[Target]]", "utf-8");
+    fs.writeFileSync(path.join(root, "B.md"), "No links here", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile);
+
+    expect(result.ok).toBe(true);
+    expect(result.backlinks).toEqual(["A.md"]);
+  });
+
+  it("resolves link targets case-insensitively", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "Target.md"), "The target note", "utf-8");
+    fs.writeFileSync(path.join(root, "A.md"), "Links to [[target]]", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile);
+
+    expect(result.backlinks).toEqual(["A.md"]);
+  });
+
+  it("does not include notes that only share a tag", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "Target.md"), "#project", "utf-8");
+    fs.writeFileSync(path.join(root, "A.md"), "#project", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Target.md"], notesFoldersFile);
+
+    expect(result.backlinks).toEqual([]);
+  });
+
+  it("returns an empty list when nothing links to the note", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "Nothing links here", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "A.md"], notesFoldersFile);
+
+    expect(result.backlinks).toEqual([]);
+  });
+
+  it("reports when the note does not exist instead of throwing", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_backlinks", "--folder", "Work", "Missing.md"], notesFoldersFile);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/does not exist/);
+  });
+
+  it("throws when the notes folder name is unknown", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    await expect(runCliCommand(["get_backlinks", "--folder", "Missing", "A.md"], notesFoldersFile)).rejects.toThrow(
+      /No notes folder named/
+    );
+  });
+});
+
+describe("runCliCommand: get_tags", () => {
+  it("groups notes by tag, from frontmatter and inline #tags", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "---\ntags: [project]\n---\nBody", "utf-8");
+    fs.writeFileSync(path.join(root, "B.md"), "Some text #project", "utf-8");
+    fs.writeFileSync(path.join(root, "C.md"), "#other", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_tags", "--folder", "Work"], notesFoldersFile);
+
+    expect(result.ok).toBe(true);
+    expect(result.tags).toEqual([
+      { tag: "other", notes: ["C.md"] },
+      { tag: "project", notes: ["A.md", "B.md"] },
+    ]);
+  });
+
+  it("returns an empty list when no notes have tags", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "no tags here", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_tags", "--folder", "Work"], notesFoldersFile);
+
+    expect(result.tags).toEqual([]);
+  });
+
+  it("throws when the notes folder name is unknown", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    await expect(runCliCommand(["get_tags", "--folder", "Missing"], notesFoldersFile)).rejects.toThrow(
+      /No notes folder named/
+    );
+  });
+});

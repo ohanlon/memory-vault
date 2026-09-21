@@ -111,6 +111,13 @@ build` instead.
   properties…"), an out-of-range/invalid value is still saved but reported
   back under `warnings`, matching the GUI Properties panel's own
   advisory-only validation.
+- `get_backlinks --folder NAME <notePath>` — lists notes that
+  wikilink/markdown-link to this note (path relative to the notes folder
+  root), resolved the same case-insensitive way as the GUI's graph.
+  Doesn't include notes that only share a tag — see `get_tags` for that.
+- `get_tags --folder NAME` — lists every tag in the notes folder, each with
+  the notes (relative paths) that carry it, from frontmatter `tags:` and
+  inline `#tag` alike.
 
 `--content-file` reads the note's text from a file instead of a shell
 argument — useful for multiline text, which is awkward to pass as a single
@@ -130,6 +137,8 @@ cairn-cli.exe search_notes --folder Work "dark mode"
 cairn-cli.exe delete_note --folder Work "Idea.md"
 cairn-cli.exe set_properties --folder Work "Idea.md" --json '{"status":"active","priority":2}'
 cairn-cli.exe get_properties --folder Work "Idea.md"
+cairn-cli.exe get_backlinks --folder Work "Idea.md"
+cairn-cli.exe get_tags --folder Work
 ```
 
 ## MCP server
@@ -143,7 +152,8 @@ registry and notes as the GUI and CLI.
 
 Tools: `add_folder`, `list_folders`, `get_notes`, `get_note`, `add_note`,
 `set_note`, `update_note`, `delete_note`, `search_notes`, `get_properties`,
-`set_properties` — one per CLI command above, with the same behavior.
+`set_properties`, `get_backlinks`, `get_tags` — one per CLI command above,
+with the same behavior.
 
 Point an MCP client at it with `node`, e.g. in Claude Code's `.mcp.json` or
 Claude Desktop's config:

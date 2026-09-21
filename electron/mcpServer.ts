@@ -6,9 +6,11 @@ import {
   addFolder,
   addNote,
   deleteNote,
+  getBacklinks,
   getNote,
   getNotes,
   getProperties,
+  getTags,
   listFolders,
   searchNotes,
   setNote,
@@ -17,9 +19,9 @@ import {
 } from "./cli";
 import { cairnUserDataDir } from "./userDataDir";
 
-// Exposes the same operations as the `cairn.exe`/`electron .` CLI
-// (electron/cli.ts) as MCP tools, for agents (Claude Desktop, Claude Code)
-// to read and write a Cairn notes folder directly instead of shelling out.
+// Exposes the same operations as the `cairn-cli` CLI (electron/cli.ts) as
+// MCP tools, for agents (Claude Desktop, Claude Code) to read and write a
+// Cairn notes folder directly instead of shelling out.
 // Runs as a standalone Node process - no Electron runtime involved - so it
 // reads/writes the same notesFolders.json the packaged app uses by
 // replicating Electron's userData path convention (see userDataDir.ts).
@@ -148,6 +150,28 @@ server.registerTool(
   },
   async ({ folder, query, regex, caseSensitive, wholeWord }) =>
     textResult(await searchNotes(notesFoldersFilePath(), folder, query, { regex, caseSensitive, wholeWord }))
+);
+
+server.registerTool(
+  "get_backlinks",
+  {
+    description:
+      "List notes that wikilink/markdown-link to a note (excludes notes that only share a tag - use get_tags for that).",
+    inputSchema: {
+      folder: z.string(),
+      notePath: z.string().describe("Path relative to the notes folder root"),
+    },
+  },
+  async ({ folder, notePath }) => textResult(await getBacklinks(notesFoldersFilePath(), folder, notePath))
+);
+
+server.registerTool(
+  "get_tags",
+  {
+    description: "List every tag in a notes folder, each with the notes that carry it.",
+    inputSchema: { folder: z.string() },
+  },
+  async ({ folder }) => textResult(await getTags(notesFoldersFilePath(), folder))
 );
 
 server.registerTool(
