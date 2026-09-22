@@ -35,6 +35,8 @@ import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
 import { isAllowedExternalUrl, isAllowedForPlugin } from "./domainPolicy";
 import { PLUGIN_SCHEME, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
+import { handleAttachmentProtocol, registerAttachmentScheme } from "./attachmentProtocol";
+import { saveAttachment } from "./attachments";
 import { discoverPlugins } from "./pluginRegistry";
 import {
   grantPermission,
@@ -525,6 +527,15 @@ ipcMain.handle("notesFolder:seedStarterContent", async () => {
   return created;
 });
 
+// Saves a pasted/dropped file under the active notes folder's "attachments"
+// folder (see electron/attachments.ts) and returns its path relative to
+// root, for the renderer to turn into a relative markdown image reference
+// (see shared/attachmentPath.ts's relativeAttachmentReference).
+ipcMain.handle("attachments:save", async (_event, fileName: string, data: ArrayBuffer) => {
+  const root = requireActiveRoot();
+  return saveAttachment(root, fileName, Buffer.from(data));
+});
+
 ipcMain.handle("notesFolder:getNoteHistory", async (_event, absPath: string) => {
   assertOwnsPath(absPath);
   const root = requireActiveRoot();
@@ -685,8 +696,10 @@ function migrateNotesFolderStorage(): void {
 }
 
 registerPluginScheme();
+registerAttachmentScheme();
 app.whenReady().then(() => {
   migrateNotesFolderStorage();
   createWindow();
   handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
+  handleAttachmentProtocol(() => activeRoot);
 });

@@ -73,6 +73,9 @@ const api = {
     ipcRenderer.invoke("notesFolder:readNoteHistoryVersion", absPath, timestamp),
   restoreNoteVersion: (absPath: string, timestamp: string): Promise<number> =>
     ipcRenderer.invoke("notesFolder:restoreNoteVersion", absPath, timestamp),
+  /** Resolves with the saved file's path relative to the notes folder root. */
+  saveAttachment: (fileName: string, data: ArrayBuffer): Promise<string> =>
+    ipcRenderer.invoke("attachments:save", fileName, data),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
     ipcRenderer.invoke("notesFolder:renameNote", absPath, newTitle, updateLinks),
   openExternal: (url: string): Promise<boolean> =>

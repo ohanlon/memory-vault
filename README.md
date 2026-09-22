@@ -44,6 +44,9 @@ empty one to start fresh) — that becomes a notes folder.
 - **Version history**: every overwrite is snapshotted locally, so the clock
   icon next to a note's Edit/Preview toggle lets you browse and restore past
   versions.
+- **Attachments**: paste an image from the clipboard or drag one into the
+  editor and it's saved alongside your notes with a markdown reference
+  inserted automatically, rendered inline in Preview mode.
 
 See [docs/reference.md](docs/reference.md) for exact link syntax, the graph
 model, and how notes folders are stored on disk.

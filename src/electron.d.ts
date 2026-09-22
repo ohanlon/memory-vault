@@ -51,6 +51,8 @@ export interface MemoryStackAPI {
   readNoteHistoryVersion(absPath: string, timestamp: string): Promise<string | null>;
   /** Resolves with the note's new mtime, mirroring saveNote, for the caller to re-baseline conflict detection. */
   restoreNoteVersion(absPath: string, timestamp: string): Promise<number>;
+  /** Resolves with the saved file's path relative to the notes folder root. */
+  saveAttachment(fileName: string, data: ArrayBuffer): Promise<string>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;

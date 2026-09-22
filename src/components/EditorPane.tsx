@@ -9,6 +9,7 @@ import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
 import { CODE_LANGUAGES, CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
 import { autocompletion } from "@codemirror/autocomplete";
 import { livePreview } from "../editor/livePreview";
+import { attachmentPaste } from "../editor/attachmentPaste";
 import { listIndentKeymap } from "../editor/listIndent";
 import { editorContextMenu, type EditorContextMenuRequest, type PickableNote } from "../editor/editorContextMenu";
 import { wikilinkCompletionSource } from "../editor/wikilinkAutocomplete";
@@ -340,6 +341,7 @@ export function EditorPane({
       EditorView.lineWrapping,
       livePreview({ onSelectTitle, onOpenExternal, noteTitles }),
       editorContextMenu(setContextMenuRequest, resolveNoteByTitle, note?.path ?? "", writeNote),
+      attachmentPaste(note?.relativePath ?? "", window.memoryStack.saveAttachment),
       autocompletion({ override: [wikilinkCompletion] }),
       onboardingHints({ onWikilinkStarted, onTagTyped }),
       searchExtension(),
@@ -354,6 +356,7 @@ export function EditorPane({
       noteTitles,
       resolveNoteByTitle,
       note?.path,
+      note?.relativePath,
       writeNote,
       wikilinkCompletion,
       onWikilinkStarted,
@@ -419,6 +422,7 @@ export function EditorPane({
       {previewMode ? (
         <MarkdownPreview
           content={content}
+          notePath={note.relativePath}
           noteTitles={noteTitles}
           onSelectTitle={onSelectTitle}
           onOpenExternal={onOpenExternal}

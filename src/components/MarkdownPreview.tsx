@@ -2,17 +2,25 @@ import { useCallback, useEffect, useMemo, useState, MouseEvent } from "react";
 import { Marked, type Tokens } from "marked";
 import DOMPurify from "dompurify";
 import { CODE_LANGUAGES } from "@shared/codeLanguages";
+import { attachmentUrl, resolveRelativeAttachmentPath } from "@shared/attachmentPath";
 import { EXTERNAL_SCHEME_RE, titleFromHref } from "../editor/livePreview";
 import { ensureLanguagesLoaded, extractNeededLanguageIds, highlightCode, resolveLanguageId } from "../editor/codeHighlight";
 import { MATH_BLOCK_START_RE, renderMathToString } from "../editor/mathRender";
 
 interface Props {
   content: string;
+  notePath: string;
   noteTitles: Set<string>;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
   enabledCodeLanguages: string[];
 }
+
+// DOMPurify's default allow-list for URI-valued attributes (href/src/etc.)
+// only covers a fixed set of common schemes - cairn-attachment: has to be
+// added explicitly or sanitize() strips it from <img src>.
+const SAFE_URI_REGEXP =
+  /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|cairn-attachment):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 
 function escapeHtml(text: string): string {
   return text
@@ -48,7 +56,7 @@ function stripBlockIds(markdown: string): string {
   return lines.join("\n");
 }
 
-function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<string>) {
+function createMarked(notePath: string, noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<string>) {
   // Populated by hooks.preprocess (one entry per heading line, in document
   // order, null when that heading has no {#id}) and consumed by
   // hooks.postprocess to stamp matching ids onto the rendered <h1>-<h6> tags.
@@ -72,6 +80,18 @@ function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<s
       },
     },
     renderer: {
+      // A plain relative src (e.g. "attachments/foo.png", written relative
+      // to this note's own file) would otherwise resolve against the
+      // renderer's own bundle origin, not the notes folder on disk - rewrite
+      // it into a cairn-attachment:// URL the registered protocol handler
+      // (electron/attachmentProtocol.ts) can actually serve. Anything with
+      // its own URL scheme already (http, data:, etc.) is left untouched.
+      image({ href, title, text }: Tokens.Image) {
+        const resolved = resolveRelativeAttachmentPath(notePath, href);
+        const src = resolved ? attachmentUrl(resolved) : href;
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+        return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text)}"${titleAttr}>`;
+      },
       code({ text, lang }: Tokens.Code) {
         const content = text.replace(/\n$/, "") + "\n";
         const highlighted = highlightCode(content, lang, enabledLanguageIds);
@@ -217,14 +237,14 @@ function createMarked(noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<s
   });
 }
 
-export function MarkdownPreview({ content, noteTitles, onSelectTitle, onOpenExternal, enabledCodeLanguages }: Props) {
+export function MarkdownPreview({ content, notePath, noteTitles, onSelectTitle, onOpenExternal, enabledCodeLanguages }: Props) {
   const enabledLanguageIds = useMemo(() => new Set(enabledCodeLanguages), [enabledCodeLanguages]);
 
   const render = useCallback(() => {
-    const marked = createMarked(noteTitles, enabledLanguageIds);
+    const marked = createMarked(notePath, noteTitles, enabledLanguageIds);
     const rendered = marked.parse(content, { async: false }) as string;
-    return DOMPurify.sanitize(rendered);
-  }, [content, noteTitles, enabledLanguageIds]);
+    return DOMPurify.sanitize(rendered, { ALLOWED_URI_REGEXP: SAFE_URI_REGEXP });
+  }, [content, notePath, noteTitles, enabledLanguageIds]);
 
   // Renders immediately with whatever language grammars are already loaded
   // (never leaves the preview blank), then re-renders once any additional
@@ -243,7 +263,7 @@ export function MarkdownPreview({ content, noteTitles, onSelectTitle, onOpenExte
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content, noteTitles, enabledLanguageIds]);
+  }, [content, notePath, noteTitles, enabledLanguageIds]);
 
   function handleClick(e: MouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;

@@ -43,6 +43,26 @@ URL, useful when you have text selected to turn into a link.
 - Any other URL scheme (`javascript:`, `data:`, `ftp:`, etc.) is ignored
   entirely — neither shown in the graph nor treated as a note link.
 
+## Attachments
+
+- Paste an image from the clipboard, or drag one onto the editor, and it's
+  saved into a top-level `attachments/` folder at the notes folder root and
+  a `![](path)` reference is inserted at the cursor — no manual file
+  copying. A name collision is resolved by suffixing a number rather than
+  overwriting (`electron/attachments.ts`).
+- In Preview mode, a relative image reference like this renders as an
+  actual `<img>`, resolved against the note's own location the same way a
+  markdown link is (`electron/attachmentProtocol.ts`, `shared/attachmentPath.ts`)
+  — a plain relative path can't otherwise resolve to an arbitrary,
+  user-picked notes folder on disk. An image with its own URL scheme
+  already (`https://...`, `data:...`) is left untouched.
+- Live preview edit mode shows the raw `![](path)` markdown text rather than
+  rendering the image inline — only the Preview toggle renders it.
+- Attachments aren't notes: they don't appear in the sidebar's file tree,
+  the graph, or the CLI/MCP note operations. Nothing currently deletes an
+  attachment automatically when the last note referencing it is deleted or
+  edited.
+
 ## Tags
 
 - Tags come from frontmatter (`tags: [project]`) or an inline `#project`
