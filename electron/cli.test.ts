@@ -1262,3 +1262,77 @@ describe("runCliCommand: note history", () => {
     expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toBe("version B");
   });
 });
+
+describe("runCliCommand: --content-file - (stdin)", () => {
+  it("add_note reads content from the injected stdin reader", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["add_note", "--folder", "Work", "Idea", "--content-file", "-"],
+      notesFoldersFile,
+      accessFile(),
+      undefined,
+      () => "piped content"
+    );
+
+    expect(result.ok).toBe(true);
+    expect(fs.readFileSync(path.join(root, "Idea.md"), "utf-8")).toBe("piped content");
+  });
+
+  it("set_note reads content from stdin", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(
+      ["set_note", "--folder", "Work", "Prefs.md", "--content-file", "-"],
+      notesFoldersFile,
+      accessFile(),
+      undefined,
+      () => "from stdin"
+    );
+
+    expect(fs.readFileSync(path.join(root, "Prefs.md"), "utf-8")).toBe("from stdin");
+  });
+
+  it("update_note reads the appended text from stdin", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "original", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(
+      ["update_note", "--folder", "Work", "A.md", "--content-file", "-"],
+      notesFoldersFile,
+      accessFile(),
+      undefined,
+      () => "appended via stdin"
+    );
+
+    expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toBe("original\nappended via stdin");
+  });
+
+  it("falls back to the real stdin reader when none is injected (doesn't throw at call time)", async () => {
+    // Not exercising an actual read here (that would block on the test
+    // runner's own stdin) - just confirming the default parameter wiring
+    // doesn't error out before reaching resolveContentFlag when --content is
+    // used instead, i.e. omitting readStdin entirely is a valid call shape.
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["set_note", "--folder", "Work", "Prefs.md", "--content", "hello"],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(true);
+  });
+});

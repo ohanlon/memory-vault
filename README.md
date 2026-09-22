@@ -100,17 +100,17 @@ since whatever called it already has CLI/MCP access by definition.
   to a later write on the same note to avoid clobbering a change made in
   between (see below).
 - `add_note --folder NAME <title> [--subfolder PATH] [--content TEXT |
-  --content-file PATH]` — creates a note with the given title and content,
+  --content-file PATH|-]` — creates a note with the given title and content,
   optionally inside `PATH` (created if missing). If the title collides
   with an existing note, picks a new name (e.g. `"Idea 1"`) and reports it.
 - `set_note --folder NAME <notePath> (--content TEXT | --content-file
-  PATH) [--if-unmodified-since MTIME_MS]` — creates or overwrites a note at
+  PATH|-) [--if-unmodified-since MTIME_MS]` — creates or overwrites a note at
   an exact path (path relative to the notes folder root), no auto-renaming.
   Use this instead of `add_note` when you want to maintain a specific note
   (e.g. a memory file an agent keeps writing back to) rather than always
   creating a new one.
 - `update_note --folder NAME <notePath> (--content TEXT | --content-file
-  PATH) [--heading NAME] [--if-unmodified-since MTIME_MS]` — appends the
+  PATH|-) [--heading NAME] [--if-unmodified-since MTIME_MS]` — appends the
   text to an existing note (path relative to the notes folder root). By
   default appends at the end of the file, adding a newline first if it
   doesn't already end with one; with `--heading`, inserts at the end of
@@ -169,7 +169,10 @@ the note doesn't exist yet, since there's nothing to conflict with.
 `--content-file` reads the note's text from a file instead of a shell
 argument — useful for multiline text, which is awkward to pass as a single
 `--content` argument (shell-dependent: e.g. `$'line one\nline two'` in Git
-Bash, or `` "line one`nline two" `` in PowerShell).
+Bash, or `` "line one`nline two" `` in PowerShell). Pass `-` instead of a
+path to read from stdin instead of a file, e.g. to pipe another command's
+output straight into a note: `some-command | cairn-cli.exe set_note --folder
+Work "Log.md" --content-file -`.
 
 ```bash
 cairn-cli.exe add_folder ./my-notes --name "Work"

@@ -79,17 +79,33 @@ function expectedMtimeFlag(flags: ParsedArgs["flags"], usage: string): number | 
   return parsed;
 }
 
+// Reads stdin to completion synchronously - fine here since this only runs
+// from the CLI dispatcher (a short-lived process whose one job is this
+// command), never from the MCP server (which gets content as a plain string
+// argument already and has no CLI flags to parse in the first place).
+function defaultReadStdin(): string {
+  return fs.readFileSync(0, "utf-8");
+}
+
 // Resolves --content/--content-file into the actual text: --content-file
 // reads a file (useful for multiline text a shell can't easily pass as a
-// single argument), --content is used verbatim, and if neither is given
-// the caller decides whether that's an error (required) or just "".
-function resolveContentFlag(flags: ParsedArgs["flags"], usage: string, required: boolean): string {
+// single argument), or reads stdin to EOF if given "-" (the same convention
+// driver.mjs and countless other CLIs use), --content is used verbatim, and
+// if neither is given the caller decides whether that's an error (required)
+// or just "". readStdin is injectable so tests don't block on the real fd 0.
+function resolveContentFlag(
+  flags: ParsedArgs["flags"],
+  usage: string,
+  required: boolean,
+  readStdin: () => string = defaultReadStdin
+): string {
   const content = flagString(flags.content);
   const contentFile = flagString(flags["content-file"]);
   if (content !== undefined && contentFile !== undefined) {
     throw new Error(`Specify either --content or --content-file, not both. Usage: ${usage}`);
   }
   if (contentFile !== undefined) {
+    if (contentFile === "-") return readStdin();
     if (!fs.existsSync(contentFile)) throw new Error(`Content file "${contentFile}" does not exist.`);
     return fs.readFileSync(contentFile, "utf-8");
   }
@@ -649,7 +665,8 @@ export async function runCliCommand(
   args: string[],
   notesFoldersFile: string,
   cliAccessFile: string,
-  historyRoot?: string
+  historyRoot?: string,
+  readStdin?: () => string
 ): Promise<CliResult> {
   const [command, ...rest] = args;
   const { positional, flags } = parseArgs(rest);
@@ -672,29 +689,29 @@ export async function runCliCommand(
       return getNote(notesFoldersFile, cliAccessFile, folder, note);
     }
     case "add_note": {
-      const usage = "add_note --folder NAME <title> [--subfolder PATH] [--content TEXT | --content-file PATH]";
+      const usage = "add_note --folder NAME <title> [--subfolder PATH] [--content TEXT | --content-file PATH|-]";
       const folder = flagString(flags.folder);
       const title = positional[0];
       if (!folder || !title) throw new Error(`Usage: ${usage}`);
-      const content = resolveContentFlag(flags, usage, false);
+      const content = resolveContentFlag(flags, usage, false, readStdin);
       return addNote(notesFoldersFile, cliAccessFile, folder, title, content, flagString(flags.subfolder));
     }
     case "set_note": {
       const usage =
-        "set_note --folder NAME <notePath> (--content TEXT | --content-file PATH) [--if-unmodified-since MTIME_MS]";
+        "set_note --folder NAME <notePath> (--content TEXT | --content-file PATH|-) [--if-unmodified-since MTIME_MS]";
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
-      const content = resolveContentFlag(flags, usage, true);
+      const content = resolveContentFlag(flags, usage, true, readStdin);
       return setNote(notesFoldersFile, cliAccessFile, historyRoot, folder, note, content, expectedMtimeFlag(flags, usage));
     }
     case "update_note": {
       const usage =
-        "update_note --folder NAME <notePath> (--content TEXT | --content-file PATH) [--heading NAME] [--if-unmodified-since MTIME_MS]";
+        "update_note --folder NAME <notePath> (--content TEXT | --content-file PATH|-) [--heading NAME] [--if-unmodified-since MTIME_MS]";
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
-      const content = resolveContentFlag(flags, usage, true);
+      const content = resolveContentFlag(flags, usage, true, readStdin);
       return updateNote(
         notesFoldersFile,
         cliAccessFile,
