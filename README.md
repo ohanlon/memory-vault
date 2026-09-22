@@ -33,6 +33,9 @@ empty one to start fresh) — that becomes a notes folder.
 - **Group with tags**: adding `#project` to a note links it to every other
   note tagged `project`, no manual linking required.
 - **Search and replace** across every note in a notes folder at once.
+- **Subfolders**: the sidebar mirrors whatever folder structure your notes
+  actually live in on disk, collapsible per folder — including subfolders
+  created outside the GUI (e.g. `add_note --subfolder` from the CLI/MCP).
 - **Stay in sync**: edits made outside Cairn (by hand, or by Claude Code)
   are picked up automatically — the app never owns the files. If an open
   note changes outside Cairn while you have unsaved edits to it, a banner

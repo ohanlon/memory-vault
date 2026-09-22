@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import type { FileTemplate, Note } from "@shared/types";
 import { findDuplicateTitles } from "@shared/duplicateTitles";
 import { pluginRegistry } from "../plugins/registry";
 import { pushToPlugin } from "../plugins/pluginFrameRegistry";
+import { buildFileTree, type FileTreeNode } from "../notesFolder/fileTree";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 import { DeleteIcon, NoteIcon, OpenInExplorerIcon, RenameIcon } from "./icons";
+
+// Base left padding for a top-level row, plus how much further each nested
+// folder level indents - mirrors the fixed 26px .file-tree-item-indented
+// already used for template rows one level deep, but generalized to
+// whatever depth a note's subfolder (created via the CLI's --subfolder,
+// or by hand) actually nests to.
+const FILE_TREE_BASE_PADDING = 10;
+const FILE_TREE_INDENT_STEP = 16;
 
 interface Props {
   notes: Note[];
@@ -58,9 +67,10 @@ interface EditableLabelProps {
   className: string;
   onCommit: (value: string) => void;
   onCancel: () => void;
+  style?: CSSProperties;
 }
 
-function EditableLabel({ initialValue, className, onCommit, onCancel }: EditableLabelProps) {
+function EditableLabel({ initialValue, className, onCommit, onCancel, style }: EditableLabelProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const doneRef = useRef(false);
 
@@ -85,6 +95,7 @@ function EditableLabel({ initialValue, className, onCommit, onCancel }: Editable
     <input
       ref={inputRef}
       className={className}
+      style={style}
       defaultValue={initialValue}
       onBlur={commit}
       onClick={(e) => e.stopPropagation()}
@@ -119,14 +130,26 @@ export function FileTree({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [templateContextMenu, setTemplateContextMenu] = useState<TemplateContextMenuState | null>(null);
   const [templatesCollapsed, setTemplatesCollapsed] = useState(false);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
 
-  const sorted = useMemo(() => [...notes].sort((a, b) => a.title.localeCompare(b.title)), [notes]);
+  const tree = useMemo(() => buildFileTree(notes), [notes]);
 
   // Titles that appear on more than one note — shown with their relative
-  // path as a disambiguating hint, since the list is otherwise flat.
+  // path as a disambiguating hint, since two notes in different folders can
+  // still share a title.
   const duplicateTitles = useMemo(() => findDuplicateTitles(notes), [notes]);
 
-  function renderNoteRow(note: Note): ReactNode {
+  function toggleFolder(path: string) {
+    setCollapsedFolders((current) => {
+      const next = new Set(current);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }
+
+  function renderNoteRow(note: Note, depth: number): ReactNode {
+    const paddingLeft = FILE_TREE_BASE_PADDING + depth * FILE_TREE_INDENT_STEP;
     if (note.path === renamingPath) {
       return (
         <li key={note.path} className={note.path === activePath ? "active" : ""}>
@@ -135,6 +158,7 @@ export function FileTree({
             initialValue={note.title}
             onCommit={(value) => onCommitNoteRename(note, value)}
             onCancel={onCancelRename}
+            style={{ paddingLeft }}
           />
         </li>
       );
@@ -143,6 +167,7 @@ export function FileTree({
       <li key={note.path} className={note.path === activePath ? "active" : ""}>
         <button
           className="file-tree-item"
+          style={{ paddingLeft }}
           onClick={() => onSelect(note)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -166,6 +191,37 @@ export function FileTree({
         </button>
       </li>
     );
+  }
+
+  function renderFolderRow(folder: Extract<FileTreeNode, { kind: "folder" }>, depth: number): ReactNode {
+    const collapsed = collapsedFolders.has(folder.path);
+    const paddingLeft = FILE_TREE_BASE_PADDING + depth * FILE_TREE_INDENT_STEP;
+    return (
+      <li key={folder.path} className="file-tree-group">
+        <div
+          className="file-tree-group-header"
+          style={{ paddingLeft }}
+          tabIndex={0}
+          onClick={() => toggleFolder(folder.path)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleFolder(folder.path);
+            }
+          }}
+        >
+          <span className="file-tree-group-icon" aria-hidden="true">
+            {collapsed ? "📁" : "📂"}
+          </span>
+          <span className="file-tree-group-name">{folder.name}</span>
+        </div>
+        {!collapsed && <ul className="file-tree-group-children">{renderNodes(folder.children, depth + 1)}</ul>}
+      </li>
+    );
+  }
+
+  function renderNodes(nodes: FileTreeNode[], depth: number): ReactNode[] {
+    return nodes.map((node) => (node.kind === "folder" ? renderFolderRow(node, depth) : renderNoteRow(node.note, depth)));
   }
 
   function renderTemplateRow(template: FileTemplate): ReactNode {
@@ -218,8 +274,8 @@ export function FileTree({
     <>
       <ul className="file-tree" tabIndex={0}>
         {templates.length > 0 && renderTemplateGroup()}
-        {sorted.map((note) => renderNoteRow(note))}
-        {sorted.length === 0 && <li className="file-tree-empty">No notes yet</li>}
+        {renderNodes(tree, 0)}
+        {notes.length === 0 && <li className="file-tree-empty">No notes yet</li>}
       </ul>
       {contextMenu && (
         <ContextMenu

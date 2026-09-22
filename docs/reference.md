@@ -165,6 +165,14 @@ rejected. Removing a notes folder only deletes the mapping — the folder and
 its notes on disk are untouched. Only one notes folder is open at a time;
 switching writes nothing to the folder you're leaving.
 
+The sidebar's file tree (`src/components/FileTree.tsx`) mirrors a note's
+actual subfolder on disk — grouped via `src/notesFolder/fileTree.ts`'s
+`buildFileTree`, folders before notes at each level, both alphabetical —
+rather than showing every note in one flat list regardless of location.
+This includes a subfolder created outside the GUI entirely, e.g. via the
+CLI/MCP's `add_note --subfolder`. Each folder's collapsed/expanded state is
+local UI state, not persisted across restarts.
+
 ## Properties
 
 Frontmatter fields can optionally be constrained by a schema (Settings →
