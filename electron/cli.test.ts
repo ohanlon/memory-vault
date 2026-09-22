@@ -1336,3 +1336,64 @@ describe("runCliCommand: --content-file - (stdin)", () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe("runCliCommand: get_orphaned_attachments / delete_orphaned_attachments", () => {
+  it("lists an attachment no note references", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(path.join(root, "attachments"), { recursive: true });
+    fs.writeFileSync(path.join(root, "attachments", "foo.png"), "x", "utf-8");
+    fs.writeFileSync(path.join(root, "Note.md"), "no images here", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_orphaned_attachments", "--folder", "Work"], notesFoldersFile, accessFile());
+
+    expect(result.ok).toBe(true);
+    expect(result.orphaned).toEqual(["attachments/foo.png"]);
+  });
+
+  it("does not list an attachment a note references", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(path.join(root, "attachments"), { recursive: true });
+    fs.writeFileSync(path.join(root, "attachments", "foo.png"), "x", "utf-8");
+    fs.writeFileSync(path.join(root, "Note.md"), "![alt](attachments/foo.png)", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["get_orphaned_attachments", "--folder", "Work"], notesFoldersFile, accessFile());
+
+    expect(result.orphaned).toEqual([]);
+  });
+
+  it("delete_orphaned_attachments removes only the unreferenced files and reports them", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(path.join(root, "attachments"), { recursive: true });
+    fs.writeFileSync(path.join(root, "attachments", "used.png"), "x", "utf-8");
+    fs.writeFileSync(path.join(root, "attachments", "unused.png"), "x", "utf-8");
+    fs.writeFileSync(path.join(root, "Note.md"), "![alt](attachments/used.png)", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(["delete_orphaned_attachments", "--folder", "Work"], notesFoldersFile, accessFile());
+
+    expect(result.ok).toBe(true);
+    expect(result.deleted).toEqual(["attachments/unused.png"]);
+    expect(fs.existsSync(path.join(root, "attachments", "unused.png"))).toBe(false);
+    expect(fs.existsSync(path.join(root, "attachments", "used.png"))).toBe(true);
+  });
+
+  it("denies access to an ungranted folder", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+    const noAccessDir = tmpDir();
+    fs.mkdirSync(noAccessDir, { recursive: true });
+    const noAccessFile = path.join(noAccessDir, "cli-access.json");
+    fs.writeFileSync(noAccessFile, JSON.stringify({ allowed: [] }), "utf-8");
+
+    await expect(
+      runCliCommand(["get_orphaned_attachments", "--folder", "Work"], notesFoldersFile, noAccessFile)
+    ).rejects.toThrow(/has not been granted/);
+  });
+});

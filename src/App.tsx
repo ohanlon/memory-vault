@@ -464,6 +464,18 @@ export default function App() {
     await removeNotesFolder(name);
   }
 
+  async function handleCleanUpAttachments(root: string) {
+    const orphaned = await window.memoryStack.findOrphanedAttachments(root);
+    if (orphaned.length === 0) {
+      window.alert("No unused attachments found.");
+      return;
+    }
+    const list = orphaned.join("\n");
+    if (!window.confirm(`Delete ${orphaned.length} unused attachment(s)? This can't be undone.\n\n${list}`)) return;
+    await window.memoryStack.deleteOrphanedAttachments(root, orphaned);
+    window.alert(`Deleted ${orphaned.length} unused attachment(s).`);
+  }
+
   async function handleRenameNotesFolderSubmit(newName: string) {
     if (dialog?.kind !== "rename-notes-folder") return;
     const oldName = dialog.notesFolder.name;
@@ -689,6 +701,10 @@ export default function App() {
               const currentlyAllowed = cliAccessFolders.some((n) => n.toLowerCase() === name.toLowerCase());
               setCliAccess(name, !currentlyAllowed);
             },
+          },
+          {
+            label: "Clean up unused attachments",
+            onClick: () => handleCleanUpAttachments(notesFolderContextMenu.notesFolder.root),
           },
         ]
       : null;

@@ -18,6 +18,8 @@
 //   eval <jsExpression>  - page.evaluate(expression) in the renderer, prints the JSON result
 //   key <keyName>        - press a named key, e.g. "Control+End", "Enter", "Escape"
 //   sh <command>         - run a shell command mid-scenario (e.g. cairn-cli.exe to simulate an external write)
+//   autodialog accept|dismiss - auto-respond to the next window.confirm/alert dialogs this way (Electron's
+//                                window.confirm shows a native dialog that otherwise blocks forever with no listener)
 //   quit                 - close the app (also happens automatically at end of script)
 //
 // Example:
@@ -96,6 +98,12 @@ for (const line of lines) {
       case "eval": {
         const result = await window.evaluate(argStr);
         console.log(`[eval] ${JSON.stringify(result)}`);
+        break;
+      }
+      case "autodialog": {
+        const accept = argStr.trim() === "accept";
+        window.on("dialog", (dialog) => (accept ? dialog.accept() : dialog.dismiss()));
+        console.log(`[autodialog] will ${accept ? "accept" : "dismiss"} dialogs`);
         break;
       }
       case "quit":

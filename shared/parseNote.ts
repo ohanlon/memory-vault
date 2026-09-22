@@ -77,6 +77,33 @@ export function extractMarkdownLinks(content: string): WikiLink[] {
   return links;
 }
 
+// Matches image embeds ![text](target) - the mirror image of MARKDOWN_LINK_RE's
+// negative lookbehind, which deliberately excludes these.
+const IMAGE_EMBED_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+// Every image embed's raw href, exactly as written (not resolved or
+// filtered by scheme) - used by electron/attachments.ts to figure out which
+// attachments are still referenced by some note. Unlike extractMarkdownLinks,
+// this doesn't restrict to .md targets or drop external URLs, since the
+// caller needs to tell those apart from a relative attachment path itself.
+export function extractImageEmbeds(content: string): string[] {
+  const hrefs: string[] = [];
+  const masked = maskCodeSpans(content);
+  for (const match of masked.matchAll(IMAGE_EMBED_RE)) {
+    let href = match[2].trim();
+    // Drop an optional trailing "title" or 'title' part, e.g. ![alt](foo.png "title").
+    const titleSuffix = href.match(/\s+(["'])(?:(?!\1)[\s\S])*\1$/);
+    if (titleSuffix) href = href.slice(0, titleSuffix.index).trim();
+    // Destinations may be wrapped in <...>, which permits literal spaces inside.
+    if (href.startsWith("<")) {
+      const end = href.indexOf(">");
+      href = end >= 0 ? href.slice(1, end) : href.slice(1);
+    }
+    if (href) hrefs.push(href);
+  }
+  return hrefs;
+}
+
 export function extractTags(frontmatter: Record<string, unknown>): string[] {
   const raw = frontmatter.tags;
   if (Array.isArray(raw)) {

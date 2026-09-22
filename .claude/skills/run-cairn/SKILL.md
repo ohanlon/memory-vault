@@ -60,6 +60,7 @@ Commands:
 | `text <selector>` | Print an element's `innerText` |
 | `eval <jsExpression>` | `page.evaluate(expression)` in the renderer, prints the JSON result |
 | `sh <command>` | Run a shell command mid-scenario (e.g. `cairn-cli.exe` to simulate an external write while the app is open) |
+| `autodialog accept\|dismiss` | Auto-respond to `window.confirm`/`alert` dialogs from here on (they otherwise block forever — see Gotchas) |
 | `quit` | Close the app early (otherwise happens automatically at the end) |
 
 ## Run (human path)
@@ -77,6 +78,11 @@ npm test
 
 ## Gotchas
 
+- **`window.confirm`/`window.alert` block forever without `autodialog`.**
+  A few actions (e.g. "Clean up unused attachments") use plain
+  `window.confirm`/`alert`, which show a native dialog Playwright doesn't
+  auto-dismiss by default in an Electron `_electron` session — run
+  `autodialog accept` (or `dismiss`) *before* the step that triggers one.
 - **The note editor is CodeMirror, not a plain `<input>`.** `fill` won't
   work on it. Click into the text with `click text=...` (matches on
   visible text), then `key Control+End` to jump to the end of the

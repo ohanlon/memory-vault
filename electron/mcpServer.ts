@@ -6,10 +6,12 @@ import {
   addFolder,
   addNote,
   deleteNote,
+  deleteOrphanedAttachments,
   getBacklinks,
   getNote,
   getNoteHistory,
   getNotes,
+  getOrphanedAttachments,
   getProperties,
   getTags,
   listFolders,
@@ -309,6 +311,25 @@ server.registerTool(
         ifUnmodifiedSince
       )
     )
+);
+
+server.registerTool(
+  "get_orphaned_attachments",
+  {
+    description:
+      "List attachments (files under the notes folder's attachments/ folder) that no note currently embeds via ![](path) - candidates for delete_orphaned_attachments.",
+    inputSchema: { folder: z.string() },
+  },
+  async ({ folder }) => textResult(await getOrphanedAttachments(notesFoldersFilePath(), cliAccessFilePath(), folder))
+);
+
+server.registerTool(
+  "delete_orphaned_attachments",
+  {
+    description: "Delete every attachment no note currently embeds (recomputed fresh, see get_orphaned_attachments).",
+    inputSchema: { folder: z.string() },
+  },
+  async ({ folder }) => textResult(await deleteOrphanedAttachments(notesFoldersFilePath(), cliAccessFilePath(), folder))
 );
 
 // An async IIFE rather than a top-level await, since the bundler's target

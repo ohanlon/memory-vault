@@ -62,6 +62,15 @@ URL, useful when you have text selected to turn into a link.
   the graph, or the CLI/MCP note operations. Nothing currently deletes an
   attachment automatically when the last note referencing it is deleted or
   edited.
+- Orphaned attachments (no note embeds them via `![](path)` anymore) can be
+  found and removed via the CLI/MCP `get_orphaned_attachments`/
+  `delete_orphaned_attachments` operations, or from the GUI's "..." menu on
+  a notes folder ("Clean up unused attachments", `App.tsx`) — both share
+  the same detection logic (`electron/attachments.ts`'s
+  `findOrphanedAttachments`, which scans every note's raw body for image
+  embeds via `shared/parseNote.ts`'s `extractImageEmbeds` and resolves each
+  one the same way MarkdownPreview.tsx does). An embed via an external URL
+  scheme doesn't count as a reference either way.
 
 ## Tags
 

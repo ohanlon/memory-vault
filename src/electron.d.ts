@@ -53,6 +53,9 @@ export interface MemoryStackAPI {
   restoreNoteVersion(absPath: string, timestamp: string): Promise<number>;
   /** Resolves with the saved file's path relative to the notes folder root. */
   saveAttachment(fileName: string, data: ArrayBuffer): Promise<string>;
+  /** Resolves with root-relative paths (see saveAttachment) of every attachment no note currently embeds. */
+  findOrphanedAttachments(root: string): Promise<string[]>;
+  deleteOrphanedAttachments(root: string, relativePaths: string[]): Promise<boolean>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;

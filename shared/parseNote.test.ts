@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractImageEmbeds,
   extractInlineTags,
   extractMarkdownLinks,
   extractTags,
@@ -132,6 +133,40 @@ describe("extractMarkdownLinks", () => {
 
   it("does not treat a markdown link inside inline code as a real link", () => {
     expect(extractMarkdownLinks("use `[text](Note.md)` syntax")).toEqual([]);
+  });
+});
+
+describe("extractImageEmbeds", () => {
+  it("extracts a plain relative image href", () => {
+    expect(extractImageEmbeds("![alt](attachments/foo.png)")).toEqual(["attachments/foo.png"]);
+  });
+
+  it("extracts an external image URL", () => {
+    expect(extractImageEmbeds("![alt](https://example.com/foo.png)")).toEqual(["https://example.com/foo.png"]);
+  });
+
+  it("finds every embed in a note with several", () => {
+    expect(extractImageEmbeds("![a](one.png) text ![b](two.png)")).toEqual(["one.png", "two.png"]);
+  });
+
+  it("drops a trailing title", () => {
+    expect(extractImageEmbeds('![alt](foo.png "a title")')).toEqual(["foo.png"]);
+  });
+
+  it("unwraps an href in angle brackets", () => {
+    expect(extractImageEmbeds("![alt](<my image.png>)")).toEqual(["my image.png"]);
+  });
+
+  it("does not treat a plain markdown link as an image embed", () => {
+    expect(extractImageEmbeds("[text](Note.md)")).toEqual([]);
+  });
+
+  it("does not treat an image embed inside inline code as a real embed", () => {
+    expect(extractImageEmbeds("use `![alt](foo.png)` as an example")).toEqual([]);
+  });
+
+  it("returns an empty array when there are no embeds", () => {
+    expect(extractImageEmbeds("no images here")).toEqual([]);
   });
 });
 

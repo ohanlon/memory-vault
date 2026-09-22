@@ -165,6 +165,13 @@ the note doesn't exist yet, since there's nothing to conflict with.
   from `get_note_history`. The note's current content is itself snapshotted
   first (bypassing the usual throttle), so a restore can always be undone
   with another restore.
+- `get_orphaned_attachments --folder NAME` — lists attachments (files under
+  the notes folder's `attachments/` folder) that no note currently embeds
+  via `![](path)`.
+- `delete_orphaned_attachments --folder NAME` — deletes every currently
+  orphaned attachment (recomputed fresh, not trusting a possibly-stale list
+  from an earlier `get_orphaned_attachments` call) and reports what was
+  removed.
 
 `--content-file` reads the note's text from a file instead of a shell
 argument — useful for multiline text, which is awkward to pass as a single
@@ -192,6 +199,8 @@ cairn-cli.exe get_tags --folder Work
 cairn-cli.exe update_note --folder Work "Idea.md" --content "more text" --if-unmodified-since 1737496200000
 cairn-cli.exe get_note_history --folder Work "Idea.md"
 cairn-cli.exe restore_note_version --folder Work "Idea.md" --timestamp 2026-01-01T10:00:00.000Z
+cairn-cli.exe get_orphaned_attachments --folder Work
+cairn-cli.exe delete_orphaned_attachments --folder Work
 ```
 
 ## MCP server
@@ -206,9 +215,10 @@ registry and notes as the GUI and CLI.
 Tools: `add_folder`, `list_folders`, `get_notes`, `get_note`, `add_note`,
 `set_note`, `update_note`, `delete_note`, `search_notes`, `get_properties`,
 `set_properties`, `get_backlinks`, `get_tags`, `get_note_history`,
-`restore_note_version` — one per CLI command above, with the same behavior,
-including the same deny-by-default per-folder access control described
-above.
+`restore_note_version`, `get_orphaned_attachments`,
+`delete_orphaned_attachments` — one per CLI command above, with the same
+behavior, including the same deny-by-default per-folder access control
+described above.
 
 Point an MCP client at it with `node`, e.g. in Claude Code's `.mcp.json` or
 Claude Desktop's config:

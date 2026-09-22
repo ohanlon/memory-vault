@@ -36,7 +36,7 @@ import { openOrCreateDailyNote } from "./dailyNote";
 import { isAllowedExternalUrl, isAllowedForPlugin } from "./domainPolicy";
 import { PLUGIN_SCHEME, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
 import { handleAttachmentProtocol, registerAttachmentScheme } from "./attachmentProtocol";
-import { saveAttachment } from "./attachments";
+import { deleteAttachments, findOrphanedAttachments, saveAttachment } from "./attachments";
 import { discoverPlugins } from "./pluginRegistry";
 import {
   grantPermission,
@@ -534,6 +534,20 @@ ipcMain.handle("notesFolder:seedStarterContent", async () => {
 ipcMain.handle("attachments:save", async (_event, fileName: string, data: ArrayBuffer) => {
   const root = requireActiveRoot();
   return saveAttachment(root, fileName, Buffer.from(data));
+});
+
+// These two operate on any registered notes folder's root, not necessarily
+// the one currently open - the "..." menu that triggers them (App.tsx) is
+// on the folder-picker screen, before any folder is active, so they load
+// their own fresh notes list rather than relying on session state.
+ipcMain.handle("attachments:findOrphaned", async (_event, root: string) => {
+  const notes = await loadNotesFolder(root);
+  return findOrphanedAttachments(root, notes);
+});
+
+ipcMain.handle("attachments:deleteOrphaned", async (_event, root: string, relativePaths: string[]) => {
+  deleteAttachments(root, relativePaths);
+  return true;
 });
 
 ipcMain.handle("notesFolder:getNoteHistory", async (_event, absPath: string) => {

@@ -27,7 +27,8 @@ function historyDirPath(): string {
 
 const KNOWN_COMMANDS =
   "add_folder, get_notes, get_note, add_note, set_note, update_note, delete_note, search_notes, " +
-  "get_properties, set_properties, get_backlinks, get_tags, list_folders, get_note_history, restore_note_version";
+  "get_properties, set_properties, get_backlinks, get_tags, list_folders, get_note_history, " +
+  "restore_note_version, get_orphaned_attachments, delete_orphaned_attachments";
 
 async function main(): Promise<void> {
   const cliArgs = extractCliArgs(process.argv);

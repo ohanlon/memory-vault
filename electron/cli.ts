@@ -5,6 +5,7 @@ import { addNotesFolder, findByNameCI, readNotesFoldersFile, writeNotesFoldersFi
 import { allowFolder, isFolderAllowed, readCliAccessFile, writeCliAccessFile } from "./cliAccess";
 import { readNoteProperties, saveNoteProperties } from "./noteProperties";
 import { listSnapshots, readSnapshot, recordSnapshot } from "./noteHistory";
+import { deleteAttachments, findOrphanedAttachments } from "./attachments";
 import { findPropertyByNameCI, readPropertySchema } from "./propertiesSchema";
 import { backlinkTitles, buildGraph } from "../shared/buildGraph";
 import { titleFromPath } from "../shared/parseNote";
@@ -30,6 +31,8 @@ const CLI_COMMANDS = new Set([
   "list_folders",
   "get_note_history",
   "restore_note_version",
+  "get_orphaned_attachments",
+  "delete_orphaned_attachments",
 ]);
 
 // argv layout differs between `electron .` in dev (electron path, app path,
@@ -597,6 +600,34 @@ export async function getTags(notesFoldersFile: string, cliAccessFile: string, f
   return { ok: true, folder: entry.name, tags };
 }
 
+// Lists attachments (files under the notes folder's "attachments" folder,
+// see electron/attachments.ts) that no note currently embeds via
+// ![](path) - candidates for delete_orphaned_attachments.
+export async function getOrphanedAttachments(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  folderName: string
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
+  const notes = await loadNotesFolder(entry.root);
+  return { ok: true, folder: entry.name, orphaned: findOrphanedAttachments(entry.root, notes) };
+}
+
+// Deletes every currently-orphaned attachment (recomputed fresh, not
+// trusting a possibly-stale list from an earlier get_orphaned_attachments
+// call) and reports what was removed.
+export async function deleteOrphanedAttachments(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  folderName: string
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
+  const notes = await loadNotesFolder(entry.root);
+  const orphaned = findOrphanedAttachments(entry.root, notes);
+  deleteAttachments(entry.root, orphaned);
+  return { ok: true, folder: entry.name, deleted: orphaned };
+}
+
 // Only lists folders that have been granted CLI/MCP access - an agent's
 // view of what notes folders exist should match what it can actually
 // touch, same reasoning as gating every other operation through
@@ -799,6 +830,16 @@ export async function runCliCommand(
       if (!folder || !note || !timestamp) throw new Error(`Usage: ${usage}`);
       if (!historyRoot) throw new Error("History is not available in this context.");
       return restoreNoteVersion(notesFoldersFile, cliAccessFile, historyRoot, folder, note, timestamp, expectedMtimeFlag(flags, usage));
+    }
+    case "get_orphaned_attachments": {
+      const folder = flagString(flags.folder);
+      if (!folder) throw new Error("Usage: get_orphaned_attachments --folder NAME");
+      return getOrphanedAttachments(notesFoldersFile, cliAccessFile, folder);
+    }
+    case "delete_orphaned_attachments": {
+      const folder = flagString(flags.folder);
+      if (!folder) throw new Error("Usage: delete_orphaned_attachments --folder NAME");
+      return deleteOrphanedAttachments(notesFoldersFile, cliAccessFile, folder);
     }
     default:
       throw new Error(`Unknown command "${command}"`);

@@ -76,6 +76,11 @@ const api = {
   /** Resolves with the saved file's path relative to the notes folder root. */
   saveAttachment: (fileName: string, data: ArrayBuffer): Promise<string> =>
     ipcRenderer.invoke("attachments:save", fileName, data),
+  /** Resolves with root-relative paths (see saveAttachment) of every attachment no note currently embeds. */
+  findOrphanedAttachments: (root: string): Promise<string[]> =>
+    ipcRenderer.invoke("attachments:findOrphaned", root),
+  deleteOrphanedAttachments: (root: string, relativePaths: string[]): Promise<boolean> =>
+    ipcRenderer.invoke("attachments:deleteOrphaned", root, relativePaths),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
     ipcRenderer.invoke("notesFolder:renameNote", absPath, newTitle, updateLinks),
   openExternal: (url: string): Promise<boolean> =>
