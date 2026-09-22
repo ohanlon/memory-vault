@@ -20,9 +20,14 @@ function cliAccessFilePath(): string {
   return path.join(cairnUserDataDir(), "cli-access.json");
 }
 
+// Local version history for notes - see noteHistory.ts.
+function historyDirPath(): string {
+  return path.join(cairnUserDataDir(), "history");
+}
+
 const KNOWN_COMMANDS =
   "add_folder, get_notes, get_note, add_note, set_note, update_note, delete_note, search_notes, " +
-  "get_properties, set_properties, get_backlinks, get_tags, list_folders";
+  "get_properties, set_properties, get_backlinks, get_tags, list_folders, get_note_history, restore_note_version";
 
 async function main(): Promise<void> {
   const cliArgs = extractCliArgs(process.argv);
@@ -33,7 +38,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    const result = await runCliCommand(cliArgs, notesFoldersFilePath(), cliAccessFilePath());
+    const result = await runCliCommand(cliArgs, notesFoldersFilePath(), cliAccessFilePath(), historyDirPath());
     console.log(JSON.stringify(result, null, 2));
     process.exitCode = result.ok === false ? 1 : 0;
   } catch (err) {

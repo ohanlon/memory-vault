@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { extractCliArgs, runCliCommand } from "./cli";
+import { readSnapshot } from "./noteHistory";
 import { writeNotesFoldersFile } from "./notesFolderRegistry";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cairn-cli-test-"));
@@ -1062,5 +1063,202 @@ describe("runCliCommand: --if-unmodified-since (optimistic concurrency)", () => 
         accessFile()
       )
     ).rejects.toThrow(/must be a number/);
+  });
+});
+
+describe("runCliCommand: note history", () => {
+  it("does not record any history when historyRoot is omitted (backward compatible)", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "original", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(["set_note", "--folder", "Work", "A.md", "--content", "new"], notesFoldersFile, accessFile());
+
+    expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toBe("new");
+  });
+
+  it("set_note snapshots the previous content before overwriting", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const historyRoot = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "original", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(
+      ["set_note", "--folder", "Work", "A.md", "--content", "new"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+
+    const history = await runCliCommand(["get_note_history", "--folder", "Work", "A.md"], notesFoldersFile, accessFile(), historyRoot);
+    expect(history.versions).toHaveLength(1);
+    const [{ timestamp }] = history.versions as { timestamp: string }[];
+    expect(readSnapshot(historyRoot, root, "A.md", timestamp)).toBe("original");
+  });
+
+  it("set_note does not snapshot when creating a brand-new note", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const historyRoot = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(
+      ["set_note", "--folder", "Work", "A.md", "--content", "new"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+
+    const history = await runCliCommand(["get_note_history", "--folder", "Work", "A.md"], notesFoldersFile, accessFile(), historyRoot);
+    expect(history.versions).toHaveLength(0);
+  });
+
+  it("update_note snapshots the pre-append content", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const historyRoot = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "original", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(
+      ["update_note", "--folder", "Work", "A.md", "--content", "appended"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+
+    const history = await runCliCommand(["get_note_history", "--folder", "Work", "A.md"], notesFoldersFile, accessFile(), historyRoot);
+    expect(history.versions).toHaveLength(1);
+    const [{ timestamp }] = history.versions as { timestamp: string }[];
+    expect(readSnapshot(historyRoot, root, "A.md", timestamp)).toBe("original");
+  });
+
+  it("delete_note snapshots the deleted content", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const historyRoot = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "gone soon", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(["delete_note", "--folder", "Work", "A.md"], notesFoldersFile, accessFile(), historyRoot);
+
+    const history = await runCliCommand(["get_note_history", "--folder", "Work", "A.md"], notesFoldersFile, accessFile(), historyRoot);
+    expect(history.versions).toHaveLength(1);
+    const [{ timestamp }] = history.versions as { timestamp: string }[];
+    expect(readSnapshot(historyRoot, root, "A.md", timestamp)).toBe("gone soon");
+  });
+
+  it("get_note_history throws when historyRoot is not configured", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(["get_note_history", "--folder", "Work", "A.md"], notesFoldersFile, accessFile())
+    ).rejects.toThrow(/History is not available/);
+  });
+
+  it("restore_note_version overwrites the note and snapshots the pre-restore content", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const historyRoot = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "version A", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    // Snapshots "version A", writes "version B".
+    await runCliCommand(
+      ["set_note", "--folder", "Work", "A.md", "--content", "version B"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+    const historyBefore = await runCliCommand(
+      ["get_note_history", "--folder", "Work", "A.md"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+    const [{ timestamp: versionATimestamp }] = historyBefore.versions as { timestamp: string }[];
+
+    const result = await runCliCommand(
+      ["restore_note_version", "--folder", "Work", "A.md", "--timestamp", versionATimestamp],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+
+    expect(result.ok).toBe(true);
+    expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toBe("version A");
+
+    // Restoring itself is undoable: "version B" was snapshotted before being overwritten.
+    const historyAfter = await runCliCommand(
+      ["get_note_history", "--folder", "Work", "A.md"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+    expect(historyAfter.versions).toHaveLength(2);
+  });
+
+  it("restore_note_version fails when no snapshot matches the given timestamp", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const historyRoot = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "content", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["restore_note_version", "--folder", "Work", "A.md", "--timestamp", "2020-01-01T00:00:00.000Z"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("restore_note_version rejects a stale --if-unmodified-since", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    const historyRoot = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, "A.md"), "version A", "utf-8");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(
+      ["set_note", "--folder", "Work", "A.md", "--content", "version B"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+    const history = await runCliCommand(
+      ["get_note_history", "--folder", "Work", "A.md"],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+    const [{ timestamp }] = history.versions as { timestamp: string }[];
+    const staleMtime = fs.statSync(path.join(root, "A.md")).mtimeMs - 1000;
+
+    const result = await runCliCommand(
+      ["restore_note_version", "--folder", "Work", "A.md", "--timestamp", timestamp, "--if-unmodified-since", String(staleMtime)],
+      notesFoldersFile,
+      accessFile(),
+      historyRoot
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.conflict).toBe(true);
+    expect(fs.readFileSync(path.join(root, "A.md"), "utf-8")).toBe("version B");
   });
 });

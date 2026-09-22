@@ -26,6 +26,7 @@ import { titleFromPath } from "../shared/parseNote";
 import { STARTER_NOTES } from "../shared/starterContent";
 import { findNoteTemplate } from "../shared/noteTemplates";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
+import { recordSnapshot } from "./noteHistory";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
 import { readWorkspaceState, writeWorkspaceState } from "./workspaceState";
@@ -120,6 +121,11 @@ function notesFoldersFilePath(): string {
 // Which notes folders the CLI/MCP server may touch - see cliAccess.ts.
 function cliAccessFilePath(): string {
   return path.join(app.getPath("userData"), "cli-access.json");
+}
+
+// Local version history for notes - see noteHistory.ts.
+function historyDirPath(): string {
+  return path.join(app.getPath("userData"), "history");
 }
 
 function layoutPrefsFilePath(): string {
@@ -380,6 +386,10 @@ ipcMain.handle("notesFolder:readRaw", async (_event, absPath: string) => {
 // refresh, so without this the renderer can't distinguish the two.
 ipcMain.handle("notesFolder:saveNote", async (_event, absPath: string, body: string) => {
   assertOwnsPath(absPath);
+  const root = requireActiveRoot();
+  if (fs.existsSync(absPath)) {
+    recordSnapshot(historyDirPath(), root, path.relative(root, absPath), fs.readFileSync(absPath, "utf-8"));
+  }
   saveNoteBody(absPath, body);
   return fs.statSync(absPath).mtimeMs;
 });
@@ -517,6 +527,10 @@ ipcMain.handle("notesFolder:seedStarterContent", async () => {
 
 ipcMain.handle("notesFolder:deleteNote", async (_event, absPath: string) => {
   assertOwnsPath(absPath);
+  const root = requireActiveRoot();
+  if (fs.existsSync(absPath)) {
+    recordSnapshot(historyDirPath(), root, path.relative(root, absPath), fs.readFileSync(absPath, "utf-8"), { force: true });
+  }
   fs.rmSync(absPath, { force: true });
   return true;
 });

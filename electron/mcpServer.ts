@@ -8,10 +8,12 @@ import {
   deleteNote,
   getBacklinks,
   getNote,
+  getNoteHistory,
   getNotes,
   getProperties,
   getTags,
   listFolders,
+  restoreNoteVersion,
   searchNotes,
   setNote,
   setProperties,
@@ -35,6 +37,11 @@ function notesFoldersFilePath(): string {
 // reachable here once explicitly granted CLI/MCP access in the GUI.
 function cliAccessFilePath(): string {
   return path.join(cairnUserDataDir(), "cli-access.json");
+}
+
+// Local version history for notes - see noteHistory.ts.
+function historyDirPath(): string {
+  return path.join(cairnUserDataDir(), "history");
 }
 
 function textResult(result: unknown) {
@@ -125,7 +132,9 @@ server.registerTool(
     },
   },
   async ({ folder, notePath, content, ifUnmodifiedSince }) =>
-    textResult(await setNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, content, ifUnmodifiedSince))
+    textResult(
+      await setNote(notesFoldersFilePath(), cliAccessFilePath(), historyDirPath(), folder, notePath, content, ifUnmodifiedSince)
+    )
 );
 
 server.registerTool(
@@ -148,7 +157,16 @@ server.registerTool(
   },
   async ({ folder, notePath, content, heading, ifUnmodifiedSince }) =>
     textResult(
-      await updateNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, content, heading, ifUnmodifiedSince)
+      await updateNote(
+        notesFoldersFilePath(),
+        cliAccessFilePath(),
+        historyDirPath(),
+        folder,
+        notePath,
+        content,
+        heading,
+        ifUnmodifiedSince
+      )
     )
 );
 
@@ -166,7 +184,9 @@ server.registerTool(
     },
   },
   async ({ folder, notePath, ifUnmodifiedSince }) =>
-    textResult(await deleteNote(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, ifUnmodifiedSince))
+    textResult(
+      await deleteNote(notesFoldersFilePath(), cliAccessFilePath(), historyDirPath(), folder, notePath, ifUnmodifiedSince)
+    )
 );
 
 server.registerTool(
@@ -246,6 +266,49 @@ server.registerTool(
   },
   async ({ folder, notePath, properties, ifUnmodifiedSince }) =>
     textResult(setProperties(notesFoldersFilePath(), cliAccessFilePath(), folder, notePath, properties, ifUnmodifiedSince))
+);
+
+server.registerTool(
+  "get_note_history",
+  {
+    description:
+      "List local version snapshots recorded for a note, newest first. Each entry's timestamp can be passed to restore_note_version.",
+    inputSchema: {
+      folder: z.string(),
+      notePath: z.string().describe("Path relative to the notes folder root"),
+    },
+  },
+  async ({ folder, notePath }) =>
+    textResult(getNoteHistory(notesFoldersFilePath(), cliAccessFilePath(), historyDirPath(), folder, notePath))
+);
+
+server.registerTool(
+  "restore_note_version",
+  {
+    description:
+      "Overwrite a note with one of its recorded history snapshots (see get_note_history). The note's current content is itself snapshotted first, so this can be undone.",
+    inputSchema: {
+      folder: z.string(),
+      notePath: z.string().describe("Path relative to the notes folder root"),
+      timestamp: z.string().describe("A timestamp from get_note_history"),
+      ifUnmodifiedSince: z
+        .number()
+        .optional()
+        .describe("An mtimeMs from an earlier get_note/get_properties call. If the note changed since, the restore is rejected."),
+    },
+  },
+  async ({ folder, notePath, timestamp, ifUnmodifiedSince }) =>
+    textResult(
+      await restoreNoteVersion(
+        notesFoldersFilePath(),
+        cliAccessFilePath(),
+        historyDirPath(),
+        folder,
+        notePath,
+        timestamp,
+        ifUnmodifiedSince
+      )
+    )
 );
 
 // An async IIFE rather than a top-level await, since the bundler's target

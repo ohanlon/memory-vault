@@ -145,6 +145,20 @@ the note doesn't exist yet, since there's nothing to conflict with.
 - `get_tags --folder NAME` — lists every tag in the notes folder, each with
   the notes (relative paths) that carry it, from frontmatter `tags:` and
   inline `#tag` alike.
+- `get_note_history --folder NAME <notePath>` — lists local version
+  snapshots recorded for a note (newest first), each with a `timestamp` you
+  can pass to `restore_note_version`. A snapshot of a note's previous
+  content is recorded automatically whenever it's overwritten or deleted —
+  by `set_note`, `update_note`, `delete_note`, or a hand-edit saved from the
+  GUI — throttled to at most one every 10 minutes per note (so a burst of
+  autosaves while typing doesn't flood history), capped at the 50 most
+  recent per note. Snapshots live outside any notes folder (under Cairn's
+  own app data), not as files a sync tool or `git` would ever see.
+- `restore_note_version --folder NAME <notePath> --timestamp ISO_TIMESTAMP
+  [--if-unmodified-since MTIME_MS]` — overwrites the note with a snapshot
+  from `get_note_history`. The note's current content is itself snapshotted
+  first (bypassing the usual throttle), so a restore can always be undone
+  with another restore.
 
 `--content-file` reads the note's text from a file instead of a shell
 argument — useful for multiline text, which is awkward to pass as a single
@@ -167,6 +181,8 @@ cairn-cli.exe get_properties --folder Work "Idea.md"
 cairn-cli.exe get_backlinks --folder Work "Idea.md"
 cairn-cli.exe get_tags --folder Work
 cairn-cli.exe update_note --folder Work "Idea.md" --content "more text" --if-unmodified-since 1737496200000
+cairn-cli.exe get_note_history --folder Work "Idea.md"
+cairn-cli.exe restore_note_version --folder Work "Idea.md" --timestamp 2026-01-01T10:00:00.000Z
 ```
 
 ## MCP server
@@ -180,9 +196,10 @@ registry and notes as the GUI and CLI.
 
 Tools: `add_folder`, `list_folders`, `get_notes`, `get_note`, `add_note`,
 `set_note`, `update_note`, `delete_note`, `search_notes`, `get_properties`,
-`set_properties`, `get_backlinks`, `get_tags` — one per CLI command above,
-with the same behavior, including the same deny-by-default per-folder
-access control described above.
+`set_properties`, `get_backlinks`, `get_tags`, `get_note_history`,
+`restore_note_version` — one per CLI command above, with the same behavior,
+including the same deny-by-default per-folder access control described
+above.
 
 Point an MCP client at it with `node`, e.g. in Claude Code's `.mcp.json` or
 Claude Desktop's config:

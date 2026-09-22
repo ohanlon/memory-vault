@@ -182,6 +182,27 @@ collide. Two independent, non-overlapping protections cover this:
   it doesn't protect against a second CLI/MCP call racing in the (narrow)
   window between two calls that don't use it.
 
+### Version history
+
+Every overwrite or delete of a note's body — from `set_note`, `update_note`,
+`delete_note`, or a hand-edit saved from the GUI editor — records the
+note's *previous* content as a timestamped snapshot (`electron/noteHistory.ts`).
+Snapshots are throttled to at most one every 10 minutes per note (so a burst
+of debounced autosaves while typing doesn't flood history) and capped at the
+50 most recent per note, oldest pruned first. They're stored under Cairn's
+own app data (`<userData>/history/`), keyed by a hash of the notes folder's
+root path plus the note's relative path — never as files inside a notes
+folder itself, so they don't show up in a synced folder or a `git status`
+there. `set_properties` (frontmatter-only edits) does not snapshot.
+
+`get_note_history` lists a note's snapshots (newest first, each with a
+`timestamp`); `restore_note_version` overwrites the note with one of them,
+itself snapshotting the note's current content first (bypassing the
+throttle) so a restore is always undoable with another restore. Both accept
+the same `expectedMtimeMs`/`--if-unmodified-since` optimistic-concurrency
+guard as the write operations above. There is currently no GUI surface for
+browsing history — CLI/MCP only.
+
 ## Out of scope
 
 Cloud sync — notes stay local; syncing them is left to whatever the user

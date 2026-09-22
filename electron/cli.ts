@@ -4,6 +4,7 @@ import { listMarkdownFiles, loadNotesFolder, uniqueNotePath } from "./notesFolde
 import { addNotesFolder, findByNameCI, readNotesFoldersFile, writeNotesFoldersFile } from "./notesFolderRegistry";
 import { allowFolder, isFolderAllowed, readCliAccessFile, writeCliAccessFile } from "./cliAccess";
 import { readNoteProperties, saveNoteProperties } from "./noteProperties";
+import { listSnapshots, readSnapshot, recordSnapshot } from "./noteHistory";
 import { findPropertyByNameCI, readPropertySchema } from "./propertiesSchema";
 import { backlinkTitles, buildGraph } from "../shared/buildGraph";
 import { titleFromPath } from "../shared/parseNote";
@@ -27,6 +28,8 @@ const CLI_COMMANDS = new Set([
   "get_backlinks",
   "get_tags",
   "list_folders",
+  "get_note_history",
+  "restore_note_version",
 ]);
 
 // argv layout differs between `electron .` in dev (electron path, app path,
@@ -286,6 +289,7 @@ export async function addNote(
 export async function setNote(
   notesFoldersFile: string,
   cliAccessFile: string,
+  historyRoot: string | undefined,
   folderName: string,
   notePath: string,
   content: string,
@@ -296,11 +300,12 @@ export async function setNote(
   ensureInside(entry.root, fullPath);
 
   const created = !fs.existsSync(fullPath);
-  // Nothing to conflict with for a note that doesn't exist yet - the check
-  // only applies when overwriting.
+  // Nothing to conflict with (or snapshot) for a note that doesn't exist
+  // yet - both only apply when overwriting.
   if (!created) {
     const conflict = checkExpectedMtime(fullPath, expectedMtimeMs);
     if (conflict) return conflict;
+    if (historyRoot) recordSnapshot(historyRoot, entry.root, notePath, await fs.promises.readFile(fullPath, "utf-8"));
   }
   fs.mkdirSync(path.dirname(fullPath), { recursive: true });
   await fs.promises.writeFile(fullPath, content, "utf-8");
@@ -362,6 +367,7 @@ function insertUnderHeading(existing: string, heading: string, text: string): st
 export async function updateNote(
   notesFoldersFile: string,
   cliAccessFile: string,
+  historyRoot: string | undefined,
   folderName: string,
   notePath: string,
   additionalText: string,
@@ -385,6 +391,7 @@ export async function updateNote(
     return { ok: false, message: `Heading "${heading}" was not found in note "${notePath}".` };
   }
 
+  if (historyRoot) recordSnapshot(historyRoot, entry.root, notePath, existing);
   await fs.promises.writeFile(fullPath, content, "utf-8");
   return { ok: true, folder: entry.name, note: notePath, content, mtimeMs: fs.statSync(fullPath).mtimeMs };
 }
@@ -392,6 +399,7 @@ export async function updateNote(
 export async function deleteNote(
   notesFoldersFile: string,
   cliAccessFile: string,
+  historyRoot: string | undefined,
   folderName: string,
   notePath: string,
   expectedMtimeMs?: number
@@ -407,6 +415,10 @@ export async function deleteNote(
   const conflict = checkExpectedMtime(fullPath, expectedMtimeMs);
   if (conflict) return conflict;
 
+  // Snapshotting before delete (rather than relying on the throttle, which
+  // is meant for autosave bursts) means restore_note_version can always
+  // bring a deleted note back, even if it was just snapshotted minutes ago.
+  if (historyRoot) recordSnapshot(historyRoot, entry.root, notePath, await fs.promises.readFile(fullPath, "utf-8"), { force: true });
   await fs.promises.rm(fullPath, { force: true });
   return { ok: true, folder: entry.name, note: notePath, message: `Deleted note "${notePath}".` };
 }
@@ -580,7 +592,65 @@ export function listFolders(notesFoldersFile: string, cliAccessFile: string): Cl
   return { ok: true, folders };
 }
 
-export async function runCliCommand(args: string[], notesFoldersFile: string, cliAccessFile: string): Promise<CliResult> {
+// Lists the local snapshots recorded for a note (see noteHistory.ts) -
+// newest first. A snapshot's timestamp is what restore_note_version expects.
+export function getNoteHistory(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  historyRoot: string,
+  folderName: string,
+  notePath: string
+): CliResult {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
+  return { ok: true, folder: entry.name, note: notePath, versions: listSnapshots(historyRoot, entry.root, notePath) };
+}
+
+// Overwrites a note with one of its recorded snapshots. The note's current
+// content (if it still exists) is itself snapshotted first, bypassing the
+// usual throttle, so restoring is never a one-way trip.
+export async function restoreNoteVersion(
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  historyRoot: string,
+  folderName: string,
+  notePath: string,
+  timestamp: string,
+  expectedMtimeMs?: number
+): Promise<CliResult> {
+  const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
+  const fullPath = path.join(entry.root, notePath);
+  ensureInside(entry.root, fullPath);
+
+  const versionContent = readSnapshot(historyRoot, entry.root, notePath, timestamp);
+  if (versionContent === null) {
+    return { ok: false, message: `No history snapshot of "${notePath}" found at timestamp "${timestamp}".` };
+  }
+
+  if (fs.existsSync(fullPath)) {
+    const conflict = checkExpectedMtime(fullPath, expectedMtimeMs);
+    if (conflict) return conflict;
+    recordSnapshot(historyRoot, entry.root, notePath, await fs.promises.readFile(fullPath, "utf-8"), { force: true });
+  }
+
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  await fs.promises.writeFile(fullPath, versionContent, "utf-8");
+
+  return {
+    ok: true,
+    folder: entry.name,
+    note: notePath,
+    restoredFrom: timestamp,
+    mtimeMs: fs.statSync(fullPath).mtimeMs,
+    message: `Restored "${notePath}" to the version from ${timestamp}.`,
+  };
+}
+
+export async function runCliCommand(
+  args: string[],
+  notesFoldersFile: string,
+  cliAccessFile: string,
+  historyRoot?: string
+): Promise<CliResult> {
   const [command, ...rest] = args;
   const { positional, flags } = parseArgs(rest);
 
@@ -616,7 +686,7 @@ export async function runCliCommand(args: string[], notesFoldersFile: string, cl
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
       const content = resolveContentFlag(flags, usage, true);
-      return setNote(notesFoldersFile, cliAccessFile, folder, note, content, expectedMtimeFlag(flags, usage));
+      return setNote(notesFoldersFile, cliAccessFile, historyRoot, folder, note, content, expectedMtimeFlag(flags, usage));
     }
     case "update_note": {
       const usage =
@@ -628,6 +698,7 @@ export async function runCliCommand(args: string[], notesFoldersFile: string, cl
       return updateNote(
         notesFoldersFile,
         cliAccessFile,
+        historyRoot,
         folder,
         note,
         content,
@@ -640,7 +711,7 @@ export async function runCliCommand(args: string[], notesFoldersFile: string, cl
       const folder = flagString(flags.folder);
       const note = positional[0];
       if (!folder || !note) throw new Error(`Usage: ${usage}`);
-      return deleteNote(notesFoldersFile, cliAccessFile, folder, note, expectedMtimeFlag(flags, usage));
+      return deleteNote(notesFoldersFile, cliAccessFile, historyRoot, folder, note, expectedMtimeFlag(flags, usage));
     }
     case "search_notes": {
       const usage = "search_notes --folder NAME <query> [--regex] [--case-sensitive] [--whole-word]";
@@ -696,6 +767,22 @@ export async function runCliCommand(args: string[], notesFoldersFile: string, cl
     }
     case "list_folders":
       return listFolders(notesFoldersFile, cliAccessFile);
+    case "get_note_history": {
+      const folder = flagString(flags.folder);
+      const note = positional[0];
+      if (!folder || !note) throw new Error("Usage: get_note_history --folder NAME <notePath>");
+      if (!historyRoot) throw new Error("History is not available in this context.");
+      return getNoteHistory(notesFoldersFile, cliAccessFile, historyRoot, folder, note);
+    }
+    case "restore_note_version": {
+      const usage = "restore_note_version --folder NAME <notePath> --timestamp ISO_TIMESTAMP [--if-unmodified-since MTIME_MS]";
+      const folder = flagString(flags.folder);
+      const note = positional[0];
+      const timestamp = flagString(flags.timestamp);
+      if (!folder || !note || !timestamp) throw new Error(`Usage: ${usage}`);
+      if (!historyRoot) throw new Error("History is not available in this context.");
+      return restoreNoteVersion(notesFoldersFile, cliAccessFile, historyRoot, folder, note, timestamp, expectedMtimeFlag(flags, usage));
+    }
     default:
       throw new Error(`Unknown command "${command}"`);
   }
