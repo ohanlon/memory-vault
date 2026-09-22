@@ -34,8 +34,9 @@ import { DEFAULT_WORKSPACE_STATE } from "../shared/workspaceState";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
 import { isAllowedExternalUrl, isAllowedForPlugin } from "./domainPolicy";
-import { PLUGIN_SCHEME, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
-import { handleAttachmentProtocol, registerAttachmentScheme } from "./attachmentProtocol";
+import { PLUGIN_SCHEME, contentTypeFor, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
+import { handleAttachmentProtocol, registerAttachmentScheme, resolveAttachmentFilePath } from "./attachmentProtocol";
+import { saveTextFile, savePdfFromHtml, type SaveDialogFilter } from "./exportFiles";
 import { deleteAttachments, findOrphanedAttachments, saveAttachment } from "./attachments";
 import { discoverPlugins } from "./pluginRegistry";
 import {
@@ -548,6 +549,40 @@ ipcMain.handle("attachments:findOrphaned", async (_event, root: string) => {
 ipcMain.handle("attachments:deleteOrphaned", async (_event, root: string, relativePaths: string[]) => {
   deleteAttachments(root, relativePaths);
   return true;
+});
+
+// Batch-reads attachments as data: URLs for the vault-wide export
+// (src/export/vaultExport.ts) - a portable single HTML/PDF file has no
+// cairn-attachment:// protocol available to serve images from once it's no
+// longer open inside this app, so images are inlined instead. A path that
+// escapes root or can't be read is simply omitted rather than failing the
+// whole export.
+ipcMain.handle("attachments:readManyAsDataUrls", async (_event, root: string, rootRelativePaths: string[]) => {
+  const out: Record<string, string> = {};
+  for (const relPath of rootRelativePaths) {
+    const fullPath = resolveAttachmentFilePath(root, `/${relPath}`);
+    if (!fullPath || !fs.existsSync(fullPath)) continue;
+    try {
+      const data = fs.readFileSync(fullPath);
+      out[relPath] = `data:${contentTypeFor(fullPath)};base64,${data.toString("base64")}`;
+    } catch {
+      // Skip a file that vanished or can't be read - best-effort inlining.
+    }
+  }
+  return out;
+});
+
+ipcMain.handle(
+  "export:saveTextFile",
+  async (_event, defaultName: string, content: string, filters: SaveDialogFilter[]) => {
+    if (!win) return false;
+    return saveTextFile(win, defaultName, content, filters);
+  }
+);
+
+ipcMain.handle("export:savePdf", async (_event, defaultName: string, htmlContent: string) => {
+  if (!win) return false;
+  return savePdfFromHtml(win, defaultName, htmlContent);
 });
 
 ipcMain.handle("notesFolder:getNoteHistory", async (_event, absPath: string) => {

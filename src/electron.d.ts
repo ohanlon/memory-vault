@@ -56,6 +56,14 @@ export interface MemoryStackAPI {
   /** Resolves with root-relative paths (see saveAttachment) of every attachment no note currently embeds. */
   findOrphanedAttachments(root: string): Promise<string[]>;
   deleteOrphanedAttachments(root: string, relativePaths: string[]): Promise<boolean>;
+  /** Resolves with root-relative-path -> data: URL for every path that could be read; missing/unreadable paths are omitted. */
+  readAttachmentsAsDataUrls(root: string, rootRelativePaths: string[]): Promise<Record<string, string>>;
+  saveExportedTextFile(
+    defaultName: string,
+    content: string,
+    filters: { name: string; extensions: string[] }[]
+  ): Promise<boolean>;
+  saveExportedPdf(defaultName: string, htmlContent: string): Promise<boolean>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;

@@ -18,6 +18,8 @@ const APP_MENUS: { id: string; label: string; items: ContextMenuEntry[] }[] = [
       { separator: true },
       { label: "New Note", onClick: () => pluginRegistry.runCommand("stack.newNote") },
       { label: "New Daily Note", onClick: () => pluginRegistry.runCommand("stack.openDailyNote") },
+      { separator: true },
+      { label: "Export…", onClick: () => pluginRegistry.runCommand("stack.exportNotesFolder") },
     ],
   },
   {

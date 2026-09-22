@@ -56,7 +56,30 @@ function stripBlockIds(markdown: string): string {
   return lines.join("\n");
 }
 
-function createMarked(notePath: string, noteTitles: Set<string>, enabledLanguageIds: ReadonlySet<string>) {
+// Resolves a markdown image href for the live in-app preview: a plain
+// relative src (e.g. "attachments/foo.png", written relative to this note's
+// own file) would otherwise resolve against the renderer's own bundle
+// origin, not the notes folder on disk - rewrite it into a
+// cairn-attachment:// URL the registered protocol handler
+// (electron/attachmentProtocol.ts) can actually serve. Anything with its
+// own URL scheme already (http, data:, etc.) is left untouched. The
+// vault-wide export (src/export/vaultExport.ts) reuses this same marked
+// setup with a different resolver (inlined data: URLs instead), since that
+// output has to be a portable, self-contained file with no such protocol
+// available to serve from.
+function defaultResolveImageSrc(notePath: string): (href: string) => string {
+  return (href) => {
+    const resolved = resolveRelativeAttachmentPath(notePath, href);
+    return resolved ? attachmentUrl(resolved) : href;
+  };
+}
+
+export function createMarked(
+  notePath: string,
+  noteTitles: Set<string>,
+  enabledLanguageIds: ReadonlySet<string>,
+  resolveImageSrc: (href: string) => string = defaultResolveImageSrc(notePath)
+) {
   // Populated by hooks.preprocess (one entry per heading line, in document
   // order, null when that heading has no {#id}) and consumed by
   // hooks.postprocess to stamp matching ids onto the rendered <h1>-<h6> tags.
@@ -80,15 +103,8 @@ function createMarked(notePath: string, noteTitles: Set<string>, enabledLanguage
       },
     },
     renderer: {
-      // A plain relative src (e.g. "attachments/foo.png", written relative
-      // to this note's own file) would otherwise resolve against the
-      // renderer's own bundle origin, not the notes folder on disk - rewrite
-      // it into a cairn-attachment:// URL the registered protocol handler
-      // (electron/attachmentProtocol.ts) can actually serve. Anything with
-      // its own URL scheme already (http, data:, etc.) is left untouched.
       image({ href, title, text }: Tokens.Image) {
-        const resolved = resolveRelativeAttachmentPath(notePath, href);
-        const src = resolved ? attachmentUrl(resolved) : href;
+        const src = resolveImageSrc(href);
         const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
         return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text)}"${titleAttr}>`;
       },

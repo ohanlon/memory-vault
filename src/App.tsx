@@ -8,6 +8,8 @@ import { ConfirmModal } from "./components/ConfirmModal";
 import { ContextMenu, type ContextMenuEntry } from "./components/ContextMenu";
 import { TemplatePlaceholdersModal } from "./components/TemplatePlaceholdersModal";
 import { ShortcutsPanel } from "./components/ShortcutsPanel";
+import { ExportDialog } from "./components/ExportDialog";
+import { buildHtmlExport, buildMarkdownExport, type ExportFormat } from "./export/vaultExport";
 import { HintToast } from "./components/HintToast";
 import { DeleteIcon, RenameIcon } from "./components/icons";
 import { TabBar, type TabItem } from "./components/TabBar";
@@ -66,6 +68,7 @@ type DialogState =
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
   | { kind: "shortcuts" }
   | { kind: "fill-template"; dir: string; templatePath: string; placeholders: string[] }
+  | { kind: "export-notes-folder" }
   | null;
 
 type NotesFolderContextMenuState = { notesFolder: NotesFolderEntry; x: number; y: number };
@@ -476,6 +479,40 @@ export default function App() {
     window.alert(`Deleted ${orphaned.length} unused attachment(s).`);
   }
 
+  function handleExportNotesFolderClick() {
+    if (!activeNotesFolder) return;
+    setDialog({ kind: "export-notes-folder" });
+  }
+
+  async function handleExport(format: ExportFormat) {
+    if (!activeNotesFolder) return;
+    const folderName = activeNotesFolder.name;
+    try {
+      if (format === "markdown") {
+        const content = buildMarkdownExport(notes);
+        await window.memoryStack.saveExportedTextFile(`${folderName}.md`, content, [
+          { name: "Markdown", extensions: ["md"] },
+        ]);
+        return;
+      }
+      const html = await buildHtmlExport(
+        activeNotesFolder.root,
+        notes,
+        settings.enabledCodeLanguages,
+        window.memoryStack.readAttachmentsAsDataUrls
+      );
+      if (format === "html") {
+        await window.memoryStack.saveExportedTextFile(`${folderName}.html`, html, [
+          { name: "HTML", extensions: ["html"] },
+        ]);
+      } else {
+        await window.memoryStack.saveExportedPdf(`${folderName}.pdf`, html);
+      }
+    } catch (err) {
+      window.alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   async function handleRenameNotesFolderSubmit(newName: string) {
     if (dialog?.kind !== "rename-notes-folder") return;
     const oldName = dialog.notesFolder.name;
@@ -646,6 +683,7 @@ export default function App() {
     pluginRegistry.registerCommand("stack.newNote", () => handleNewNoteClick());
     pluginRegistry.registerCommand("stack.openDailyNote", () => handleOpenDailyNoteClick());
     pluginRegistry.registerCommand("stack.switchStack", () => handleSwitchNotesFolder());
+    pluginRegistry.registerCommand("stack.exportNotesFolder", () => handleExportNotesFolderClick());
     pluginRegistry.registerCommand("stack.deleteNote", (note: Note) => requestDelete(note));
     pluginRegistry.registerCommand("stack.rename", (note: Note) => {
       setSidebarCollapsed(false);
@@ -1016,6 +1054,15 @@ export default function App() {
             onSubmit={async (values) => {
               setDialog(null);
               await finishCreateNoteFromTemplate(dialog.dir, dialog.templatePath, values);
+            }}
+            onCancel={() => setDialog(null)}
+          />
+        )}
+        {dialog?.kind === "export-notes-folder" && (
+          <ExportDialog
+            onExport={(format) => {
+              setDialog(null);
+              handleExport(format);
             }}
             onCancel={() => setDialog(null)}
           />

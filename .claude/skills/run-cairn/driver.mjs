@@ -16,6 +16,10 @@
 //   type <text...>       - type raw keystrokes into whatever currently has focus (e.g. after clicking into the CodeMirror editor)
 //   text <selector>      - print an element's innerText
 //   eval <jsExpression>  - page.evaluate(expression) in the renderer, prints the JSON result
+//   mainEval <jsFunctionBody> - runs in the main process with `electron` (the whole module: dialog, app,
+//                             BrowserWindow, ...) as the only argument - main is ESM, no require(). Useful for
+//                             monkeypatching dialog.showSaveDialog etc. to test a flow that would otherwise open
+//                             a native OS dialog Playwright can't drive. Write "return ...", not a bare expression.
 //   key <keyName>        - press a named key, e.g. "Control+End", "Enter", "Escape"
 //   sh <command>         - run a shell command mid-scenario (e.g. cairn-cli.exe to simulate an external write)
 //   autodialog accept|dismiss - auto-respond to the next window.confirm/alert dialogs this way (Electron's
@@ -98,6 +102,23 @@ for (const line of lines) {
       case "eval": {
         const result = await window.evaluate(argStr);
         console.log(`[eval] ${JSON.stringify(result)}`);
+        break;
+      }
+      case "mainEval": {
+        // argStr is an async function BODY (not a bare expression) - write
+        // full statements, including "await ..."/"return ...". The main
+        // process is ESM (no require()); everything needed is on the
+        // injected `electron` parameter (electron.dialog, electron.app,
+        // electron.BrowserWindow, ...).
+        const fn = new Function("electron", `return (async () => { ${argStr} })();`);
+        const result = await app.evaluate(fn);
+        console.log(`[mainEval] ${JSON.stringify(result)}`);
+        break;
+      }
+      case "watchconsole": {
+        window.on("console", (msg) => console.log(`[console:${msg.type()}] ${msg.text()}`));
+        window.on("pageerror", (err) => console.log(`[pageerror] ${err.message}`));
+        console.log("[watchconsole] attached");
         break;
       }
       case "autodialog": {

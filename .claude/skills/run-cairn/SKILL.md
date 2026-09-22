@@ -59,6 +59,7 @@ Commands:
 | `key <keyName>` | Press a named key, e.g. `Control+End`, `Enter`, `Escape` |
 | `text <selector>` | Print an element's `innerText` |
 | `eval <jsExpression>` | `page.evaluate(expression)` in the renderer, prints the JSON result |
+| `mainEval <jsFunctionBody>` | Runs as an **async** function body in the main process with `electron` (the whole module — `dialog`, `app`, `BrowserWindow`, ...) as the only argument; main is ESM, no `require()`. Write `await ...`/`return ...` statements, not a bare expression. Useful for monkeypatching `dialog.showSaveDialog` etc. to test a flow that would otherwise open a native OS dialog Playwright can't drive |
 | `sh <command>` | Run a shell command mid-scenario (e.g. `cairn-cli.exe` to simulate an external write while the app is open) |
 | `autodialog accept\|dismiss` | Auto-respond to `window.confirm`/`alert` dialogs from here on (they otherwise block forever — see Gotchas) |
 | `quit` | Close the app early (otherwise happens automatically at the end) |

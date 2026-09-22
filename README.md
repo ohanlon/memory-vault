@@ -47,6 +47,9 @@ empty one to start fresh) — that becomes a notes folder.
 - **Attachments**: paste an image from the clipboard or drag one into the
   editor and it's saved alongside your notes with a markdown reference
   inserted automatically, rendered inline in Preview mode.
+- **Export**: File → Export… turns the whole open notes folder into a
+  single Markdown file, a single self-contained HTML file, or a PDF, for
+  sharing outside the app.
 
 See [docs/reference.md](docs/reference.md) for exact link syntax, the graph
 model, and how notes folders are stored on disk.

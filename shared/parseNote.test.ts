@@ -6,6 +6,8 @@ import {
   extractTags,
   extractWikiLinks,
   parseNote,
+  rewriteNoteLinksForExport,
+  rewriteWikilinksForExport,
   titleFromPath,
 } from "./parseNote";
 
@@ -133,6 +135,61 @@ describe("extractMarkdownLinks", () => {
 
   it("does not treat a markdown link inside inline code as a real link", () => {
     expect(extractMarkdownLinks("use `[text](Note.md)` syntax")).toEqual([]);
+  });
+});
+
+describe("rewriteWikilinksForExport", () => {
+  const resolveSlug = (title: string) => (title.toLowerCase() === "other note" ? "other-note" : undefined);
+
+  it("rewrites a resolvable wikilink to a markdown anchor link", () => {
+    expect(rewriteWikilinksForExport("see [[Other Note]] for more", resolveSlug)).toBe(
+      "see [Other Note](#other-note) for more"
+    );
+  });
+
+  it("uses the alias as display text when given", () => {
+    expect(rewriteWikilinksForExport("[[Other Note|here]]", resolveSlug)).toBe("[here](#other-note)");
+  });
+
+  it("falls back to plain display text for an orphan target", () => {
+    expect(rewriteWikilinksForExport("see [[Missing Note]]", resolveSlug)).toBe("see Missing Note");
+  });
+
+  it("does not rewrite a wikilink-looking pattern inside inline code", () => {
+    const content = "use `[[Other Note]]` as an example";
+    expect(rewriteWikilinksForExport(content, resolveSlug)).toBe(content);
+  });
+
+  it("leaves content with no wikilinks untouched", () => {
+    expect(rewriteWikilinksForExport("no links here", resolveSlug)).toBe("no links here");
+  });
+});
+
+describe("rewriteNoteLinksForExport", () => {
+  const resolveSlug = (title: string) => (title.toLowerCase() === "linked" ? "linked" : undefined);
+
+  it("rewrites a resolvable markdown link to a note to a markdown anchor link", () => {
+    expect(rewriteNoteLinksForExport("[text](Linked.md)", resolveSlug)).toBe("[text](#linked)");
+  });
+
+  it("leaves an unresolvable link's original target untouched", () => {
+    const content = "[text](Missing.md)";
+    expect(rewriteNoteLinksForExport(content, resolveSlug)).toBe(content);
+  });
+
+  it("leaves an external link untouched", () => {
+    const content = "[text](https://example.com)";
+    expect(rewriteNoteLinksForExport(content, resolveSlug)).toBe(content);
+  });
+
+  it("leaves an image embed untouched", () => {
+    const content = "![alt](Linked.md)";
+    expect(rewriteNoteLinksForExport(content, resolveSlug)).toBe(content);
+  });
+
+  it("does not rewrite a link-looking pattern inside inline code", () => {
+    const content = "use `[text](Linked.md)` as an example";
+    expect(rewriteNoteLinksForExport(content, resolveSlug)).toBe(content);
   });
 });
 

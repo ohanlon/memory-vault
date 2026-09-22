@@ -81,6 +81,16 @@ const api = {
     ipcRenderer.invoke("attachments:findOrphaned", root),
   deleteOrphanedAttachments: (root: string, relativePaths: string[]): Promise<boolean> =>
     ipcRenderer.invoke("attachments:deleteOrphaned", root, relativePaths),
+  /** Resolves with root-relative-path -> data: URL for every path that could be read; missing/unreadable paths are omitted. */
+  readAttachmentsAsDataUrls: (root: string, rootRelativePaths: string[]): Promise<Record<string, string>> =>
+    ipcRenderer.invoke("attachments:readManyAsDataUrls", root, rootRelativePaths),
+  saveExportedTextFile: (
+    defaultName: string,
+    content: string,
+    filters: { name: string; extensions: string[] }[]
+  ): Promise<boolean> => ipcRenderer.invoke("export:saveTextFile", defaultName, content, filters),
+  saveExportedPdf: (defaultName: string, htmlContent: string): Promise<boolean> =>
+    ipcRenderer.invoke("export:savePdf", defaultName, htmlContent),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
     ipcRenderer.invoke("notesFolder:renameNote", absPath, newTitle, updateLinks),
   openExternal: (url: string): Promise<boolean> =>

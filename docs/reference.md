@@ -119,6 +119,41 @@ document on every edit/selection change:
 This only affects editor rendering — the file on disk always stores plain
 markdown, so external edits (including by Claude Code) are unaffected.
 
+## Export
+
+File → Export… (`src/components/ExportDialog.tsx`) turns the currently
+open notes folder into one of three formats, all built by
+`src/export/vaultExport.ts`:
+
+- **Single Markdown file** — every note concatenated (sorted alphabetically
+  by title, separated by `---`), verbatim. No rendering, so `[[wikilinks]]`
+  and image references stay exactly as written — an image reference stays
+  relative to wherever the original `attachments/` folder was, which won't
+  travel with this one file.
+- **Single HTML file** — every note rendered to HTML and bundled into one
+  page: `[[wikilinks]]` and markdown links to another exported note become
+  in-document `#slug` anchors instead (`shared/noteLinks.ts`'s
+  `rewriteWikilinksForExport`/`rewriteNoteLinksForExport` — a linked note
+  has no separate file to navigate to anymore, and an orphan wikilink just
+  becomes its plain display text), and every attachment image is inlined as
+  a `data:` URL (batch-read up front via `attachments:readManyAsDataUrls`,
+  since `marked`'s render callbacks are synchronous). Reuses
+  `MarkdownPreview.tsx`'s `marked` setup (parameterized on how an image src
+  resolves) so code highlighting/tags/etc. render the same as in-app
+  Preview. A `$$math block$$` renders via KaTeX's structure but without its
+  own stylesheet (bundling it as a raw import broke the packaged renderer —
+  see the comment on `EXPORT_STYLE`), so it uses fallback system fonts.
+- **PDF** — the same HTML, printed via `webContents.printToPDF` in a
+  hidden, disposable window (`electron/exportFiles.ts`).
+
+`shared/noteLinks.ts` holds every pure link/tag helper (including the two
+export rewrite functions) with **no** `gray-matter` dependency, unlike
+`shared/parseNote.ts` (which re-exports all of it, plus the `gray-matter`-
+dependent `parseNote()` itself) — `gray-matter`'s transitive `js-yaml`/
+`esprima` do a runtime `require()` that crashes the sandboxed renderer
+bundle, so anything imported from the renderer (like the export module)
+must go through `noteLinks.ts` directly rather than through `parseNote.ts`.
+
 ## Notes folders
 
 Notes folder name → path mappings are stored in `notesFolders.json` in
