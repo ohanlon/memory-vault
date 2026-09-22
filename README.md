@@ -99,10 +99,18 @@ since whatever called it already has CLI/MCP access by definition.
   that it doesn't exist. Pass that `mtimeMs` back as `--if-unmodified-since`
   to a later write on the same note to avoid clobbering a change made in
   between (see below).
-- `add_note --folder NAME <title> [--subfolder PATH] [--content TEXT |
-  --content-file PATH|-]` — creates a note with the given title and content,
-  optionally inside `PATH` (created if missing). If the title collides
-  with an existing note, picks a new name (e.g. `"Idea 1"`) and reports it.
+- `add_note --folder NAME <title> [--subfolder PATH] (--content TEXT |
+  --content-file PATH|- | --template NAME [--values '{"key":"value"}'])` —
+  creates a note with the given title and content, optionally inside `PATH`
+  (created if missing). If the title collides with an existing note, picks
+  a new name (e.g. `"Idea 1"`) and reports it. `--template` renders one of
+  the notes folder's custom templates (`.templates/*.md`, created via
+  "Convert to Template" in the GUI) instead of `--content` — its
+  `{{placeholders}}` are filled from `--values` (a JSON object of strings)
+  plus `{{title}}` automatically; `{{date}}`/`{{time}}`/`{{datetime}}` tags
+  expand using this app's default formats (not whatever the GUI's Settings
+  has them configured to, since that's a separate per-install preference).
+  An unknown template name reports the notes folder's known template names.
 - `set_note --folder NAME <notePath> (--content TEXT | --content-file
   PATH|-) [--if-unmodified-since MTIME_MS]` — creates or overwrites a note at
   an exact path (path relative to the notes folder root), no auto-renaming.
@@ -187,6 +195,7 @@ cairn-cli.exe list_folders
 cairn-cli.exe get_notes --folder Work --subfolders
 cairn-cli.exe get_note --folder Work "Idea.md"
 cairn-cli.exe add_note --folder Work "Idea" --content "some text" --subfolder Projects
+cairn-cli.exe add_note --folder Work "Standup" --template Meeting --values '{"attendee":"Pete"}'
 cairn-cli.exe set_note --folder Work "Preferences.md" --content "## Preferences"
 cairn-cli.exe update_note --folder Work "Idea.md" --content-file ./more-text.txt
 cairn-cli.exe update_note --folder Work "Preferences.md" --content "- likes dark mode" --heading Preferences

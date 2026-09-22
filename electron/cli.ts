@@ -6,11 +6,14 @@ import { allowFolder, isFolderAllowed, readCliAccessFile, writeCliAccessFile } f
 import { readNoteProperties, saveNoteProperties } from "./noteProperties";
 import { listSnapshots, readSnapshot, recordSnapshot } from "./noteHistory";
 import { deleteAttachments, findOrphanedAttachments } from "./attachments";
+import { listFileTemplates } from "./templates";
 import { findPropertyByNameCI, readPropertySchema } from "./propertiesSchema";
 import { backlinkTitles, buildGraph } from "../shared/buildGraph";
 import { titleFromPath } from "../shared/parseNote";
 import { searchContent } from "../shared/search";
 import { validatePropertyValue } from "../shared/validateProperty";
+import { DEFAULT_APP_SETTINGS } from "../shared/appSettings";
+import { expandBuiltInDateVars, renderTemplate } from "../shared/templateRender";
 import type { Note, NotesFolderEntry, SearchMatch, SearchOptions } from "../shared/types";
 
 export type CliResult = Record<string, unknown>;
@@ -268,13 +271,44 @@ export async function getNote(
   return { ok: true, folder: entry.name, note: notePath, content, mtimeMs: stat.mtimeMs };
 }
 
+// Renders one of the notes folder's custom file templates (".templates/",
+// see electron/templates.ts - the same "Convert to Template" mechanism the
+// GUI uses, not the 3 fixed built-in templates the GUI's "New Note" menu
+// separately offers, which have no CLI equivalent). {{date}}/{{time}}/
+// {{datetime}} tags use this app's default formats regardless of what the
+// GUI's Settings has them configured to, since that's stored per-install
+// and this may run from a machine with no GUI settings at all; a template
+// can still override the format per-tag (e.g. {{date:YYYY/MM/DD}}).
+async function renderNoteTemplate(
+  root: string,
+  templateName: string,
+  title: string,
+  values: Record<string, string> | undefined
+): Promise<string> {
+  const templates = await listFileTemplates(root);
+  const template = templates.find((t) => t.name.toLowerCase() === templateName.toLowerCase());
+  if (!template) {
+    const known = templates.map((t) => t.name).join(", ") || "(none)";
+    throw new Error(`No template named "${templateName}". Known templates: ${known}`);
+  }
+  const raw = await fs.promises.readFile(template.path, "utf-8");
+  const expanded = expandBuiltInDateVars(raw, new Date(), {
+    date: DEFAULT_APP_SETTINGS.dateFormat,
+    time: DEFAULT_APP_SETTINGS.timeFormat,
+    datetime: DEFAULT_APP_SETTINGS.datetimeFormat,
+  });
+  return renderTemplate(expanded, { ...values, title });
+}
+
 export async function addNote(
   notesFoldersFile: string,
   cliAccessFile: string,
   folderName: string,
   title: string,
   content: string,
-  subfolder?: string
+  subfolder?: string,
+  templateName?: string,
+  templateValues?: Record<string, string>
 ): Promise<CliResult> {
   const entry = resolveFolder(readNotesFoldersFile(notesFoldersFile), cliAccessFile, folderName);
 
@@ -284,9 +318,11 @@ export async function addNote(
 
   const safeTitle = title.trim() || "New Note";
   const fullPath = uniqueNotePath(dir, safeTitle);
-  await fs.promises.writeFile(fullPath, content, "utf-8");
-
   const finalTitle = path.basename(fullPath, ".md");
+  const finalContent =
+    templateName !== undefined ? await renderNoteTemplate(entry.root, templateName, finalTitle, templateValues) : content;
+  await fs.promises.writeFile(fullPath, finalContent, "utf-8");
+
   const relPath = path.relative(entry.root, fullPath);
   return {
     ok: true,
@@ -720,12 +756,35 @@ export async function runCliCommand(
       return getNote(notesFoldersFile, cliAccessFile, folder, note);
     }
     case "add_note": {
-      const usage = "add_note --folder NAME <title> [--subfolder PATH] [--content TEXT | --content-file PATH|-]";
+      const usage =
+        "add_note --folder NAME <title> [--subfolder PATH] " +
+        "(--content TEXT | --content-file PATH|- | --template NAME [--values '{\"key\":\"value\"}'])";
       const folder = flagString(flags.folder);
       const title = positional[0];
       if (!folder || !title) throw new Error(`Usage: ${usage}`);
+      const templateName = flagString(flags.template);
+      const valuesJson = flagString(flags.values);
+      if (templateName !== undefined && (flags.content !== undefined || flags["content-file"] !== undefined)) {
+        throw new Error(`Specify either --content/--content-file or --template, not both. Usage: ${usage}`);
+      }
+      if (valuesJson !== undefined && templateName === undefined) {
+        throw new Error(`--values requires --template. Usage: ${usage}`);
+      }
+      let templateValues: Record<string, string> | undefined;
+      if (valuesJson !== undefined) {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(valuesJson);
+        } catch {
+          throw new Error(`--values must be valid JSON. Usage: ${usage}`);
+        }
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+          throw new Error(`--values must be a JSON object. Usage: ${usage}`);
+        }
+        templateValues = parsed as Record<string, string>;
+      }
       const content = resolveContentFlag(flags, usage, false, readStdin);
-      return addNote(notesFoldersFile, cliAccessFile, folder, title, content, flagString(flags.subfolder));
+      return addNote(notesFoldersFile, cliAccessFile, folder, title, content, flagString(flags.subfolder), templateName, templateValues);
     }
     case "set_note": {
       const usage =

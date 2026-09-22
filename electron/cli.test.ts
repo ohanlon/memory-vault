@@ -340,6 +340,118 @@ describe("runCliCommand: add_note", () => {
   });
 });
 
+describe("runCliCommand: add_note --template", () => {
+  function writeTemplate(root: string, name: string, content: string): void {
+    const dir = path.join(root, ".templates");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, `${name}.md`), content, "utf-8");
+  }
+
+  it("renders a template with the note's title and a placeholder value", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeTemplate(root, "Meeting", "# {{title}}\n\nAttendee: {{attendee}}\n");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["add_note", "--folder", "Work", "Standup", "--template", "Meeting", "--values", '{"attendee":"Pete"}'],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(true);
+    expect(fs.readFileSync(path.join(root, "Standup.md"), "utf-8")).toBe("# Standup\n\nAttendee: Pete\n");
+  });
+
+  it("matches a template name case-insensitively", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeTemplate(root, "Meeting", "# {{title}}\n");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    const result = await runCliCommand(
+      ["add_note", "--folder", "Work", "Standup", "--template", "meeting"],
+      notesFoldersFile,
+      accessFile()
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("expands {{date}} using this app's default format", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeTemplate(root, "Journal", "# {{date}}\n");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await runCliCommand(["add_note", "--folder", "Work", "Today", "--template", "Journal"], notesFoldersFile, accessFile());
+
+    expect(fs.readFileSync(path.join(root, "Today.md"), "utf-8")).toMatch(/^# \d{4}-\d{2}-\d{2}\n$/);
+  });
+
+  it("reports a clear error listing known templates when the name doesn't match", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeTemplate(root, "Meeting", "content");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(["add_note", "--folder", "Work", "Note", "--template", "Nope"], notesFoldersFile, accessFile())
+    ).rejects.toThrow(/No template named "Nope".*Meeting/s);
+  });
+
+  it("rejects --template combined with --content", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeTemplate(root, "Meeting", "content");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(
+        ["add_note", "--folder", "Work", "Note", "--template", "Meeting", "--content", "x"],
+        notesFoldersFile,
+        accessFile()
+      )
+    ).rejects.toThrow(/not both/);
+  });
+
+  it("rejects --values without --template", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(
+        ["add_note", "--folder", "Work", "Note", "--values", '{"a":"b"}'],
+        notesFoldersFile,
+        accessFile()
+      )
+    ).rejects.toThrow(/--values requires --template/);
+  });
+
+  it("rejects invalid JSON for --values", async () => {
+    const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");
+    const root = tmpDir();
+    fs.mkdirSync(root, { recursive: true });
+    writeTemplate(root, "Meeting", "content");
+    writeNotesFoldersFile(notesFoldersFile, [{ name: "Work", root }]);
+
+    await expect(
+      runCliCommand(
+        ["add_note", "--folder", "Work", "Note", "--template", "Meeting", "--values", "{not json}"],
+        notesFoldersFile,
+        accessFile()
+      )
+    ).rejects.toThrow(/must be valid JSON/);
+  });
+});
+
 describe("runCliCommand: update_note", () => {
   it("appends the given text to an existing note, adding a newline separator", async () => {
     const notesFoldersFile = path.join(tmpDir(), "notesFolders.json");

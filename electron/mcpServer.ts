@@ -104,16 +104,25 @@ server.registerTool(
   "add_note",
   {
     description:
-      "Create a new note with a title. Auto-renames on a title collision instead of overwriting - use set_note if you want to create-or-overwrite a note at an exact path.",
+      "Create a new note with a title. Auto-renames on a title collision instead of overwriting - use set_note if you want to create-or-overwrite a note at an exact path. Pass either content or template, not both.",
     inputSchema: {
       folder: z.string(),
       title: z.string(),
       content: z.string().optional(),
       subfolder: z.string().optional().describe("Subfolder to create the note in, created if missing"),
+      template: z
+        .string()
+        .optional()
+        .describe(
+          "Name of a custom file template in this notes folder's .templates folder (see get_notes) to render instead of content - {{placeholders}} filled from values, plus {{date}}/{{time}}/{{datetime}}."
+        ),
+      values: z.record(z.string(), z.string()).optional().describe("Placeholder values for template's {{name}} tags"),
     },
   },
-  async ({ folder, title, content, subfolder }) =>
-    textResult(await addNote(notesFoldersFilePath(), cliAccessFilePath(), folder, title, content ?? "", subfolder))
+  async ({ folder, title, content, subfolder, template, values }) =>
+    textResult(
+      await addNote(notesFoldersFilePath(), cliAccessFilePath(), folder, title, content ?? "", subfolder, template, values)
+    )
 );
 
 server.registerTool(

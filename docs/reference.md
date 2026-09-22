@@ -166,6 +166,14 @@ through two interfaces built on the same operations (`electron/cli.ts`):
 Both interfaces operate on the same `notesFolders.json` registry and files
 on disk as the GUI, so a folder registered by one is visible to the others.
 
+`add_note`'s `template` option renders one of the notes folder's custom
+file templates (see "Convert to Template" in the GUI, `.templates/*.md`) —
+not the 3 fixed built-in templates the GUI's own "New Note" menu offers,
+which have no CLI/MCP equivalent. `{{date}}`/`{{time}}`/`{{datetime}}` tags
+always use this app's default formats here (`shared/appSettings.ts`'s
+`DEFAULT_APP_SETTINGS`), regardless of what the GUI's Settings has them
+configured to — a template's own `{{date:FORMAT}}` override still works.
+
 ### Access control
 
 Being registered in `notesFolders.json` does not make a folder reachable
