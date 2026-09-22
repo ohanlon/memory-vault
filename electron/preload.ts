@@ -8,6 +8,7 @@ import type {
   Note,
   NotesFolderEntry,
   NotesFolderIndex,
+  NoteHistoryEntry,
   NotesFolderReconciledEvent,
   NotesFolderReconcileStatusEvent,
   PluginManifest,
@@ -66,6 +67,12 @@ const api = {
   ): Promise<string> => ipcRenderer.invoke("templates:createNote", dir, title, templatePath, values),
   deleteNote: (absPath: string): Promise<boolean> =>
     ipcRenderer.invoke("notesFolder:deleteNote", absPath),
+  getNoteHistory: (absPath: string): Promise<NoteHistoryEntry[]> =>
+    ipcRenderer.invoke("notesFolder:getNoteHistory", absPath),
+  readNoteHistoryVersion: (absPath: string, timestamp: string): Promise<string | null> =>
+    ipcRenderer.invoke("notesFolder:readNoteHistoryVersion", absPath, timestamp),
+  restoreNoteVersion: (absPath: string, timestamp: string): Promise<number> =>
+    ipcRenderer.invoke("notesFolder:restoreNoteVersion", absPath, timestamp),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
     ipcRenderer.invoke("notesFolder:renameNote", absPath, newTitle, updateLinks),
   openExternal: (url: string): Promise<boolean> =>

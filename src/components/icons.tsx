@@ -441,3 +441,13 @@ export function FindReplaceIcon() {
     </Svg>
   );
 }
+
+export function HistoryIcon() {
+  return (
+    <Svg>
+      <path d="M4 12C4 7.6 7.6 4 12 4S20 7.6 20 12S16.4 20 12 20C9.6 20 7.4 18.9 6 17.1" />
+      <path d="M4 20V17.1H6.9" />
+      <path d="M12 8V12L15 14" />
+    </Svg>
+  );
+}

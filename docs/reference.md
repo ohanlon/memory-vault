@@ -200,8 +200,15 @@ there. `set_properties` (frontmatter-only edits) does not snapshot.
 itself snapshotting the note's current content first (bypassing the
 throttle) so a restore is always undoable with another restore. Both accept
 the same `expectedMtimeMs`/`--if-unmodified-since` optimistic-concurrency
-guard as the write operations above. There is currently no GUI surface for
-browsing history — CLI/MCP only.
+guard as the write operations above.
+
+In the GUI, the clock icon next to a note's Edit/Preview toggle
+(`EditorPane.tsx`) opens a "Version History" panel (`HistoryPanel.tsx`)
+listing the same snapshots with a preview and a "Restore this version"
+button, over its own IPC handlers (`notesFolder:getNoteHistory`/
+`readNoteHistoryVersion`/`restoreNoteVersion` in `electron/main.ts`) rather
+than the CLI/MCP path, since the GUI's open notes folder may not be
+CLI/MCP-access-granted.
 
 ## Out of scope
 

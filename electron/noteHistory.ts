@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import type { NoteHistoryEntry } from "../shared/types";
 
 // Local version history for notes, stored outside any notes folder (under
 // the app's userData dir, alongside notesFolders.json/cli-access.json) so it
@@ -83,10 +84,6 @@ export function recordSnapshot(
   for (let i = 0; i < excess; i++) {
     fs.rmSync(path.join(dir, updated[i]), { force: true });
   }
-}
-
-export interface NoteHistoryEntry {
-  timestamp: string; // ISO 8601
 }
 
 // Newest first.

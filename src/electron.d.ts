@@ -5,6 +5,7 @@ import type {
   FileTemplate,
   LayoutPrefs,
   Note,
+  NoteHistoryEntry,
   NotesFolderEntry,
   NotesFolderIndex,
   NotesFolderReconciledEvent,
@@ -46,6 +47,10 @@ export interface MemoryStackAPI {
     values: Record<string, string>
   ): Promise<string>;
   deleteNote(absPath: string): Promise<boolean>;
+  getNoteHistory(absPath: string): Promise<NoteHistoryEntry[]>;
+  readNoteHistoryVersion(absPath: string, timestamp: string): Promise<string | null>;
+  /** Resolves with the note's new mtime, mirroring saveNote, for the caller to re-baseline conflict detection. */
+  restoreNoteVersion(absPath: string, timestamp: string): Promise<number>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;

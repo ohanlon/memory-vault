@@ -41,6 +41,9 @@ empty one to start fresh) — that becomes a notes folder.
 - **Daily notes and templates** for recurring structure, and an optional
   typed-properties schema for frontmatter (Settings → Advanced) if you want
   validation beyond plain YAML.
+- **Version history**: every overwrite is snapshotted locally, so the clock
+  icon next to a note's Edit/Preview toggle lets you browse and restore past
+  versions.
 
 See [docs/reference.md](docs/reference.md) for exact link syntax, the graph
 model, and how notes folders are stored on disk.

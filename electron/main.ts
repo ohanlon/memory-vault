@@ -26,7 +26,7 @@ import { titleFromPath } from "../shared/parseNote";
 import { STARTER_NOTES } from "../shared/starterContent";
 import { findNoteTemplate } from "../shared/noteTemplates";
 import { readNoteBody, readNoteProperties, saveNoteBody, saveNoteProperties } from "./noteProperties";
-import { recordSnapshot } from "./noteHistory";
+import { listSnapshots, readSnapshot, recordSnapshot } from "./noteHistory";
 import { readPropertySchema, writePropertySchema } from "./propertiesSchema";
 import { readLayoutPrefsFile, writeLayoutPrefsFile } from "./layoutPrefs";
 import { readWorkspaceState, writeWorkspaceState } from "./workspaceState";
@@ -523,6 +523,36 @@ ipcMain.handle("notesFolder:seedStarterContent", async () => {
     created.push(fullPath);
   }
   return created;
+});
+
+ipcMain.handle("notesFolder:getNoteHistory", async (_event, absPath: string) => {
+  assertOwnsPath(absPath);
+  const root = requireActiveRoot();
+  return listSnapshots(historyDirPath(), root, path.relative(root, absPath));
+});
+
+ipcMain.handle("notesFolder:readNoteHistoryVersion", async (_event, absPath: string, timestamp: string) => {
+  assertOwnsPath(absPath);
+  const root = requireActiveRoot();
+  return readSnapshot(historyDirPath(), root, path.relative(root, absPath), timestamp);
+});
+
+// Overwrites the note with a past snapshot, itself snapshotting the note's
+// current content first (bypassing the usual throttle) so a restore is
+// always undoable with another restore — same behavior as the CLI/MCP
+// restore_note_version (electron/cli.ts), reimplemented here directly since
+// the GUI's active notes folder may not be CLI/MCP-access-granted.
+ipcMain.handle("notesFolder:restoreNoteVersion", async (_event, absPath: string, timestamp: string) => {
+  assertOwnsPath(absPath);
+  const root = requireActiveRoot();
+  const relPath = path.relative(root, absPath);
+  const versionContent = readSnapshot(historyDirPath(), root, relPath, timestamp);
+  if (versionContent === null) throw new Error(`No history snapshot found at timestamp "${timestamp}".`);
+  if (fs.existsSync(absPath)) {
+    recordSnapshot(historyDirPath(), root, relPath, fs.readFileSync(absPath, "utf-8"), { force: true });
+  }
+  fs.writeFileSync(absPath, versionContent, "utf-8");
+  return fs.statSync(absPath).mtimeMs;
 });
 
 ipcMain.handle("notesFolder:deleteNote", async (_event, absPath: string) => {

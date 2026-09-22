@@ -30,6 +30,7 @@ import {
   FormatIcon,
   HashIcon,
   HighlightIcon,
+  HistoryIcon,
   HorizontalRuleIcon,
   InlineCodeIcon,
   InsertIcon,
@@ -56,6 +57,7 @@ import { ContextMenu } from "./ContextMenu";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { BlockPickerModal } from "./BlockPickerModal";
 import { LinkPickerModal } from "./LinkPickerModal";
+import { HistoryPanel } from "./HistoryPanel";
 
 interface Props {
   note: Note | null;
@@ -126,6 +128,7 @@ export function EditorPane({
   const [blockPicker, setBlockPicker] = useState<EditorContextMenuRequest["linkBlockAction"] | null>(null);
   const [linkPicker, setLinkPicker] = useState<EditorContextMenuRequest["insertLinkAction"] | null>(null);
   const [propertiesVisible, setPropertiesVisible] = useState(!settings.hidePropertiesByDefault);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
   const contentRef = useRef(content);
@@ -283,6 +286,17 @@ export function EditorPane({
     setConflict(false);
   }
 
+  async function handleRestoreVersion(timestamp: string) {
+    if (!note) return;
+    const mtimeMs = await window.memoryStack.restoreNoteVersion(note.path, timestamp);
+    const body = await window.memoryStack.readNoteBody(note.path);
+    setContent(body);
+    knownMtimeRef.current = mtimeMs;
+    lastSyncedContentRef.current = body;
+    setConflict(false);
+    setHistoryOpen(false);
+  }
+
   const fontTheme = useMemo(
     () =>
       EditorView.theme({
@@ -367,6 +381,9 @@ export function EditorPane({
               {propertiesVisible ? <PropertyViewIcon /> : <PropertyEditIcon />}
             </button>
           )}
+          <button className="properties-toggle-btn" onClick={() => setHistoryOpen(true)} title="Version history">
+            <HistoryIcon />
+          </button>
           <button
             className="preview-toggle-btn"
             onClick={() => setPreviewMode((v) => !v)}
@@ -623,6 +640,9 @@ export function EditorPane({
           }}
           onCancel={() => setBlockPicker(null)}
         />
+      )}
+      {historyOpen && (
+        <HistoryPanel notePath={note.path} onClose={() => setHistoryOpen(false)} onRestore={handleRestoreVersion} />
       )}
       {linkPicker && (
         <LinkPickerModal

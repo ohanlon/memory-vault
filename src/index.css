@@ -1943,6 +1943,39 @@ body {
   min-width: 480px;
 }
 
+.history-panel {
+  min-width: 640px;
+}
+
+.history-panel-body {
+  display: flex;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.history-version-list {
+  flex: 0 0 200px;
+}
+
+.history-version-preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--bg-base);
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.history-version-preview pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-primary);
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

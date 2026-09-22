@@ -334,3 +334,9 @@ export interface FileTemplate {
   /** Filename without the .md extension — display label and lookup key. */
   name: string;
 }
+
+/** A recorded local version snapshot of a note - see electron/noteHistory.ts. */
+export interface NoteHistoryEntry {
+  /** ISO 8601 timestamp, also the key used to read/restore this snapshot. */
+  timestamp: string;
+}
