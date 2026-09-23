@@ -451,3 +451,14 @@ export function HistoryIcon() {
     </Svg>
   );
 }
+
+export function MicIcon() {
+  return (
+    <Svg>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11C5 15 8.1 18 12 18S19 15 19 11" />
+      <path d="M12 18V21" />
+      <path d="M9 21H15" />
+    </Svg>
+  );
+}

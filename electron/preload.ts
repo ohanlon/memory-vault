@@ -91,6 +91,8 @@ const api = {
   ): Promise<boolean> => ipcRenderer.invoke("export:saveTextFile", defaultName, content, filters),
   saveExportedPdf: (defaultName: string, htmlContent: string): Promise<boolean> =>
     ipcRenderer.invoke("export:savePdf", defaultName, htmlContent),
+  /** `samples` must be mono PCM at 16kHz, -1..1 range. First call may take a while (downloads the speech model). */
+  transcribeAudio: (samples: Float32Array): Promise<string> => ipcRenderer.invoke("voice:transcribe", samples),
   renameNote: (absPath: string, newTitle: string, updateLinks: boolean): Promise<string> =>
     ipcRenderer.invoke("notesFolder:renameNote", absPath, newTitle, updateLinks),
   openExternal: (url: string): Promise<boolean> =>

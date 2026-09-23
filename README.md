@@ -53,6 +53,11 @@ empty one to start fresh) — that becomes a notes folder.
 - **Export**: File → Export… turns the whole open notes folder into a
   single Markdown file, a single self-contained HTML file, or a PDF, for
   sharing outside the app.
+- **Voice notes**: the mic icon next to a note's Edit/Preview toggle
+  records audio and transcribes it locally on your machine (no account,
+  no cloud service, no per-use cost) — review the text, then insert it at
+  the cursor. The first use downloads a small speech-recognition model;
+  after that it works fully offline.
 
 See [docs/reference.md](docs/reference.md) for exact link syntax, the graph
 model, and how notes folders are stored on disk.

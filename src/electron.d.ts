@@ -64,6 +64,8 @@ export interface MemoryStackAPI {
     filters: { name: string; extensions: string[] }[]
   ): Promise<boolean>;
   saveExportedPdf(defaultName: string, htmlContent: string): Promise<boolean>;
+  /** `samples` must be mono PCM at 16kHz, -1..1 range. First call may take a while (downloads the speech model). */
+  transcribeAudio(samples: Float32Array): Promise<string>;
   renameNote(absPath: string, newTitle: string, updateLinks: boolean): Promise<string>;
   openExternal(url: string): Promise<boolean>;
   showItemInFolder(absPath: string): Promise<boolean>;

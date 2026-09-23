@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, session as electronSession, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,6 +37,7 @@ import { isAllowedExternalUrl, isAllowedForPlugin } from "./domainPolicy";
 import { PLUGIN_SCHEME, contentTypeFor, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
 import { handleAttachmentProtocol, registerAttachmentScheme, resolveAttachmentFilePath } from "./attachmentProtocol";
 import { saveTextFile, savePdfFromHtml, type SaveDialogFilter } from "./exportFiles";
+import { transcribeAudio } from "./voiceTranscription";
 import { deleteAttachments, findOrphanedAttachments, saveAttachment } from "./attachments";
 import { discoverPlugins } from "./pluginRegistry";
 import {
@@ -133,6 +134,13 @@ function historyDirPath(): string {
 
 function layoutPrefsFilePath(): string {
   return path.join(app.getPath("userData"), "layout-prefs.json");
+}
+
+// Where voiceTranscription.ts caches the downloaded Whisper model - kept
+// out of the app's own (read-only once installed, and wiped on update)
+// install directory.
+function voiceModelCacheDir(): string {
+  return path.join(app.getPath("userData"), "voice-models");
 }
 
 function appSettingsFilePath(): string {
@@ -585,6 +593,14 @@ ipcMain.handle("export:savePdf", async (_event, defaultName: string, htmlContent
   return savePdfFromHtml(win, defaultName, htmlContent);
 });
 
+// `samples` is mono PCM at 16kHz, Float32Array - see VoiceNoteDialog.tsx
+// (recording/decoding) and voiceTranscription.ts (the model itself). The
+// first call downloads the model (tens of MB) and can take a while; every
+// call after that reuses it.
+ipcMain.handle("voice:transcribe", async (_event, samples: Float32Array) => {
+  return transcribeAudio(samples, voiceModelCacheDir());
+});
+
 ipcMain.handle("notesFolder:getNoteHistory", async (_event, absPath: string) => {
   assertOwnsPath(absPath);
   const root = requireActiveRoot();
@@ -751,4 +767,14 @@ app.whenReady().then(() => {
   createWindow();
   handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
   handleAttachmentProtocol(() => activeRoot);
+
+  // Explicit default (deny-by-default, same philosophy as cliAccess.ts/
+  // pluginPermissions.ts): only the app's own top-level page can ask for
+  // microphone access (voice notes, see VoiceNoteDialog.tsx) - a plugin's
+  // cairn-plugin:// iframe requesting it (or any other permission, from
+  // anywhere) is refused rather than silently inheriting this grant.
+  electronSession.defaultSession.setPermissionRequestHandler((_contents, permission, callback, details) => {
+    const isPluginOrigin = details.requestingUrl?.startsWith(`${PLUGIN_SCHEME}://`) ?? false;
+    callback(permission === "media" && !isPluginOrigin);
+  });
 });

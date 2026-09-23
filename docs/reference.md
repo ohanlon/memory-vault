@@ -119,6 +119,33 @@ document on every edit/selection change:
 This only affects editor rendering — the file on disk always stores plain
 markdown, so external edits (including by Claude Code) are unaffected.
 
+## Voice notes
+
+The mic icon next to a note's Edit/Preview toggle (`VoiceNoteDialog.tsx`)
+records audio (`MediaRecorder`) and transcribes it entirely on-device —
+deliberately not the browser's `SpeechRecognition` API (Electron's
+Chromium build lacks the Google-issued key that API needs to work at all,
+so it reliably fails with `network`/`not-allowed` errors there) or a paid
+cloud STT API. Instead:
+
+- The recording is decoded and resampled to 16kHz mono PCM in the renderer
+  via the Web Audio API (`src/editor/audioDecode.ts`'s `downmixToMono`) —
+  Node has no built-in audio decoder, so this has to happen before the
+  audio crosses into the main process.
+- The main process (`electron/voiceTranscription.ts`) runs a small
+  Whisper model (`Xenova/whisper-tiny.en`) via `@huggingface/transformers`
+  (ONNX Runtime, no GPU or account required) on that PCM data and returns
+  the transcribed text for review before inserting it at the cursor.
+- The model (tens of MB) downloads once, on first use, into
+  `<userData>/voice-models/`, and every use after that is fully offline.
+- Microphone access is deny-by-default for everything except the app's own
+  top-level page (`session.setPermissionRequestHandler` in `electron/
+  main.ts`) — a plugin's `cairn-plugin://` iframe requesting it (or any
+  other permission) is refused.
+- This isn't live dictation: transcription only starts once you stop
+  recording, so there's a short pause (longer on first use, while the
+  model loads) before the text appears.
+
 ## Export
 
 File → Export… (`src/components/ExportDialog.tsx`) turns the currently

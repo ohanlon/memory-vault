@@ -2023,6 +2023,18 @@ body {
   font-size: 14px;
 }
 
+.voice-note-review {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  padding: 8px;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+  min-width: 360px;
+}
+
 .modal-message {
   margin: 0;
   font-size: 13px;

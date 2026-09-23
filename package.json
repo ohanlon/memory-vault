@@ -29,6 +29,7 @@
     "@fontsource/roboto": "^5.3.0",
     "@fontsource/scoutie-sans": "^5.3.1",
     "@fontsource/valley-sans": "^5.3.1",
+    "@huggingface/transformers": "^4.3.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@uiw/react-codemirror": "^4.23.6",
     "chokidar": "^3.6.0",

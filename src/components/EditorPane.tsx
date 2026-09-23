@@ -42,6 +42,7 @@ import {
   ListTaskIcon,
   ListUnorderedIcon,
   MathIcon,
+  MicIcon,
   ParagraphIcon,
   PasteIcon,
   PasteSpecialIcon,
@@ -59,6 +60,7 @@ import { PropertiesPanel } from "./PropertiesPanel";
 import { BlockPickerModal } from "./BlockPickerModal";
 import { LinkPickerModal } from "./LinkPickerModal";
 import { HistoryPanel } from "./HistoryPanel";
+import { VoiceNoteDialog } from "./VoiceNoteDialog";
 
 interface Props {
   note: Note | null;
@@ -130,6 +132,8 @@ export function EditorPane({
   const [linkPicker, setLinkPicker] = useState<EditorContextMenuRequest["insertLinkAction"] | null>(null);
   const [propertiesVisible, setPropertiesVisible] = useState(!settings.hidePropertiesByDefault);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [voiceNoteOpen, setVoiceNoteOpen] = useState(false);
+  const viewRef = useRef<EditorView | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
   const contentRef = useRef(content);
@@ -298,6 +302,14 @@ export function EditorPane({
     setHistoryOpen(false);
   }
 
+  function handleInsertVoiceNote(text: string) {
+    setVoiceNoteOpen(false);
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch(view.state.replaceSelection(text));
+    view.focus();
+  }
+
   const fontTheme = useMemo(
     () =>
       EditorView.theme({
@@ -387,6 +399,11 @@ export function EditorPane({
           <button className="properties-toggle-btn" onClick={() => setHistoryOpen(true)} title="Version history">
             <HistoryIcon />
           </button>
+          {!previewMode && (
+            <button className="properties-toggle-btn" onClick={() => setVoiceNoteOpen(true)} title="Voice note">
+              <MicIcon />
+            </button>
+          )}
           <button
             className="preview-toggle-btn"
             onClick={() => setPreviewMode((v) => !v)}
@@ -434,6 +451,9 @@ export function EditorPane({
           height="100%"
           extensions={extensions}
           onChange={handleChange}
+          onCreateEditor={(view) => {
+            viewRef.current = view;
+          }}
           theme={theme}
           basicSetup={{ lineNumbers: settings.showLineNumbers, autocompletion: false }}
         />
@@ -647,6 +667,9 @@ export function EditorPane({
       )}
       {historyOpen && (
         <HistoryPanel notePath={note.path} onClose={() => setHistoryOpen(false)} onRestore={handleRestoreVersion} />
+      )}
+      {voiceNoteOpen && (
+        <VoiceNoteDialog onInsert={handleInsertVoiceNote} onCancel={() => setVoiceNoteOpen(false)} />
       )}
       {linkPicker && (
         <LinkPickerModal
