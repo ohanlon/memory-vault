@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { PickableNote } from "../editor/editorContextMenu";
-import { ExternalLinkIcon, NoteIcon } from "./icons";
+import { ExternalLinkIcon, InsertIcon, NoteIcon } from "./icons";
 
 type LinkTarget = { kind: "note"; note: PickableNote } | { kind: "external"; url: string };
 
@@ -21,9 +21,14 @@ function sameTarget(a: LinkTarget | null, b: LinkTarget): boolean {
 }
 
 export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSelectExternal, onCancel }: Props) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialDisplayText);
   const [displayText, setDisplayText] = useState(initialDisplayText);
-  const [target, setTarget] = useState<LinkTarget | null>(null);
+  const [target, setTarget] = useState<LinkTarget | null>(() => {
+    const trimmed = initialDisplayText.trim();
+    if (!trimmed) return null;
+    const existing = notes.find((n) => n.title.toLowerCase() === trimmed.toLowerCase());
+    return { kind: "note", note: existing ?? { title: trimmed } };
+  });
 
   const trimmedQuery = query.trim();
 
@@ -32,6 +37,11 @@ export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSel
     const q = trimmedQuery.toLowerCase();
     return notes.filter((n) => n.title.toLowerCase().includes(q));
   }, [notes, trimmedQuery]);
+
+  const exactMatch = useMemo(
+    () => notes.some((n) => n.title.toLowerCase() === trimmedQuery.toLowerCase()),
+    [notes, trimmedQuery],
+  );
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -62,6 +72,23 @@ export function LinkPickerModal({ notes, initialDisplayText, onSelectNote, onSel
           }}
         />
         <ul className="picker-list">
+          {trimmedQuery && !exactMatch && (
+            <li>
+              <button
+                type="button"
+                className={`picker-row${sameTarget(target, { kind: "note", note: { title: trimmedQuery } }) ? " picker-row-selected" : ""}`}
+                onClick={() => setTarget({ kind: "note", note: { title: trimmedQuery } })}
+              >
+                <span className="picker-type">
+                  <span className="picker-type-icon">
+                    <InsertIcon />
+                  </span>
+                  New note
+                </span>
+                <span className="picker-summary">{trimmedQuery}</span>
+              </button>
+            </li>
+          )}
           {trimmedQuery && (
             <li>
               <button
