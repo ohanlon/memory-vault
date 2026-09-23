@@ -474,6 +474,23 @@ ipcMain.handle(
   }
 );
 
+// The custom hidden title bar has no native window icon/system menu, so the
+// renderer's app-icon button asks for this look-alike instead — Electron has
+// no public API to pop the OS's own system menu.
+ipcMain.handle("window:showSystemMenu", async (_event, x: number, y: number) => {
+  if (!win) return false;
+  const maximized = win.isMaximized();
+  const menu = Menu.buildFromTemplate([
+    { label: "Restore", enabled: maximized, click: () => win?.unmaximize() },
+    { label: "Minimize", click: () => win?.minimize() },
+    { label: "Maximize", enabled: !maximized, click: () => win?.maximize() },
+    { type: "separator" },
+    { label: "Close", click: () => win?.close() },
+  ]);
+  menu.popup({ window: win, x: Math.round(x), y: Math.round(y) });
+  return true;
+});
+
 ipcMain.handle("notesFolder:openOrCreateDailyNote", async (_event, root: string) => {
   const dateFormat = readAppSettingsFile(appSettingsFilePath()).dateFormat;
   return openOrCreateDailyNote(root, dateFormat, new Date());

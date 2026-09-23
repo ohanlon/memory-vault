@@ -42,6 +42,16 @@ export function TitleBarChrome({ regionId, activeName, root }: Props) {
   return (
     <div className="titlebar-drag" data-region-id={regionId}>
       <div className="titlebar-left">
+        <button
+          className="titlebar-app-icon-btn"
+          aria-label="System menu"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            window.memoryStack.showSystemMenu(rect.left, rect.bottom);
+          }}
+        >
+          <img src="/icon.png" alt="" className="titlebar-app-icon" />
+        </button>
         {root != null && (
           <div className="titlebar-notes-folder">
             <span className="titlebar-notes-folder-name" title={root}>

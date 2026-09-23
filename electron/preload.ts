@@ -119,6 +119,8 @@ const api = {
   saveAppSettings: (settings: AppSettings): Promise<boolean> => ipcRenderer.invoke("settings:save", settings),
   setTitleBarOverlay: (colors: { color: string; symbolColor: string }): Promise<boolean> =>
     ipcRenderer.invoke("window:setTitleBarOverlay", colors),
+  showSystemMenu: (x: number, y: number): Promise<boolean> =>
+    ipcRenderer.invoke("window:showSystemMenu", x, y),
   openOrCreateDailyNote: (root: string): Promise<DailyNoteResult> =>
     ipcRenderer.invoke("notesFolder:openOrCreateDailyNote", root),
   listPlugins: (): Promise<PluginManifest[]> => ipcRenderer.invoke("plugin:list"),

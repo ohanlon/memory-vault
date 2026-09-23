@@ -82,6 +82,7 @@ export interface MemoryStackAPI {
   readAppSettings(): Promise<AppSettings>;
   saveAppSettings(settings: AppSettings): Promise<boolean>;
   setTitleBarOverlay(colors: { color: string; symbolColor: string }): Promise<boolean>;
+  showSystemMenu(x: number, y: number): Promise<boolean>;
   openOrCreateDailyNote(root: string): Promise<DailyNoteResult>;
   listPlugins(): Promise<PluginManifest[]>;
   getPluginPermissions(): Promise<PluginPermissionsFile>;
