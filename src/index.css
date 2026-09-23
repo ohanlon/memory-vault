@@ -320,11 +320,11 @@ body {
   margin: 0;
   padding: 4px 4px 16px;
   display: flex;
-  flex-flow: column wrap;
+  flex-flow: row wrap;
   align-content: flex-start;
   gap: 12px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .notes-folder-grid li {
