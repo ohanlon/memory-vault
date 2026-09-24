@@ -55,6 +55,8 @@ const api = {
     ipcRenderer.invoke("notesFolder:saveNote", absPath, content),
   createNote: (dir: string, title: string, templateId?: string): Promise<string> =>
     ipcRenderer.invoke("notesFolder:createNote", dir, title, templateId),
+  createFolder: (dir: string, name: string): Promise<string> =>
+    ipcRenderer.invoke("notesFolder:createFolder", dir, name),
   seedStarterContent: (): Promise<string[]> => ipcRenderer.invoke("notesFolder:seedStarterContent"),
   listFileTemplates: (): Promise<FileTemplate[]> => ipcRenderer.invoke("templates:list"),
   convertToTemplate: (root: string, absPath: string): Promise<string> =>

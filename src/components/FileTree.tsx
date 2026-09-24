@@ -6,7 +6,7 @@ import { pluginRegistry } from "../plugins/registry";
 import { pushToPlugin } from "../plugins/pluginFrameRegistry";
 import { buildFileTree, type FileTreeNode } from "../notesFolder/fileTree";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
-import { DeleteIcon, NoteIcon, OpenInExplorerIcon, RenameIcon } from "./icons";
+import { DeleteIcon, InsertIcon, NoteIcon, OpenInExplorerIcon, RenameIcon } from "./icons";
 
 // Base left padding for a top-level row, plus how much further each nested
 // folder level indents - mirrors the fixed 26px .file-tree-item-indented
@@ -18,6 +18,8 @@ const FILE_TREE_INDENT_STEP = 16;
 
 interface Props {
   notes: Note[];
+  /** Relative paths ("/"-separated) of folders with no notes in them yet — see fileTree.ts's buildFileTree. */
+  emptyFolderPaths?: string[];
   activePath: string | null;
   renamingPath: string | null;
   onSelect: (note: Note) => void;
@@ -26,6 +28,8 @@ interface Props {
   onConvertToTemplate: (note: Note) => void;
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
+  /** Create a new folder nested at the same depth as `note`. */
+  onNewFolder: (note: Note) => void;
   onShowInExplorer: (absPath: string) => void;
   /** Every template file available in the current notes folder — shown in
    *  their own "Templates" group, separate from the regular note list
@@ -114,6 +118,7 @@ function EditableLabel({ initialValue, className, onCommit, onCancel, style }: E
 
 export function FileTree({
   notes,
+  emptyFolderPaths,
   activePath,
   renamingPath,
   onSelect,
@@ -122,6 +127,7 @@ export function FileTree({
   onConvertToTemplate,
   onCommitNoteRename,
   onCancelRename,
+  onNewFolder,
   onShowInExplorer,
   templates,
   onSelectTemplate,
@@ -132,7 +138,7 @@ export function FileTree({
   const [templatesCollapsed, setTemplatesCollapsed] = useState(false);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
 
-  const tree = useMemo(() => buildFileTree(notes), [notes]);
+  const tree = useMemo(() => buildFileTree(notes, emptyFolderPaths), [notes, emptyFolderPaths]);
 
   // Titles that appear on more than one note — shown with their relative
   // path as a disambiguating hint, since two notes in different folders can
@@ -286,6 +292,11 @@ export function FileTree({
             { label: "Delete", shortcut: "Del", icon: <DeleteIcon />, onClick: () => onDelete(contextMenu.note) },
             ...pluginContextMenuEntries(contextMenu.note.relativePath),
             { separator: true as const },
+            {
+              label: "New Folder",
+              icon: <InsertIcon />,
+              onClick: () => onNewFolder(contextMenu.note),
+            },
             {
               label: "Convert to template",
               icon: <NoteIcon />,

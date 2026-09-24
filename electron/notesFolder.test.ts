@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadNotesFolder, reconcileNotesFolderCache } from "./notesFolder";
+import { loadNotesFolder, reconcileNotesFolderCache, uniqueFolderPath } from "./notesFolder";
 import type { Note } from "../shared/types";
 
 describe("loadNotesFolder", () => {
@@ -67,6 +67,30 @@ describe("loadNotesFolder", () => {
     const second = await loadNotesFolder(root, byRelPath(first));
 
     expect(second.map((n) => n.relativePath)).toEqual(["a.md"]);
+  });
+});
+
+describe("uniqueFolderPath", () => {
+  const root = path.join(os.tmpdir(), `notes-folder-unique-folder-test-${process.pid}`);
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("returns dir/name when nothing already exists there", () => {
+    fs.mkdirSync(root, { recursive: true });
+    expect(uniqueFolderPath(root, "New Folder")).toBe(path.join(root, "New Folder"));
+  });
+
+  it("increments past an existing folder of the same name", () => {
+    fs.mkdirSync(path.join(root, "New Folder"), { recursive: true });
+    expect(uniqueFolderPath(root, "New Folder")).toBe(path.join(root, "New Folder 1"));
+  });
+
+  it("keeps incrementing past multiple existing folders", () => {
+    fs.mkdirSync(path.join(root, "New Folder"), { recursive: true });
+    fs.mkdirSync(path.join(root, "New Folder 1"), { recursive: true });
+    expect(uniqueFolderPath(root, "New Folder")).toBe(path.join(root, "New Folder 2"));
   });
 });
 

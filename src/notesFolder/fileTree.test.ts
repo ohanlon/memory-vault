@@ -68,4 +68,34 @@ describe("buildFileTree", () => {
   it("returns an empty array for no notes", () => {
     expect(buildFileTree([])).toEqual([]);
   });
+
+  it("seeds an extra folder with no notes in it", () => {
+    const tree = buildFileTree([makeNote("A.md")], ["Empty"]);
+    expect(names(tree)).toEqual(["Empty/", "A"]);
+    const folder = tree[0] as FileTreeFolderNode;
+    expect(folder.children).toEqual([]);
+  });
+
+  it("nests an extra folder path multiple levels deep", () => {
+    const tree = buildFileTree([], ["A/B"]);
+    const a = tree[0] as FileTreeFolderNode;
+    expect(a.name).toBe("A");
+    const b = a.children[0] as FileTreeFolderNode;
+    expect(b.name).toBe("B");
+    expect(b.children).toEqual([]);
+  });
+
+  it("doesn't duplicate a folder that already exists from a note", () => {
+    const tree = buildFileTree([makeNote("Projects/A.md")], ["Projects"]);
+    expect(names(tree)).toEqual(["Projects/"]);
+    const folder = tree[0] as FileTreeFolderNode;
+    expect(names(folder.children)).toEqual(["A"]);
+  });
+
+  it("accepts a Windows-style backslash extra folder path", () => {
+    const tree = buildFileTree([], ["A\\B"]);
+    expect(names(tree)).toEqual(["A/"]);
+    const a = tree[0] as FileTreeFolderNode;
+    expect(names(a.children)).toEqual(["B/"]);
+  });
 });

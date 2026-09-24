@@ -3,7 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
-import { loadNotesFolder, reconcileNotesFolderCache, readNote, uniqueNotePath, watchNotesFolder } from "./notesFolder";
+import {
+  loadNotesFolder,
+  reconcileNotesFolderCache,
+  readNote,
+  uniqueFolderPath,
+  uniqueNotePath,
+  watchNotesFolder,
+} from "./notesFolder";
 import { readNotesFolderCache, writeNotesFolderCache } from "./notesFolderCache";
 import { runReplaceAll, runSearch } from "./search";
 import { convertToTemplate, listAllFileTemplates } from "./templates";
@@ -508,6 +515,14 @@ ipcMain.handle(
     return fullPath;
   }
 );
+
+ipcMain.handle("notesFolder:createFolder", async (_event, dir: string, name: string) => {
+  requireActiveRoot();
+  const safeName = name.trim() || "New Folder";
+  const fullPath = uniqueFolderPath(dir, safeName);
+  fs.mkdirSync(fullPath, { recursive: true });
+  return fullPath;
+});
 
 ipcMain.handle("templates:list", async () => {
   return listAllFileTemplates(readNotesFoldersFile(notesFoldersFilePath()));

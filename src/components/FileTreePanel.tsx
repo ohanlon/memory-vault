@@ -4,6 +4,8 @@ import type { FileTemplate, Note } from "@shared/types";
 interface Props {
   loading: boolean;
   notes: Note[];
+  /** Relative paths ("/"-separated) of folders with no notes in them yet — see fileTree.ts's buildFileTree. */
+  emptyFolderPaths?: string[];
   activePath: string | null;
   renamingPath: string | null;
   onShowInExplorer: (absPath: string) => void;
@@ -13,6 +15,8 @@ interface Props {
   onConvertToTemplate: (note: Note) => void;
   onCommitNoteRename: (note: Note, newTitle: string) => void;
   onCancelRename: () => void;
+  /** Create a new folder nested at the same depth as `note`. */
+  onNewFolder: (note: Note) => void;
   onSeedStarterContent?: () => void;
   templates: FileTemplate[];
   onSelectTemplate: (template: FileTemplate) => void;
@@ -22,6 +26,7 @@ interface Props {
 export function FileTreePanel({
   loading,
   notes,
+  emptyFolderPaths,
   activePath,
   renamingPath,
   onShowInExplorer,
@@ -31,6 +36,7 @@ export function FileTreePanel({
   onConvertToTemplate,
   onCommitNoteRename,
   onCancelRename,
+  onNewFolder,
   onSeedStarterContent,
   templates,
   onSelectTemplate,
@@ -49,6 +55,7 @@ export function FileTreePanel({
       )}
       <FileTree
         notes={notes}
+        emptyFolderPaths={emptyFolderPaths}
         activePath={activePath}
         renamingPath={renamingPath}
         onShowInExplorer={onShowInExplorer}
@@ -58,6 +65,7 @@ export function FileTreePanel({
         onConvertToTemplate={onConvertToTemplate}
         onCommitNoteRename={onCommitNoteRename}
         onCancelRename={onCancelRename}
+        onNewFolder={onNewFolder}
         templates={templates}
         onSelectTemplate={onSelectTemplate}
         onDeleteTemplate={onDeleteTemplate}

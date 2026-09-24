@@ -6,38 +6,48 @@ interface Props {
   regionId?: string;
   activeName?: string | null;
   root?: string | null;
+  /** Whether a file is currently selected — gates "New Folder", which needs one to know where to nest. */
+  hasActiveNote?: boolean;
 }
 
-const APP_MENUS: { id: string; label: string; items: ContextMenuEntry[] }[] = [
-  {
-    id: "file",
-    label: "File",
-    items: [
-      { label: "Add Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") },
-      { label: "Switch Notes Folder…", onClick: () => pluginRegistry.runCommand("stack.switchStack") },
-      { separator: true },
-      { label: "New Note", onClick: () => pluginRegistry.runCommand("stack.newNote") },
-      { label: "New Daily Note", onClick: () => pluginRegistry.runCommand("stack.openDailyNote") },
-      { separator: true },
-      { label: "Export…", onClick: () => pluginRegistry.runCommand("stack.exportNotesFolder") },
-    ],
-  },
-  {
-    id: "view",
-    label: "View",
-    items: [
-      { label: "Toggle Sidebar", onClick: () => pluginRegistry.runCommand("view.toggleSidebar") },
-      { label: "Toggle Right Panel", onClick: () => pluginRegistry.runCommand("view.toggleRightPanel") },
-      { separator: true },
-      { label: "Graph", onClick: () => pluginRegistry.runCommand("view.openGraph") },
-      { label: "Settings", onClick: () => pluginRegistry.runCommand("view.openSettings") },
-    ],
-  },
-];
+function appMenus(hasActiveNote: boolean): { id: string; label: string; items: ContextMenuEntry[] }[] {
+  return [
+    {
+      id: "file",
+      label: "File",
+      items: [
+        { label: "Add Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") },
+        { label: "Switch Notes Folder…", onClick: () => pluginRegistry.runCommand("stack.switchStack") },
+        { separator: true },
+        { label: "New Note", onClick: () => pluginRegistry.runCommand("stack.newNote") },
+        { label: "New Daily Note", onClick: () => pluginRegistry.runCommand("stack.openDailyNote") },
+        {
+          label: "New Folder",
+          disabled: !hasActiveNote,
+          onClick: () => pluginRegistry.runCommand("stack.newFolder"),
+        },
+        { separator: true },
+        { label: "Export…", onClick: () => pluginRegistry.runCommand("stack.exportNotesFolder") },
+      ],
+    },
+    {
+      id: "view",
+      label: "View",
+      items: [
+        { label: "Toggle Sidebar", onClick: () => pluginRegistry.runCommand("view.toggleSidebar") },
+        { label: "Toggle Right Panel", onClick: () => pluginRegistry.runCommand("view.toggleRightPanel") },
+        { separator: true },
+        { label: "Graph", onClick: () => pluginRegistry.runCommand("view.openGraph") },
+        { label: "Settings", onClick: () => pluginRegistry.runCommand("view.openSettings") },
+      ],
+    },
+  ];
+}
 
-export function TitleBarChrome({ regionId, activeName, root }: Props) {
+export function TitleBarChrome({ regionId, activeName, root, hasActiveNote }: Props) {
   const notesFolderLabel = activeName ?? root?.split(/[\\/]/).pop();
   const [openMenu, setOpenMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const menus = appMenus(!!hasActiveNote);
 
   return (
     <div className="titlebar-drag" data-region-id={regionId}>
@@ -60,7 +70,7 @@ export function TitleBarChrome({ regionId, activeName, root }: Props) {
           </div>
         )}
         <div className="titlebar-app-menu">
-          {APP_MENUS.map((menu) => (
+          {menus.map((menu) => (
             <button
               key={menu.id}
               className="titlebar-app-menu-btn"
@@ -80,7 +90,7 @@ export function TitleBarChrome({ regionId, activeName, root }: Props) {
         <ContextMenu
           x={openMenu.x}
           y={openMenu.y}
-          items={APP_MENUS.find((m) => m.id === openMenu.id)!.items}
+          items={menus.find((m) => m.id === openMenu.id)!.items}
           onClose={() => setOpenMenu(null)}
         />
       )}

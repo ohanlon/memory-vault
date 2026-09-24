@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basename, stripMdExtension } from "./displayName";
+import { basename, dirname, stripMdExtension } from "./displayName";
 
 describe("stripMdExtension", () => {
   it("strips a trailing .md extension", () => {
@@ -42,5 +42,19 @@ describe("basename", () => {
 
   it("returns the whole string when there's no separator", () => {
     expect(basename("Notes")).toBe("Notes");
+  });
+});
+
+describe("dirname", () => {
+  it("returns everything before the last segment of a forward-slash path", () => {
+    expect(dirname("/Users/pete/Notes/Note.md")).toBe("/Users/pete/Notes");
+  });
+
+  it("returns everything before the last segment of a windows-style path", () => {
+    expect(dirname("C:\\Users\\pete\\Notes\\Note.md")).toBe("C:\\Users\\pete\\Notes");
+  });
+
+  it("returns an empty string when there's no separator", () => {
+    expect(dirname("Note.md")).toBe("");
   });
 });

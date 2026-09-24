@@ -38,6 +38,19 @@ export function uniqueNotePath(dir: string, title: string): string {
   return fullPath;
 }
 
+/** dir/name, or dir/name 2, dir/name 3, ... incrementing past whatever already exists. */
+export function uniqueFolderPath(dir: string, name: string): string {
+  let folderName = name;
+  let fullPath = path.join(dir, folderName);
+  let n = 0;
+  while (fs.existsSync(fullPath)) {
+    n += 1;
+    folderName = `${name} ${n}`;
+    fullPath = path.join(dir, folderName);
+  }
+  return fullPath;
+}
+
 export async function readNote(root: string, absPath: string): Promise<Note> {
   const [raw, stat] = await Promise.all([
     fs.promises.readFile(absPath, "utf-8"),

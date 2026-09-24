@@ -34,7 +34,7 @@ import {
   tabRefToTabId,
 } from "./notesFolder/tabs";
 import { EntryAvatar } from "./components/EntryAvatar";
-import { basename, stripMdExtension } from "@shared/displayName";
+import { basename, dirname, stripMdExtension } from "@shared/displayName";
 import { backlinkTitles } from "@shared/buildGraph";
 import { defaultLayouts, findLayout, getRegion, hasRegion } from "@shared/layouts";
 import { DEFAULT_LAYOUT_PREFS, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "@shared/layoutPrefs";
@@ -69,6 +69,7 @@ type DialogState =
   | { kind: "shortcuts" }
   | { kind: "fill-template"; dir: string; templatePath: string; placeholders: string[] }
   | { kind: "export-notes-folder" }
+  | { kind: "create-folder"; dir: string }
   | null;
 
 type NotesFolderContextMenuState = { notesFolder: NotesFolderEntry; x: number; y: number };
@@ -97,6 +98,11 @@ export default function App() {
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  // Folders created via "New Folder" that don't contain a note yet — nothing
+  // on disk but a note's own path tells this app a folder exists (see
+  // src/notesFolder/fileTree.ts), so an empty one is only known here for the
+  // rest of this session; it stops appearing once the notes folder closes.
+  const [pendingEmptyFolders, setPendingEmptyFolders] = useState<string[]>([]);
   // Note-shaped data for any template currently open as a tab — templates
   // are deliberately excluded from the main `notes` array (see
   // electron/templates.ts), so this is a small parallel lookup rather than
@@ -190,6 +196,10 @@ export default function App() {
       setSettingsLoaded(true);
     });
   }, []);
+
+  useEffect(() => {
+    setPendingEmptyFolders([]);
+  }, [notesFolderRoot]);
 
   function updateSettings(next: AppSettings) {
     setSettings(next);
@@ -544,6 +554,28 @@ export default function App() {
     handleCreateNote(activeNotesFolder.root);
   }
 
+  // "New Folder" is nested at the same depth as `note` — i.e. as a sibling of
+  // note's own containing folder — matching the file menu's and the file
+  // tree's context menu's "based on the selected file" framing.
+  function handleNewFolderRequest(note: Note) {
+    setDialog({ kind: "create-folder", dir: dirname(note.path) });
+  }
+
+  function handleNewFolderClick() {
+    if (!activeNote) return;
+    handleNewFolderRequest(activeNote);
+  }
+
+  async function handleCreateFolderSubmit(name: string) {
+    if (dialog?.kind !== "create-folder") return;
+    const fullPath = await window.memoryStack.createFolder(dialog.dir, name);
+    setDialog(null);
+    setSidebarCollapsed(false);
+    if (!notesFolderRoot) return;
+    const relPath = fullPath.slice(notesFolderRoot.length).replace(/^[\\/]/, "").replace(/\\/g, "/");
+    setPendingEmptyFolders((prev) => (prev.includes(relPath) ? prev : [...prev, relPath]));
+  }
+
   async function handleNewNoteContextMenu(x: number, y: number) {
     if (!activeNotesFolder) return;
     await loadFileTemplates();
@@ -681,6 +713,7 @@ export default function App() {
   useEffect(() => {
     pluginRegistry.registerCommand("notesFolder.add", () => handlePickFolder());
     pluginRegistry.registerCommand("stack.newNote", () => handleNewNoteClick());
+    pluginRegistry.registerCommand("stack.newFolder", () => handleNewFolderClick());
     pluginRegistry.registerCommand("stack.openDailyNote", () => handleOpenDailyNoteClick());
     pluginRegistry.registerCommand("stack.switchStack", () => handleSwitchNotesFolder());
     pluginRegistry.registerCommand("stack.exportNotesFolder", () => handleExportNotesFolderClick());
@@ -847,7 +880,12 @@ export default function App() {
   return (
     <div className="app-shell">
       {isRegionPresent("title-bar") && TitleBar && (
-        <TitleBar regionId={regionId("title-bar")} activeName={activeName} root={notesFolderRoot} />
+        <TitleBar
+          regionId={regionId("title-bar")}
+          activeName={activeName}
+          root={notesFolderRoot}
+          hasActiveNote={!!activeNote}
+        />
       )}
       <div
         className="app-layout"
@@ -886,6 +924,7 @@ export default function App() {
               sessionKey,
               loading,
               notes,
+              emptyFolderPaths: pendingEmptyFolders,
               activePath,
               renamingPath,
               onShowInExplorer: showInExplorer,
@@ -895,6 +934,7 @@ export default function App() {
               onConvertToTemplate: (n: Note) => handleConvertToTemplate(n),
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
               onCancelRename: () => setRenamingPath(null),
+              onNewFolder: (n: Note) => handleNewFolderRequest(n),
               onSeedStarterContent: handleSeedStarterContent,
               templates: allTemplates,
               onSelectTemplate: (t: FileTemplate) => openTemplateTab(t),
@@ -984,6 +1024,14 @@ export default function App() {
           />
         )}
 
+        {dialog?.kind === "create-folder" && (
+          <PromptModal
+            title="New Folder"
+            confirmLabel="Create"
+            onSubmit={handleCreateFolderSubmit}
+            onCancel={() => setDialog(null)}
+          />
+        )}
         {dialog?.kind === "confirm-delete" && (
           <ConfirmModal
             title="Delete note"

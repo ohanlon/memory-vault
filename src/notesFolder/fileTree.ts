@@ -34,28 +34,43 @@ function sortChildren(children: FileTreeNode[]): void {
   }
 }
 
-/** Builds a folder tree from every note's relativePath - folders before notes at each level, both alphabetical. */
-export function buildFileTree(notes: Note[]): FileTreeNode[] {
+/** Walks/creates the chain of folder nodes for a "/"-separated path, returning the leaf folder. */
+function ensureFolderChain(root: FileTreeFolderNode, relativeDirPath: string): FileTreeFolderNode {
+  let current = root;
+  let currentPath = "";
+  for (const part of relativeDirPath.split("/").filter(Boolean)) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    let folder = current.children.find(
+      (c): c is FileTreeFolderNode => c.kind === "folder" && c.name === part
+    );
+    if (!folder) {
+      folder = { kind: "folder", name: part, path: currentPath, children: [] };
+      current.children.push(folder);
+    }
+    current = folder;
+  }
+  return current;
+}
+
+/**
+ * Builds a folder tree from every note's relativePath - folders before notes
+ * at each level, both alphabetical. `extraFolderPaths` (relative, "/" or
+ * "\"-separated) seeds folders with no notes in them yet — e.g. one just
+ * created via "New Folder" — which otherwise have no representation at all,
+ * since nothing on disk but a note's own path tells this app a folder exists.
+ */
+export function buildFileTree(notes: Note[], extraFolderPaths: string[] = []): FileTreeNode[] {
   const root: FileTreeFolderNode = { kind: "folder", name: "", path: "", children: [] };
 
   for (const note of notes) {
     const parts = note.relativePath.replace(/\\/g, "/").split("/");
     parts.pop(); // the file name itself, not a folder segment
+    const folder = ensureFolderChain(root, parts.join("/"));
+    folder.children.push({ kind: "note", note });
+  }
 
-    let current = root;
-    let currentPath = "";
-    for (const part of parts) {
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-      let folder = current.children.find(
-        (c): c is FileTreeFolderNode => c.kind === "folder" && c.name === part
-      );
-      if (!folder) {
-        folder = { kind: "folder", name: part, path: currentPath, children: [] };
-        current.children.push(folder);
-      }
-      current = folder;
-    }
-    current.children.push({ kind: "note", note });
+  for (const extraPath of extraFolderPaths) {
+    ensureFolderChain(root, extraPath.replace(/\\/g, "/"));
   }
 
   sortChildren(root.children);
