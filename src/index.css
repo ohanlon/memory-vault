@@ -548,6 +548,11 @@ body {
   color: var(--text-strong);
 }
 
+.file-tree-group-header.active {
+  background: var(--bg-selected);
+  color: var(--text-strong);
+}
+
 /* Templates are a special section, distinguished with an accent. */
 .file-tree-group-templates > .file-tree-group-header {
   color: var(--accent-violet);

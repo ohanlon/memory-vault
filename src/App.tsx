@@ -103,6 +103,10 @@ export default function App() {
   // src/notesFolder/fileTree.ts), so an empty one is only known here for the
   // rest of this session; it stops appearing once the notes folder closes.
   const [pendingEmptyFolders, setPendingEmptyFolders] = useState<string[]>([]);
+  // The sidebar folder clicked most recently — "New Note" (and the "New
+  // Note" template picker) create inside it instead of the notes folder
+  // root, so clicking a folder is how you choose where a new note goes.
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
   // Note-shaped data for any template currently open as a tab — templates
   // are deliberately excluded from the main `notes` array (see
   // electron/templates.ts), so this is a small parallel lookup rather than
@@ -130,7 +134,7 @@ export default function App() {
   const [activeHint, setActiveHint] = useState<{ kind: "wikilink" | "tag" | "graph"; message: string } | null>(null);
   // Template picker menu shown for "New Note" via right-click (see
   // handleNewNoteContextMenu).
-  const [templateMenu, setTemplateMenu] = useState<{ x: number; y: number } | null>(null);
+  const [templateMenu, setTemplateMenu] = useState<{ x: number; y: number; dir: string } | null>(null);
   // Every file template in the currently open notes folder. See loadFileTemplates.
   const [allTemplates, setAllTemplates] = useState<FileTemplate[]>([]);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
@@ -199,6 +203,7 @@ export default function App() {
 
   useEffect(() => {
     setPendingEmptyFolders([]);
+    setSelectedFolderPath(null);
   }, [notesFolderRoot]);
 
   function updateSettings(next: AppSettings) {
@@ -549,9 +554,17 @@ export default function App() {
     openTab(result.path);
   }
 
+  // Where "New Note" creates: the selected sidebar folder if one is
+  // selected, otherwise the notes folder root.
+  function currentCreateDir(): string | null {
+    if (!notesFolderRoot) return null;
+    return selectedFolderPath ? `${notesFolderRoot}/${selectedFolderPath}` : notesFolderRoot;
+  }
+
   function handleNewNoteClick() {
-    if (!activeNotesFolder) return;
-    handleCreateNote(activeNotesFolder.root);
+    const dir = currentCreateDir();
+    if (!dir) return;
+    handleCreateNote(dir);
   }
 
   // "New Folder" is nested at the same depth as `note` — i.e. as a sibling of
@@ -577,9 +590,10 @@ export default function App() {
   }
 
   async function handleNewNoteContextMenu(x: number, y: number) {
-    if (!activeNotesFolder) return;
+    const dir = currentCreateDir();
+    if (!dir) return;
     await loadFileTemplates();
-    setTemplateMenu({ x, y });
+    setTemplateMenu({ x, y, dir });
   }
 
   function handleOpenDailyNoteClick() {
@@ -660,10 +674,10 @@ export default function App() {
     await loadFileTemplates();
   }
 
-  function templatePickerEntries(root: string): ContextMenuEntry[] {
+  function templatePickerEntries(dir: string): ContextMenuEntry[] {
     const builtIns: ContextMenuEntry[] = NOTE_TEMPLATES.map((template) => ({
       label: template.label,
-      onClick: () => handleCreateNote(root, template.id),
+      onClick: () => handleCreateNote(dir, template.id),
     }));
     if (allTemplates.length === 0) return builtIns;
     return [
@@ -671,7 +685,7 @@ export default function App() {
       { separator: true as const },
       ...allTemplates.map((template) => ({
         label: template.name,
-        onClick: () => handleCreateNoteFromTemplate(root, template),
+        onClick: () => handleCreateNoteFromTemplate(dir, template),
       })),
     ];
   }
@@ -927,8 +941,13 @@ export default function App() {
               emptyFolderPaths: pendingEmptyFolders,
               activePath,
               renamingPath,
+              selectedFolderPath,
+              onSelectFolder: (path: string) => setSelectedFolderPath((cur) => (cur === path ? null : path)),
               onShowInExplorer: showInExplorer,
-              onSelect: (n: Note) => openTab(n.path),
+              onSelect: (n: Note) => {
+                setSelectedFolderPath(null);
+                openTab(n.path);
+              },
               onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
               onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),
               onConvertToTemplate: (n: Note) => handleConvertToTemplate(n),
@@ -1092,7 +1111,7 @@ export default function App() {
           <ContextMenu
             x={templateMenu.x}
             y={templateMenu.y}
-            items={templatePickerEntries(activeNotesFolder.root)}
+            items={templatePickerEntries(templateMenu.dir)}
             onClose={() => setTemplateMenu(null)}
           />
         )}

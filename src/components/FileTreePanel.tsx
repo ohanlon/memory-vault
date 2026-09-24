@@ -8,6 +8,9 @@ interface Props {
   emptyFolderPaths?: string[];
   activePath: string | null;
   renamingPath: string | null;
+  /** The folder path ("/"-separated, relative) currently selected as the target for "New Note" — see App.tsx. */
+  selectedFolderPath: string | null;
+  onSelectFolder: (path: string) => void;
   onShowInExplorer: (absPath: string) => void;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
@@ -29,6 +32,8 @@ export function FileTreePanel({
   emptyFolderPaths,
   activePath,
   renamingPath,
+  selectedFolderPath,
+  onSelectFolder,
   onShowInExplorer,
   onSelect,
   onDelete,
@@ -58,6 +63,8 @@ export function FileTreePanel({
         emptyFolderPaths={emptyFolderPaths}
         activePath={activePath}
         renamingPath={renamingPath}
+        selectedFolderPath={selectedFolderPath}
+        onSelectFolder={onSelectFolder}
         onShowInExplorer={onShowInExplorer}
         onSelect={onSelect}
         onDelete={onDelete}

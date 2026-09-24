@@ -22,6 +22,9 @@ interface Props {
   emptyFolderPaths?: string[];
   activePath: string | null;
   renamingPath: string | null;
+  /** The folder path ("/"-separated, relative) currently selected as the target for "New Note" — see App.tsx. */
+  selectedFolderPath: string | null;
+  onSelectFolder: (path: string) => void;
   onSelect: (note: Note) => void;
   onDelete: (note: Note) => void;
   onRename: (note: Note) => void;
@@ -121,6 +124,8 @@ export function FileTree({
   emptyFolderPaths,
   activePath,
   renamingPath,
+  selectedFolderPath,
+  onSelectFolder,
   onSelect,
   onDelete,
   onRename,
@@ -205,13 +210,17 @@ export function FileTree({
     return (
       <li key={folder.path} className="file-tree-group">
         <div
-          className="file-tree-group-header"
+          className={`file-tree-group-header${folder.path === selectedFolderPath ? " active" : ""}`}
           style={{ paddingLeft }}
           tabIndex={0}
-          onClick={() => toggleFolder(folder.path)}
+          onClick={() => {
+            onSelectFolder(folder.path);
+            toggleFolder(folder.path);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
+              onSelectFolder(folder.path);
               toggleFolder(folder.path);
             }
           }}
