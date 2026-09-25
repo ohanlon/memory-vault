@@ -172,9 +172,13 @@ export function FileTree({
 
   function renderNoteRow(note: Note, depth: number): ReactNode {
     const paddingLeft = FILE_TREE_BASE_PADDING + depth * FILE_TREE_INDENT_STEP;
+    // A selected folder takes over the sidebar's single highlight — even
+    // though the previously active note's tab is still open, it shouldn't
+    // still look selected once a folder becomes the "New Note" target.
+    const isActive = note.path === activePath && !selectedFolderPath;
     if (note.path === renamingPath) {
       return (
-        <li key={note.path} className={note.path === activePath ? "active" : ""}>
+        <li key={note.path} className={isActive ? "active" : ""}>
           <EditableLabel
             className="file-tree-item file-tree-item-edit"
             initialValue={note.title}
@@ -186,7 +190,7 @@ export function FileTree({
       );
     }
     return (
-      <li key={note.path} className={note.path === activePath ? "active" : ""}>
+      <li key={note.path} className={isActive ? "active" : ""}>
         <button
           className="file-tree-item"
           style={{ paddingLeft }}

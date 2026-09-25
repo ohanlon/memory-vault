@@ -540,7 +540,6 @@ body {
   user-select: none;
   color: var(--text-secondary);
   font-size: 12px;
-  text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
@@ -559,9 +558,10 @@ body {
   outline-offset: -1px;
 }
 
-/* Templates are a special section, distinguished with an accent. */
+/* Templates are a special, fixed section (not a user-named folder), distinguished with an accent and uppercasing. */
 .file-tree-group-templates > .file-tree-group-header {
   color: var(--accent-violet);
+  text-transform: uppercase;
 }
 
 .file-tree-group-templates > .file-tree-group-header:hover {
