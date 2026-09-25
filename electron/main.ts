@@ -524,6 +524,26 @@ ipcMain.handle("notesFolder:createFolder", async (_event, dir: string, name: str
   return fullPath;
 });
 
+ipcMain.handle("notesFolder:renameFolder", async (_event, absPath: string, newName: string) => {
+  assertOwnsPath(absPath);
+  const safeName = newName.trim();
+  if (!safeName) return absPath;
+  const newPath = uniqueFolderPath(path.dirname(absPath), safeName);
+  fs.renameSync(absPath, newPath);
+  return newPath;
+});
+
+// Moves a note into `destDir`, keeping its filename (uniquified against
+// whatever's already there) — used to drag-and-drop a note into a folder.
+ipcMain.handle("notesFolder:moveNote", async (_event, absPath: string, destDir: string) => {
+  assertOwnsPath(absPath);
+  assertOwnsPath(destDir);
+  const title = titleFromPath(absPath);
+  const newPath = uniqueNotePath(destDir, title);
+  fs.renameSync(absPath, newPath);
+  return newPath;
+});
+
 ipcMain.handle("templates:list", async () => {
   return listAllFileTemplates(readNotesFoldersFile(notesFoldersFilePath()));
 });

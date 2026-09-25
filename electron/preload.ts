@@ -57,6 +57,10 @@ const api = {
     ipcRenderer.invoke("notesFolder:createNote", dir, title, templateId),
   createFolder: (dir: string, name: string): Promise<string> =>
     ipcRenderer.invoke("notesFolder:createFolder", dir, name),
+  renameFolder: (absPath: string, newName: string): Promise<string> =>
+    ipcRenderer.invoke("notesFolder:renameFolder", absPath, newName),
+  moveNote: (absPath: string, destDir: string): Promise<string> =>
+    ipcRenderer.invoke("notesFolder:moveNote", absPath, destDir),
   seedStarterContent: (): Promise<string[]> => ipcRenderer.invoke("notesFolder:seedStarterContent"),
   listFileTemplates: (): Promise<FileTemplate[]> => ipcRenderer.invoke("templates:list"),
   convertToTemplate: (root: string, absPath: string): Promise<string> =>

@@ -69,7 +69,6 @@ type DialogState =
   | { kind: "shortcuts" }
   | { kind: "fill-template"; dir: string; templatePath: string; placeholders: string[] }
   | { kind: "export-notes-folder" }
-  | { kind: "create-folder"; dir: string }
   | null;
 
 type NotesFolderContextMenuState = { notesFolder: NotesFolderEntry; x: number; y: number };
@@ -107,6 +106,9 @@ export default function App() {
   // Note" template picker) create inside it instead of the notes folder
   // root, so clicking a folder is how you choose where a new note goes.
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
+  // The folder path currently open for in-place rename in the sidebar — set
+  // right after "New Folder" creates one, mirroring renamingPath for notes.
+  const [renamingFolderPath, setRenamingFolderPath] = useState<string | null>(null);
   // Note-shaped data for any template currently open as a tab — templates
   // are deliberately excluded from the main `notes` array (see
   // electron/templates.ts), so this is a small parallel lookup rather than
@@ -204,6 +206,7 @@ export default function App() {
   useEffect(() => {
     setPendingEmptyFolders([]);
     setSelectedFolderPath(null);
+    setRenamingFolderPath(null);
   }, [notesFolderRoot]);
 
   function updateSettings(next: AppSettings) {
@@ -567,11 +570,29 @@ export default function App() {
     handleCreateNote(dir);
   }
 
+  function toRootRelativePath(absPath: string): string {
+    if (!notesFolderRoot) return absPath;
+    return absPath.slice(notesFolderRoot.length).replace(/^[\\/]/, "").replace(/\\/g, "/");
+  }
+
+  // Creates the folder immediately (named "New Folder", auto-uniquified —
+  // see uniqueFolderPath), then selects it and opens it for in-place rename,
+  // matching how "New Note" creates then renames inline instead of prompting
+  // for a name up front.
+  async function handleCreateFolderAt(dir: string) {
+    setSidebarCollapsed(false);
+    const fullPath = await window.memoryStack.createFolder(dir, "New Folder");
+    const relPath = toRootRelativePath(fullPath);
+    setPendingEmptyFolders((prev) => (prev.includes(relPath) ? prev : [...prev, relPath]));
+    setSelectedFolderPath(relPath);
+    setRenamingFolderPath(relPath);
+  }
+
   // "New Folder" is nested at the same depth as `note` — i.e. as a sibling of
   // note's own containing folder — matching the file menu's and the file
   // tree's context menu's "based on the selected file" framing.
   function handleNewFolderRequest(note: Note) {
-    setDialog({ kind: "create-folder", dir: dirname(note.path) });
+    handleCreateFolderAt(dirname(note.path));
   }
 
   function handleNewFolderClick() {
@@ -579,14 +600,23 @@ export default function App() {
     handleNewFolderRequest(activeNote);
   }
 
-  async function handleCreateFolderSubmit(name: string) {
-    if (dialog?.kind !== "create-folder") return;
-    const fullPath = await window.memoryStack.createFolder(dialog.dir, name);
-    setDialog(null);
-    setSidebarCollapsed(false);
+  async function handleCommitFolderRename(folderPath: string, newName: string) {
+    setRenamingFolderPath(null);
+    if (!notesFolderRoot || !newName.trim()) return;
+    const absPath = `${notesFolderRoot}/${folderPath}`;
+    const newAbsPath = await window.memoryStack.renameFolder(absPath, newName.trim());
+    const newRelPath = toRootRelativePath(newAbsPath);
+    setPendingEmptyFolders((prev) => prev.map((p) => (p === folderPath ? newRelPath : p)));
+    setSelectedFolderPath((cur) => (cur === folderPath ? newRelPath : cur));
+  }
+
+  async function handleMoveNoteToFolder(note: Note, folderPath: string) {
     if (!notesFolderRoot) return;
-    const relPath = fullPath.slice(notesFolderRoot.length).replace(/^[\\/]/, "").replace(/\\/g, "/");
-    setPendingEmptyFolders((prev) => (prev.includes(relPath) ? prev : [...prev, relPath]));
+    const destDir = `${notesFolderRoot}/${folderPath}`;
+    const newPath = await window.memoryStack.moveNote(note.path, destDir);
+    setOpenPaths((paths) => renameTab(paths, note.path, newPath));
+    if (activePath === note.path) setActivePath(newPath);
+    await refresh({ showReindexing: true });
   }
 
   async function handleNewNoteContextMenu(x: number, y: number) {
@@ -942,7 +972,7 @@ export default function App() {
               activePath,
               renamingPath,
               selectedFolderPath,
-              onSelectFolder: (path: string) => setSelectedFolderPath((cur) => (cur === path ? null : path)),
+              onSelectFolder: (path: string) => setSelectedFolderPath(path),
               onShowInExplorer: showInExplorer,
               onSelect: (n: Note) => {
                 setSelectedFolderPath(null);
@@ -954,6 +984,11 @@ export default function App() {
               onCommitNoteRename: (n: Note, newTitle: string) => handleCommitNoteRename(n, newTitle),
               onCancelRename: () => setRenamingPath(null),
               onNewFolder: (n: Note) => handleNewFolderRequest(n),
+              renamingFolderPath,
+              onCommitFolderRename: (folderPath: string, newName: string) =>
+                handleCommitFolderRename(folderPath, newName),
+              onCancelFolderRename: () => setRenamingFolderPath(null),
+              onMoveNoteToFolder: (n: Note, folderPath: string) => handleMoveNoteToFolder(n, folderPath),
               onSeedStarterContent: handleSeedStarterContent,
               templates: allTemplates,
               onSelectTemplate: (t: FileTemplate) => openTemplateTab(t),
@@ -1043,14 +1078,6 @@ export default function App() {
           />
         )}
 
-        {dialog?.kind === "create-folder" && (
-          <PromptModal
-            title="New Folder"
-            confirmLabel="Create"
-            onSubmit={handleCreateFolderSubmit}
-            onCancel={() => setDialog(null)}
-          />
-        )}
         {dialog?.kind === "confirm-delete" && (
           <ConfirmModal
             title="Delete note"

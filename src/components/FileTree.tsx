@@ -33,6 +33,12 @@ interface Props {
   onCancelRename: () => void;
   /** Create a new folder nested at the same depth as `note`. */
   onNewFolder: (note: Note) => void;
+  /** The folder path ("/"-separated, relative) currently being renamed inline — e.g. right after "New Folder". */
+  renamingFolderPath: string | null;
+  onCommitFolderRename: (folderPath: string, newName: string) => void;
+  onCancelFolderRename: () => void;
+  /** Drag-and-drop a note onto a folder row to move it there. */
+  onMoveNoteToFolder: (note: Note, folderPath: string) => void;
   onShowInExplorer: (absPath: string) => void;
   /** Every template file available in the current notes folder — shown in
    *  their own "Templates" group, separate from the regular note list
@@ -133,6 +139,10 @@ export function FileTree({
   onCommitNoteRename,
   onCancelRename,
   onNewFolder,
+  renamingFolderPath,
+  onCommitFolderRename,
+  onCancelFolderRename,
+  onMoveNoteToFolder,
   onShowInExplorer,
   templates,
   onSelectTemplate,
@@ -142,6 +152,7 @@ export function FileTree({
   const [templateContextMenu, setTemplateContextMenu] = useState<TemplateContextMenuState | null>(null);
   const [templatesCollapsed, setTemplatesCollapsed] = useState(false);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [dragOverFolderPath, setDragOverFolderPath] = useState<string | null>(null);
 
   const tree = useMemo(() => buildFileTree(notes, emptyFolderPaths), [notes, emptyFolderPaths]);
 
@@ -179,6 +190,11 @@ export function FileTree({
         <button
           className="file-tree-item"
           style={{ paddingLeft }}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData("application/x-cairn-note-path", note.path);
+            e.dataTransfer.effectAllowed = "move";
+          }}
           onClick={() => onSelect(note)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -207,10 +223,26 @@ export function FileTree({
   function renderFolderRow(folder: Extract<FileTreeNode, { kind: "folder" }>, depth: number): ReactNode {
     const collapsed = collapsedFolders.has(folder.path);
     const paddingLeft = FILE_TREE_BASE_PADDING + depth * FILE_TREE_INDENT_STEP;
+
+    if (folder.path === renamingFolderPath) {
+      return (
+        <li key={folder.path} className="file-tree-group">
+          <EditableLabel
+            className="file-tree-group-header file-tree-item-edit"
+            initialValue={folder.name}
+            onCommit={(value) => onCommitFolderRename(folder.path, value)}
+            onCancel={onCancelFolderRename}
+            style={{ paddingLeft }}
+          />
+          {!collapsed && <ul className="file-tree-group-children">{renderNodes(folder.children, depth + 1)}</ul>}
+        </li>
+      );
+    }
+
     return (
       <li key={folder.path} className="file-tree-group">
         <div
-          className={`file-tree-group-header${folder.path === selectedFolderPath ? " active" : ""}`}
+          className={`file-tree-group-header${folder.path === selectedFolderPath ? " active" : ""}${folder.path === dragOverFolderPath ? " drag-over" : ""}`}
           style={{ paddingLeft }}
           tabIndex={0}
           onClick={() => {
@@ -223,6 +255,20 @@ export function FileTree({
               onSelectFolder(folder.path);
               toggleFolder(folder.path);
             }
+          }}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes("application/x-cairn-note-path")) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDragOverFolderPath(folder.path);
+          }}
+          onDragLeave={() => setDragOverFolderPath((cur) => (cur === folder.path ? null : cur))}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOverFolderPath(null);
+            const notePath = e.dataTransfer.getData("application/x-cairn-note-path");
+            const note = notes.find((n) => n.path === notePath);
+            if (note) onMoveNoteToFolder(note, folder.path);
           }}
         >
           <span className="file-tree-group-icon" aria-hidden="true">

@@ -20,6 +20,12 @@ interface Props {
   onCancelRename: () => void;
   /** Create a new folder nested at the same depth as `note`. */
   onNewFolder: (note: Note) => void;
+  /** The folder path ("/"-separated, relative) currently being renamed inline — e.g. right after "New Folder". */
+  renamingFolderPath: string | null;
+  onCommitFolderRename: (folderPath: string, newName: string) => void;
+  onCancelFolderRename: () => void;
+  /** Drag-and-drop a note onto a folder row to move it there. */
+  onMoveNoteToFolder: (note: Note, folderPath: string) => void;
   onSeedStarterContent?: () => void;
   templates: FileTemplate[];
   onSelectTemplate: (template: FileTemplate) => void;
@@ -42,6 +48,10 @@ export function FileTreePanel({
   onCommitNoteRename,
   onCancelRename,
   onNewFolder,
+  renamingFolderPath,
+  onCommitFolderRename,
+  onCancelFolderRename,
+  onMoveNoteToFolder,
   onSeedStarterContent,
   templates,
   onSelectTemplate,
@@ -73,6 +83,10 @@ export function FileTreePanel({
         onCommitNoteRename={onCommitNoteRename}
         onCancelRename={onCancelRename}
         onNewFolder={onNewFolder}
+        renamingFolderPath={renamingFolderPath}
+        onCommitFolderRename={onCommitFolderRename}
+        onCancelFolderRename={onCancelFolderRename}
+        onMoveNoteToFolder={onMoveNoteToFolder}
         templates={templates}
         onSelectTemplate={onSelectTemplate}
         onDeleteTemplate={onDeleteTemplate}

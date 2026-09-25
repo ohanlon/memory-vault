@@ -553,6 +553,12 @@ body {
   color: var(--text-strong);
 }
 
+.file-tree-group-header.drag-over {
+  background: var(--bg-selected);
+  outline: 1px dashed var(--accent-violet);
+  outline-offset: -1px;
+}
+
 /* Templates are a special section, distinguished with an accent. */
 .file-tree-group-templates > .file-tree-group-header {
   color: var(--accent-violet);
