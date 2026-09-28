@@ -836,6 +836,37 @@ body {
   background: var(--bg-control-hover);
 }
 
+.view-mode-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-control);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.view-mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  color: var(--text-onbutton);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.view-mode-btn:hover {
+  background: var(--bg-control-hover);
+}
+
+.view-mode-btn.active {
+  background: var(--accent-violet);
+  color: white;
+}
+
 .editor-inline-properties {
   border-bottom: 1px solid var(--border-divider);
   padding: 4px 10px;
@@ -1209,6 +1240,26 @@ body {
   padding-left: 12px;
   border-left: 3px solid var(--bg-control-hover);
   color: var(--text-quote);
+}
+
+/* Composite view's inline expansion of a linked note — see shared/compositeExpand.ts. */
+.markdown-preview .md-embed {
+  margin: 8px 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border-divider);
+  border-left: 3px solid var(--accent-violet);
+  border-radius: 4px;
+  background: var(--bg-control);
+}
+
+.markdown-preview .md-embed > summary {
+  cursor: pointer;
+  color: var(--accent-violet);
+  font-weight: 600;
+}
+
+.markdown-preview .md-embed[open] > summary {
+  margin-bottom: 8px;
 }
 
 /* GFM task list items ("- [ ] ...") — marked renders a bare <input type="checkbox">

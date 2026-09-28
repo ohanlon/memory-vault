@@ -5,6 +5,7 @@ import { languages } from "@codemirror/language-data";
 import { EditorView } from "@codemirror/view";
 import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
+import { expandNoteForComposite } from "@shared/compositeExpand";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
 import { CODE_LANGUAGES, CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
 import { autocompletion } from "@codemirror/autocomplete";
@@ -126,7 +127,8 @@ export function EditorPane({
   theme = "dark",
 }: Props) {
   const [content, setContent] = useState("");
-  const [previewMode, setPreviewMode] = useState(false);
+  const [viewMode, setViewMode] = useState<"edit" | "preview" | "composite">("edit");
+  const previewMode = viewMode !== "edit";
   const [contextMenuRequest, setContextMenuRequest] = useState<EditorContextMenuRequest | null>(null);
   const [blockPicker, setBlockPicker] = useState<EditorContextMenuRequest["linkBlockAction"] | null>(null);
   const [linkPicker, setLinkPicker] = useState<EditorContextMenuRequest["insertLinkAction"] | null>(null);
@@ -163,10 +165,20 @@ export function EditorPane({
     return Array.from(byKey.values()).sort((a, b) => a.title.localeCompare(b.title));
   }, [notes]);
 
-  const resolveNoteByTitle = useMemo(() => {
-    const byTitle = new Map(notes.map((n) => [n.title.toLowerCase(), n]));
-    return (title: string) => byTitle.get(title.toLowerCase());
-  }, [notes]);
+  const notesByTitle = useMemo(() => new Map(notes.map((n) => [n.title.toLowerCase(), n])), [notes]);
+
+  // Uses the live (possibly unsaved) editor buffer for the note itself, but
+  // each linked note's own committed content — matching how Preview mode
+  // already renders `content` (live) rather than note.content (on disk).
+  const compositeMarkdown = useMemo(() => {
+    if (viewMode !== "composite" || !note) return "";
+    return expandNoteForComposite({ ...note, content }, notesByTitle);
+  }, [viewMode, note, content, notesByTitle]);
+
+  const resolveNoteByTitle = useCallback(
+    (title: string) => notesByTitle.get(title.toLowerCase()),
+    [notesByTitle]
+  );
 
   // Kept as a ref (not a useMemo dependency) so a note being added/renamed
   // elsewhere refreshes what [[ autocomplete offers without tearing down and
@@ -404,13 +416,29 @@ export function EditorPane({
               <MicIcon />
             </button>
           )}
-          <button
-            className="preview-toggle-btn"
-            onClick={() => setPreviewMode((v) => !v)}
-            title={previewMode ? "Edit" : "Preview"}
-          >
-            {previewMode ? "✎" : "👁"}
-          </button>
+          <div className="view-mode-group">
+            <button
+              className={`view-mode-btn${viewMode === "edit" ? " active" : ""}`}
+              onClick={() => setViewMode("edit")}
+              title="Edit"
+            >
+              ✎
+            </button>
+            <button
+              className={`view-mode-btn${viewMode === "preview" ? " active" : ""}`}
+              onClick={() => setViewMode("preview")}
+              title="Preview"
+            >
+              👁
+            </button>
+            <button
+              className={`view-mode-btn${viewMode === "composite" ? " active" : ""}`}
+              onClick={() => setViewMode("composite")}
+              title="Composite — expand this note's links inline"
+            >
+              ⧉
+            </button>
+          </div>
         </div>
       </div>
       {conflict && (
@@ -436,7 +464,16 @@ export function EditorPane({
           />
         </div>
       )}
-      {previewMode ? (
+      {viewMode === "composite" ? (
+        <MarkdownPreview
+          content={compositeMarkdown}
+          notePath={note.relativePath}
+          noteTitles={noteTitles}
+          onSelectTitle={onSelectTitle}
+          onOpenExternal={onOpenExternal}
+          enabledCodeLanguages={settings.enabledCodeLanguages}
+        />
+      ) : viewMode === "preview" ? (
         <MarkdownPreview
           content={content}
           notePath={note.relativePath}
