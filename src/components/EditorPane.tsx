@@ -5,7 +5,6 @@ import { languages } from "@codemirror/language-data";
 import { EditorView } from "@codemirror/view";
 import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
-import { expandNoteForComposite } from "@shared/compositeExpand";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
 import { CODE_LANGUAGES, CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
 import { autocompletion } from "@codemirror/autocomplete";
@@ -166,14 +165,6 @@ export function EditorPane({
   }, [notes]);
 
   const notesByTitle = useMemo(() => new Map(notes.map((n) => [n.title.toLowerCase(), n])), [notes]);
-
-  // Uses the live (possibly unsaved) editor buffer for the note itself, but
-  // each linked note's own committed content — matching how Preview mode
-  // already renders `content` (live) rather than note.content (on disk).
-  const compositeMarkdown = useMemo(() => {
-    if (viewMode !== "composite" || !note) return "";
-    return expandNoteForComposite({ ...note, content }, notesByTitle);
-  }, [viewMode, note, content, notesByTitle]);
 
   const resolveNoteByTitle = useCallback(
     (title: string) => notesByTitle.get(title.toLowerCase()),
@@ -466,12 +457,13 @@ export function EditorPane({
       )}
       {viewMode === "composite" ? (
         <MarkdownPreview
-          content={compositeMarkdown}
+          content={content}
           notePath={note.relativePath}
           noteTitles={noteTitles}
           onSelectTitle={onSelectTitle}
           onOpenExternal={onOpenExternal}
           enabledCodeLanguages={settings.enabledCodeLanguages}
+          composite={{ title: note.title, notesByTitle }}
         />
       ) : viewMode === "preview" ? (
         <MarkdownPreview

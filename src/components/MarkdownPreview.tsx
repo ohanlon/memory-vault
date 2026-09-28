@@ -6,6 +6,7 @@ import { attachmentUrl, resolveRelativeAttachmentPath } from "@shared/attachment
 import { EXTERNAL_SCHEME_RE, titleFromHref } from "../editor/livePreview";
 import { ensureLanguagesLoaded, extractNeededLanguageIds, highlightCode, resolveLanguageId } from "../editor/codeHighlight";
 import { MATH_BLOCK_START_RE, renderMathToString } from "../editor/mathRender";
+import { expandWikilinksInHtml, type ExpandableNote } from "./compositeExpand";
 
 interface Props {
   content: string;
@@ -14,6 +15,8 @@ interface Props {
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
   enabledCodeLanguages: string[];
+  /** When set, renders in "Composite" mode: every [[wikilink]] that resolves to another note gets expanded inline, recursively — see compositeExpand.ts. */
+  composite?: { title: string; notesByTitle: ReadonlyMap<string, ExpandableNote> };
 }
 
 // DOMPurify's default allow-list for URI-valued attributes (href/src/etc.)
@@ -22,7 +25,7 @@ interface Props {
 const SAFE_URI_REGEXP =
   /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|cairn-attachment):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -253,33 +256,58 @@ export function createMarked(
   });
 }
 
-export function MarkdownPreview({ content, notePath, noteTitles, onSelectTitle, onOpenExternal, enabledCodeLanguages }: Props) {
+export function MarkdownPreview({
+  content,
+  notePath,
+  noteTitles,
+  onSelectTitle,
+  onOpenExternal,
+  enabledCodeLanguages,
+  composite,
+}: Props) {
   const enabledLanguageIds = useMemo(() => new Set(enabledCodeLanguages), [enabledCodeLanguages]);
 
-  const render = useCallback(() => {
+  // Renders the root note, then — in Composite mode — expands its resolved
+  // [[wikilinks]] into nested <details> blocks holding each linked note's
+  // own (recursively expanded) content. Also returns every code-fence
+  // language actually needed across everything just rendered, root and any
+  // expanded notes alike, so the effect below can lazy-load all of them.
+  const renderWithNeeded = useCallback((): { html: string; needed: string[] } => {
     const marked = createMarked(notePath, noteTitles, enabledLanguageIds);
     const rendered = marked.parse(content, { async: false }) as string;
-    return DOMPurify.sanitize(rendered, { ALLOWED_URI_REGEXP: SAFE_URI_REGEXP });
-  }, [content, notePath, noteTitles, enabledLanguageIds]);
+    if (!composite) {
+      return { html: rendered, needed: extractNeededLanguageIds(content, enabledLanguageIds) };
+    }
+    const expanded = expandWikilinksInHtml(
+      rendered,
+      { title: composite.title, relativePath: notePath, content },
+      composite.notesByTitle,
+      noteTitles,
+      enabledLanguageIds
+    );
+    return { html: expanded.html, needed: expanded.neededLanguageIds };
+  }, [content, notePath, noteTitles, enabledLanguageIds, composite]);
+
+  const sanitize = (rawHtml: string) => DOMPurify.sanitize(rawHtml, { ALLOWED_URI_REGEXP: SAFE_URI_REGEXP });
 
   // Renders immediately with whatever language grammars are already loaded
   // (never leaves the preview blank), then re-renders once any additional
   // ones a fenced code block asks for have finished loading.
-  const [html, setHtml] = useState(render);
+  const [html, setHtml] = useState(() => sanitize(renderWithNeeded().html));
 
   useEffect(() => {
-    setHtml(render());
-    const needed = extractNeededLanguageIds(content, enabledLanguageIds);
+    const { html: rendered, needed } = renderWithNeeded();
+    setHtml(sanitize(rendered));
     if (needed.length === 0) return;
     let cancelled = false;
     ensureLanguagesLoaded(needed).then(() => {
-      if (!cancelled) setHtml(render());
+      if (!cancelled) setHtml(sanitize(renderWithNeeded().html));
     });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content, notePath, noteTitles, enabledLanguageIds]);
+  }, [content, notePath, noteTitles, enabledLanguageIds, composite]);
 
   function handleClick(e: MouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
