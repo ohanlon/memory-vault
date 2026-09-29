@@ -266,11 +266,6 @@ body {
   cursor: not-allowed;
 }
 
-.empty-state-actions {
-  display: flex;
-  gap: 8px;
-}
-
 .error {
   color: var(--accent-red);
 }

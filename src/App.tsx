@@ -891,9 +891,6 @@ export default function App() {
               </section>
             </div>
           )}
-          <div className="empty-state-actions">
-            <button onClick={handlePickFolder}>+ Add notes folder</button>
-          </div>
           {error && <p className="error">{error}</p>}
 
           {dialog?.kind === "name-notes-folder" && (
