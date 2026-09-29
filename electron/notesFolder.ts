@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { parseNote } from "../shared/parseNote";
+import { invalidTitleReason } from "../shared/noteTitle";
 import { writeNotesFolderCache } from "./notesFolderCache";
 import type { FileChangeEvent, Note } from "../shared/types";
 
@@ -51,19 +52,11 @@ export function uniqueFolderPath(dir: string, name: string): string {
   return fullPath;
 }
 
-// A "/" or "\" here would let a title escape its own directory once ".md"
-// is appended (e.g. "../../etc/passwd"), so it's rejected alongside the
-// other characters Windows (the most restrictive of the platforms Cairn
-// runs on) disallows in a filename.
-const INVALID_TITLE_CHARS = /[\\/:*?"<>|\x00-\x1f]/;
-
 /** Trims `title` and throws if it's empty or contains a character that isn't valid in a filename. */
 export function assertValidTitle(title: string): string {
   const trimmed = title.trim();
-  if (!trimmed) throw new Error("Name cannot be empty");
-  if (INVALID_TITLE_CHARS.test(trimmed)) {
-    throw new Error('Name cannot contain any of: \\ / : * ? " < > |');
-  }
+  const reason = invalidTitleReason(trimmed);
+  if (reason) throw new Error(reason);
   return trimmed;
 }
 

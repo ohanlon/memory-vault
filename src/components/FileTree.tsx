@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import type { FileTemplate, Note } from "@shared/types";
 import { findDuplicateTitles } from "@shared/duplicateTitles";
+import { invalidTitleReason } from "@shared/noteTitle";
 import { pluginRegistry } from "../plugins/registry";
 import { pushToPlugin } from "../plugins/pluginFrameRegistry";
 import { buildFileTree, type FileTreeNode } from "../notesFolder/fileTree";
@@ -81,21 +82,22 @@ interface EditableLabelProps {
   onCommit: (value: string) => void;
   onCancel: () => void;
   style?: CSSProperties;
+  /** Returns an error message if `value` (already trimmed) can't be committed, or null if it's fine. When set, an invalid value blocks Enter and shows an inline error instead of committing — mirrors VS Code's rename box. */
+  validate?: (value: string) => string | null;
 }
 
-function EditableLabel({ initialValue, className, onCommit, onCancel, style }: EditableLabelProps) {
+function EditableLabel({ initialValue, className, onCommit, onCancel, style, validate }: EditableLabelProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const doneRef = useRef(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
   }, []);
 
-  function commit() {
-    if (doneRef.current) return;
-    doneRef.current = true;
-    onCommit(inputRef.current?.value.trim() ?? "");
+  function currentValue(): string {
+    return inputRef.current?.value.trim() ?? "";
   }
 
   function cancel() {
@@ -104,25 +106,67 @@ function EditableLabel({ initialValue, className, onCommit, onCancel, style }: E
     onCancel();
   }
 
+  // An invalid value keeps the box open with an inline error instead of
+  // committing, so the rename can never actually go through with a bad name.
+  function commitIfValid() {
+    if (doneRef.current) return;
+    const value = currentValue();
+    const err = validate?.(value) ?? null;
+    if (err) {
+      setError(err);
+      return;
+    }
+    doneRef.current = true;
+    onCommit(value);
+  }
+
   return (
-    <input
-      ref={inputRef}
-      className={className}
-      style={style}
-      defaultValue={initialValue}
-      onBlur={commit}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          commit();
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          cancel();
-        }
-      }}
-    />
+    <>
+      <input
+        ref={inputRef}
+        className={`${className}${error ? " editable-label-invalid" : ""}`}
+        style={style}
+        defaultValue={initialValue}
+        onChange={() => setError(validate?.(currentValue()) ?? null)}
+        // Blurring with an invalid value cancels the rename rather than
+        // silently discarding the typed name or committing something bad.
+        onBlur={() => (validate?.(currentValue()) ? cancel() : commitIfValid())}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commitIfValid();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancel();
+          }
+        }}
+      />
+      {error && <div className="editable-label-error">{error}</div>}
+    </>
   );
+}
+
+/** The "/"-separated folder a note's relativePath lives in, e.g. "Projects/Sub" for "Projects/Sub/Note.md". */
+function noteDirKey(relativePath: string): string {
+  const parts = relativePath.replace(/\\/g, "/").split("/");
+  parts.pop();
+  return parts.join("/");
+}
+
+// Mirrors electron/notesFolder.ts's renamedNotePath (empty/invalid
+// characters, plus a same-folder title collision) so an invalid rename is
+// caught live in the UI instead of round-tripping to the main process first.
+function validateNoteTitle(notes: Note[], note: Note, value: string): string | null {
+  const reason = invalidTitleReason(value);
+  if (reason) return reason;
+  if (value === note.title) return null;
+  const dir = noteDirKey(note.relativePath);
+  const lowerValue = value.toLowerCase();
+  const conflict = notes.some(
+    (n) => n.path !== note.path && noteDirKey(n.relativePath) === dir && n.title.toLowerCase() === lowerValue
+  );
+  return conflict ? `A note named "${value}" already exists in this folder` : null;
 }
 
 export function FileTree({
@@ -184,6 +228,7 @@ export function FileTree({
             initialValue={note.title}
             onCommit={(value) => onCommitNoteRename(note, value)}
             onCancel={onCancelRename}
+            validate={(value) => validateNoteTitle(notes, note, value)}
             style={{ paddingLeft }}
           />
         </li>
