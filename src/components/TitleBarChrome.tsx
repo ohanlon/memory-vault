@@ -10,7 +10,20 @@ interface Props {
   hasActiveNote?: boolean;
 }
 
-function appMenus(hasActiveNote: boolean): { id: string; label: string; items: ContextMenuEntry[] }[] {
+// No notes folder is open yet (the home/picker screen) - there's no
+// sidebar, editor, or graph to act on, so the only thing that makes sense
+// is opening one, matching the screen's own "+ Add notes folder" button.
+function homeMenus(): { id: string; label: string; items: ContextMenuEntry[] }[] {
+  return [
+    {
+      id: "file",
+      label: "File",
+      items: [{ label: "Add Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") }],
+    },
+  ];
+}
+
+function notesFolderMenus(hasActiveNote: boolean): { id: string; label: string; items: ContextMenuEntry[] }[] {
   return [
     {
       id: "file",
@@ -47,7 +60,7 @@ function appMenus(hasActiveNote: boolean): { id: string; label: string; items: C
 export function TitleBarChrome({ regionId, activeName, root, hasActiveNote }: Props) {
   const notesFolderLabel = activeName ?? root?.split(/[\\/]/).pop();
   const [openMenu, setOpenMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  const menus = appMenus(!!hasActiveNote);
+  const menus = root == null ? homeMenus() : notesFolderMenus(!!hasActiveNote);
 
   return (
     <div className="titlebar-drag" data-region-id={regionId}>
