@@ -991,6 +991,7 @@ export default function App() {
               onCancelRename: () => setRenamingPath(null),
               onNewFolder: (n: Note) => handleNewFolderRequest(n),
               renamingFolderPath,
+              onRenameFolder: (folderPath: string) => setRenamingFolderPath(folderPath),
               onCommitFolderRename: (folderPath: string, newName: string) =>
                 handleCommitFolderRename(folderPath, newName),
               onCancelFolderRename: () => setRenamingFolderPath(null),

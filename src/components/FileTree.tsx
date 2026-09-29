@@ -36,6 +36,7 @@ interface Props {
   onNewFolder: (note: Note) => void;
   /** The folder path ("/"-separated, relative) currently being renamed inline — e.g. right after "New Folder". */
   renamingFolderPath: string | null;
+  onRenameFolder: (folderPath: string) => void;
   onCommitFolderRename: (folderPath: string, newName: string) => void;
   onCancelFolderRename: () => void;
   /** Drag-and-drop a note onto a folder row to move it there. */
@@ -184,6 +185,7 @@ export function FileTree({
   onCancelRename,
   onNewFolder,
   renamingFolderPath,
+  onRenameFolder,
   onCommitFolderRename,
   onCancelFolderRename,
   onMoveNoteToFolder,
@@ -245,6 +247,7 @@ export function FileTree({
             e.dataTransfer.effectAllowed = "move";
           }}
           onClick={() => onSelect(note)}
+          onDoubleClick={() => onRename(note)}
           onContextMenu={(e) => {
             e.preventDefault();
             setContextMenu({ note, x: e.clientX, y: e.clientY });
@@ -298,6 +301,7 @@ export function FileTree({
             onSelectFolder(folder.path);
             toggleFolder(folder.path);
           }}
+          onDoubleClick={() => onRenameFolder(folder.path)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();

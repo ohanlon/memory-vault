@@ -22,6 +22,7 @@ interface Props {
   onNewFolder: (note: Note) => void;
   /** The folder path ("/"-separated, relative) currently being renamed inline — e.g. right after "New Folder". */
   renamingFolderPath: string | null;
+  onRenameFolder: (folderPath: string) => void;
   onCommitFolderRename: (folderPath: string, newName: string) => void;
   onCancelFolderRename: () => void;
   /** Drag-and-drop a note onto a folder row to move it there. */
@@ -49,6 +50,7 @@ export function FileTreePanel({
   onCancelRename,
   onNewFolder,
   renamingFolderPath,
+  onRenameFolder,
   onCommitFolderRename,
   onCancelFolderRename,
   onMoveNoteToFolder,
@@ -84,6 +86,7 @@ export function FileTreePanel({
         onCancelRename={onCancelRename}
         onNewFolder={onNewFolder}
         renamingFolderPath={renamingFolderPath}
+        onRenameFolder={onRenameFolder}
         onCommitFolderRename={onCommitFolderRename}
         onCancelFolderRename={onCancelFolderRename}
         onMoveNoteToFolder={onMoveNoteToFolder}
