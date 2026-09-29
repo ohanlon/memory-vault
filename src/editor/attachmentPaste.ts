@@ -8,6 +8,14 @@ function imageFilesFrom(list: FileList | null | undefined): File[] {
   return Array.from(list).filter((f) => f.type.startsWith("image/"));
 }
 
+// Attachment filenames end up in a markdown image reference
+// (relativeAttachmentReference) — a space there still works, but is easy to
+// break by hand-editing, so pasted/dropped names get spaces replaced with
+// "-" up front.
+export function sanitizeFileName(name: string): string {
+  return name.replace(/\s+/g, "-");
+}
+
 async function insertFiles(
   view: EditorView,
   notePath: string,
@@ -16,7 +24,7 @@ async function insertFiles(
 ): Promise<void> {
   for (const file of files) {
     const data = await file.arrayBuffer();
-    const rootRelativePath = await saveAttachment(file.name || "pasted-image.png", data);
+    const rootRelativePath = await saveAttachment(sanitizeFileName(file.name || "pasted-image.png"), data);
     const reference = relativeAttachmentReference(notePath, rootRelativePath);
     view.dispatch(view.state.replaceSelection(`![](${reference})`), { scrollIntoView: true });
   }
