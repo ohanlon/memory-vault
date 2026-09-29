@@ -51,6 +51,45 @@ export function uniqueFolderPath(dir: string, name: string): string {
   return fullPath;
 }
 
+// A "/" or "\" here would let a title escape its own directory once ".md"
+// is appended (e.g. "../../etc/passwd"), so it's rejected alongside the
+// other characters Windows (the most restrictive of the platforms Cairn
+// runs on) disallows in a filename.
+const INVALID_TITLE_CHARS = /[\\/:*?"<>|\x00-\x1f]/;
+
+/** Trims `title` and throws if it's empty or contains a character that isn't valid in a filename. */
+export function assertValidTitle(title: string): string {
+  const trimmed = title.trim();
+  if (!trimmed) throw new Error("Name cannot be empty");
+  if (INVALID_TITLE_CHARS.test(trimmed)) {
+    throw new Error('Name cannot contain any of: \\ / : * ? " < > |');
+  }
+  return trimmed;
+}
+
+// Allows a case-only rename ("Foo.md" -> "foo.md") on a case-insensitive
+// filesystem, where the destination path already "exists" but is actually
+// the same file as the source.
+function isSameFile(a: string, b: string): boolean {
+  try {
+    const sa = fs.statSync(a);
+    const sb = fs.statSync(b);
+    return sa.dev === sb.dev && sa.ino === sb.ino;
+  } catch {
+    return false;
+  }
+}
+
+/** dir/newTitle.md for renaming `currentPath`, throwing if newTitle is empty/invalid or already taken by a different file. */
+export function renamedNotePath(currentPath: string, newTitle: string): string {
+  const title = assertValidTitle(newTitle);
+  const newPath = path.join(path.dirname(currentPath), `${title}.md`);
+  if (fs.existsSync(newPath) && !isSameFile(newPath, currentPath)) {
+    throw new Error(`A note named "${title}" already exists in this folder`);
+  }
+  return newPath;
+}
+
 export async function readNote(root: string, absPath: string): Promise<Note> {
   const [raw, stat] = await Promise.all([
     fs.promises.readFile(absPath, "utf-8"),

@@ -4,9 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FSWatcher } from "chokidar";
 import {
+  assertValidTitle,
   loadNotesFolder,
   reconcileNotesFolderCache,
   readNote,
+  renamedNotePath,
   uniqueFolderPath,
   uniqueNotePath,
   watchNotesFolder,
@@ -698,9 +700,9 @@ ipcMain.handle(
   async (_event, absPath: string, newTitle: string, updateLinks: boolean) => {
     const root = requireActiveRoot();
     assertOwnsPath(absPath);
-    const dir = path.dirname(absPath);
     const oldTitle = titleFromPath(path.relative(root, absPath));
-    const newPath = path.join(dir, `${newTitle}.md`);
+    const title = assertValidTitle(newTitle);
+    const newPath = renamedNotePath(absPath, title);
     fs.renameSync(absPath, newPath);
 
     if (updateLinks) {
@@ -711,7 +713,7 @@ ipcMain.handle(
       for (const note of notes) {
         if (!note.content.includes(`[[${oldTitle}`)) continue;
         const raw = await fs.promises.readFile(note.path, "utf-8");
-        const updated = raw.replace(linkRe, (_m, _matchedTarget, suffix) => `[[${newTitle}${suffix}]]`);
+        const updated = raw.replace(linkRe, (_m, _matchedTarget, suffix) => `[[${title}${suffix}]]`);
         if (updated !== raw) await fs.promises.writeFile(note.path, updated, "utf-8");
       }
     }

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadNotesFolder, reconcileNotesFolderCache, uniqueFolderPath } from "./notesFolder";
+import { loadNotesFolder, reconcileNotesFolderCache, renamedNotePath, uniqueFolderPath } from "./notesFolder";
 import type { Note } from "../shared/types";
 
 describe("loadNotesFolder", () => {
@@ -91,6 +91,54 @@ describe("uniqueFolderPath", () => {
     fs.mkdirSync(path.join(root, "New Folder"), { recursive: true });
     fs.mkdirSync(path.join(root, "New Folder 1"), { recursive: true });
     expect(uniqueFolderPath(root, "New Folder")).toBe(path.join(root, "New Folder 2"));
+  });
+});
+
+describe("renamedNotePath", () => {
+  const root = path.join(os.tmpdir(), `notes-folder-rename-test-${process.pid}`);
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  function write(relativePath: string, content = "hello"): void {
+    const full = path.join(root, relativePath);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, content, "utf-8");
+  }
+
+  it("returns dir/newTitle.md when nothing already exists there", () => {
+    write("a.md");
+    expect(renamedNotePath(path.join(root, "a.md"), "b")).toBe(path.join(root, "b.md"));
+  });
+
+  it("trims the new title", () => {
+    write("a.md");
+    expect(renamedNotePath(path.join(root, "a.md"), "  b  ")).toBe(path.join(root, "b.md"));
+  });
+
+  it("throws when the new title is empty or only whitespace", () => {
+    write("a.md");
+    expect(() => renamedNotePath(path.join(root, "a.md"), "")).toThrow();
+    expect(() => renamedNotePath(path.join(root, "a.md"), "   ")).toThrow();
+  });
+
+  it("throws when the new title contains characters invalid in a filename", () => {
+    write("a.md");
+    for (const bad of ["b/c", "b\\c", "b:c", "b*c", "b?c", 'b"c', "b<c", "b>c", "b|c"]) {
+      expect(() => renamedNotePath(path.join(root, "a.md"), bad)).toThrow();
+    }
+  });
+
+  it("throws when a different note already has the new title", () => {
+    write("a.md");
+    write("b.md");
+    expect(() => renamedNotePath(path.join(root, "a.md"), "b")).toThrow(/already exists/);
+  });
+
+  it("allows renaming a note to its own current title", () => {
+    write("a.md");
+    expect(renamedNotePath(path.join(root, "a.md"), "a")).toBe(path.join(root, "a.md"));
   });
 });
 

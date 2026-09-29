@@ -650,7 +650,13 @@ export default function App() {
     // rename and rewrites the old path with pre-rename content, resurrecting
     // the file the rename just got rid of.
     await flushPendingSave(note.path);
-    const newPath = await window.memoryStack.renameNote(note.path, newTitle, updateLinks);
+    let newPath: string;
+    try {
+      newPath = await window.memoryStack.renameNote(note.path, newTitle, updateLinks);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+      return;
+    }
     setOpenPaths((paths) => renameTab(paths, note.path, newPath));
     // Update activePath before refreshing notes — otherwise the "drop tabs
     // for notes that no longer exist" effect (keyed on the notes list) sees
