@@ -867,12 +867,6 @@ body {
   color: white;
 }
 
-.editor-inline-properties {
-  border-bottom: 1px solid var(--border-divider);
-  padding: 4px 10px;
-  max-height: 40%;
-  overflow-y: auto;
-}
 
 /* @uiw/react-codemirror wraps its output in a theme div (.cm-theme-dark or
    .cm-theme-light, matching the `theme` prop EditorPane passes) that sits

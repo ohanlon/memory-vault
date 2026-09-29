@@ -29,7 +29,6 @@ describe("readAppSettingsFile / writeAppSettingsFile", () => {
       tabFolderDisplay: "never" as const,
       theme: "light" as const,
       addHeadingToNewNotes: false,
-      hidePropertiesByDefault: false,
       showLineNumbers: false,
       editorFontFamily: "monospace" as const,
       editorFontSize: 18,

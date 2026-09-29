@@ -187,8 +187,6 @@ export interface AppSettings {
   theme: ThemeSetting;
   /** Whether a new note is scaffolded with a "# Title" heading. */
   addHeadingToNewNotes: boolean;
-  /** Whether a note's properties are collapsed by default in the editor pane. */
-  hidePropertiesByDefault: boolean;
   /** Whether the editor shows line numbers in the gutter. */
   showLineNumbers: boolean;
   /** Font family used in the editing pane. */

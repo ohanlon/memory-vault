@@ -1039,8 +1039,6 @@ export default function App() {
                 settings,
                 onChange: updateSettings,
                 theme: resolvedTheme,
-                schema: activeNoteSchema,
-                onSaveProperties: saveNoteProperties,
                 canManageProperties: !!notesFolderRoot,
                 onManageProperties: () =>
                   notesFolderRoot && pluginRegistry.runCommand("properties.manageSchema", notesFolderRoot),

@@ -8,7 +8,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   tabFolderDisplay: "hover",
   theme: "dark",
   addHeadingToNewNotes: true,
-  hidePropertiesByDefault: true,
   showLineNumbers: false,
   editorFontFamily: "system-ui",
   editorFontSize: 14,
@@ -86,10 +85,6 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof raw.addHeadingToNewNotes === "boolean"
         ? raw.addHeadingToNewNotes
         : DEFAULT_APP_SETTINGS.addHeadingToNewNotes,
-    hidePropertiesByDefault:
-      typeof raw.hidePropertiesByDefault === "boolean"
-        ? raw.hidePropertiesByDefault
-        : DEFAULT_APP_SETTINGS.hidePropertiesByDefault,
     showLineNumbers:
       typeof raw.showLineNumbers === "boolean" ? raw.showLineNumbers : DEFAULT_APP_SETTINGS.showLineNumbers,
     editorFontFamily: VALID_EDITOR_FONT_FAMILY.includes(raw.editorFontFamily as EditorFontFamily)

@@ -3,7 +3,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { EditorView } from "@codemirror/view";
-import type { AppSettings, GraphModel, Note, PropertyDef } from "@shared/types";
+import type { AppSettings, GraphModel, Note } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
 import { CODE_LANGUAGES, CODE_LANGUAGE_ALIASES } from "@shared/codeLanguages";
@@ -56,7 +56,6 @@ import {
 } from "./icons";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ContextMenu } from "./ContextMenu";
-import { PropertiesPanel } from "./PropertiesPanel";
 import { BlockPickerModal } from "./BlockPickerModal";
 import { LinkPickerModal } from "./LinkPickerModal";
 import { HistoryPanel } from "./HistoryPanel";
@@ -68,11 +67,9 @@ interface Props {
   /** All notes in the current session, used to resolve link targets for the "Link to header"/"Link to block" menu. */
   notes: Note[];
   settings: AppSettings;
-  schema: PropertyDef[];
   onSaved: (absPath: string, content: string) => void;
   onSelectTitle: (title: string) => void;
   onOpenExternal: (url: string) => void;
-  onSaveProperties: (absPath: string, properties: Record<string, unknown>) => void;
   /** Fired the moment "[[" / a "#tag" is typed, so App.tsx can show its one-time onboarding hint — see src/editor/onboardingHints.ts. */
   onWikilinkStarted?: () => void;
   onTagTyped?: () => void;
@@ -81,46 +78,14 @@ interface Props {
 
 const SAVE_DEBOUNCE_MS = 500;
 
-function PropertyViewIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 7H12M3 13H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path
-        d="M12 17.3C13 16.1 14.3 15.5 15.5 15.5S18 16.1 19 17.3C18 18.5 16.7 19.1 15.5 19.1S13 18.5 12 17.3Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <circle cx="15.5" cy="17.3" r="0.9" fill="currentColor" />
-    </svg>
-  );
-}
-
-function PropertyEditIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 7H12M3 13H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path
-        d="M14 19.3L14.5 17L18.5 13L20.1 14.6L16.1 18.6L14 19.3Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 export function EditorPane({
   note,
   graph,
   notes,
   settings,
-  schema,
   onSaved,
   onSelectTitle,
   onOpenExternal,
-  onSaveProperties,
   onWikilinkStarted,
   onTagTyped,
   theme = "dark",
@@ -131,7 +96,6 @@ export function EditorPane({
   const [contextMenuRequest, setContextMenuRequest] = useState<EditorContextMenuRequest | null>(null);
   const [blockPicker, setBlockPicker] = useState<EditorContextMenuRequest["linkBlockAction"] | null>(null);
   const [linkPicker, setLinkPicker] = useState<EditorContextMenuRequest["insertLinkAction"] | null>(null);
-  const [propertiesVisible, setPropertiesVisible] = useState(!settings.hidePropertiesByDefault);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [voiceNoteOpen, setVoiceNoteOpen] = useState(false);
   const viewRef = useRef<EditorView | null>(null);
@@ -184,8 +148,6 @@ export function EditorPane({
     []
   );
 
-  const hasProperties = note ? Object.keys(note.frontmatter).length > 0 : false;
-
   useEffect(() => {
     let cancelled = false;
     setConflict(false);
@@ -211,7 +173,6 @@ export function EditorPane({
         // from shouldn't crash the main process console or clobber content.
         if (!cancelled) setContent("");
       });
-    setPropertiesVisible(!settings.hidePropertiesByDefault);
     return () => {
       cancelled = true;
     };
@@ -390,15 +351,6 @@ export function EditorPane({
       <div className="editor-title-row">
         <div className="editor-title">{stripMdExtension(note.relativePath)}</div>
         <div className="editor-title-row-actions">
-          {hasProperties && (
-            <button
-              className="properties-toggle-btn"
-              onClick={() => setPropertiesVisible((v) => !v)}
-              title={propertiesVisible ? "Hide properties" : "Edit properties"}
-            >
-              {propertiesVisible ? <PropertyViewIcon /> : <PropertyEditIcon />}
-            </button>
-          )}
           <button className="properties-toggle-btn" onClick={() => setHistoryOpen(true)} title="Version history">
             <HistoryIcon />
           </button>
@@ -443,16 +395,6 @@ export function EditorPane({
               Reload from disk
             </button>
           </div>
-        </div>
-      )}
-      {hasProperties && propertiesVisible && (
-        <div className="editor-inline-properties">
-          <PropertiesPanel
-            note={note}
-            schema={schema}
-            onSaveProperties={onSaveProperties}
-            readOnly={previewMode}
-          />
         </div>
       )}
       {viewMode === "composite" ? (

@@ -10,7 +10,6 @@ describe("normalizeAppSettings", () => {
         tabFolderDisplay: "always",
         theme: "light",
         addHeadingToNewNotes: false,
-        hidePropertiesByDefault: false,
         showLineNumbers: false,
         editorFontFamily: "monospace",
         editorFontSize: 18,
@@ -28,7 +27,6 @@ describe("normalizeAppSettings", () => {
       tabFolderDisplay: "always",
       theme: "light",
       addHeadingToNewNotes: false,
-      hidePropertiesByDefault: false,
       showLineNumbers: false,
       editorFontFamily: "monospace",
       editorFontSize: 18,
@@ -47,7 +45,6 @@ describe("normalizeAppSettings", () => {
         tabFolderDisplay: "never",
         theme: "system",
         addHeadingToNewNotes: true,
-        hidePropertiesByDefault: true,
         showLineNumbers: true,
         editorFontFamily: "arimo",
         editorFontSize: 12,
@@ -65,7 +62,6 @@ describe("normalizeAppSettings", () => {
       tabFolderDisplay: "never",
       theme: "system",
       addHeadingToNewNotes: true,
-      hidePropertiesByDefault: true,
       showLineNumbers: true,
       editorFontFamily: "arimo",
       editorFontSize: 12,
@@ -113,16 +109,6 @@ describe("normalizeAppSettings", () => {
   it("accepts both boolean addHeadingToNewNotes values", () => {
     expect(normalizeAppSettings({ addHeadingToNewNotes: true }).addHeadingToNewNotes).toBe(true);
     expect(normalizeAppSettings({ addHeadingToNewNotes: false }).addHeadingToNewNotes).toBe(false);
-  });
-
-  it("falls back to the default for a non-boolean hidePropertiesByDefault", () => {
-    expect(normalizeAppSettings({ hidePropertiesByDefault: "no" })).toEqual(DEFAULT_APP_SETTINGS);
-    expect(normalizeAppSettings({ hidePropertiesByDefault: undefined })).toEqual(DEFAULT_APP_SETTINGS);
-  });
-
-  it("accepts both boolean hidePropertiesByDefault values", () => {
-    expect(normalizeAppSettings({ hidePropertiesByDefault: true }).hidePropertiesByDefault).toBe(true);
-    expect(normalizeAppSettings({ hidePropertiesByDefault: false }).hidePropertiesByDefault).toBe(false);
   });
 
   it("falls back to the default for a non-boolean showLineNumbers", () => {

@@ -234,15 +234,6 @@ export function SettingsView({ settings, onChange, canManageProperties, onManage
           </select>
         </div>
         <div className="settings-row">
-          <label htmlFor="setting-hide-properties">Hide note properties by default</label>
-          <input
-            id="setting-hide-properties"
-            type="checkbox"
-            checked={settings.hidePropertiesByDefault}
-            onChange={(e) => onChange({ ...settings, hidePropertiesByDefault: e.target.checked })}
-          />
-        </div>
-        <div className="settings-row">
           <label htmlFor="setting-show-line-numbers">Show line numbers</label>
           <input
             id="setting-show-line-numbers"
