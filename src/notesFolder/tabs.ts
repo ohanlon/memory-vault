@@ -3,6 +3,7 @@
 // paths, never a bare "@graph"/"@settings".
 export const GRAPH_TAB_ID = "@graph";
 export const SETTINGS_TAB_ID = "@settings";
+export const TASKS_TAB_ID = "@tasks";
 
 // General test for any non-note tab id (Graph, Settings, or a plugin tab —
 // see PluginTab in shared/types.ts, whose ids take the form

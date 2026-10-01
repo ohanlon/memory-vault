@@ -7,6 +7,7 @@ import { PromptModal } from "./components/PromptModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { ContextMenu, type ContextMenuEntry } from "./components/ContextMenu";
 import { TemplatePlaceholdersModal } from "./components/TemplatePlaceholdersModal";
+import { NewTaskModal } from "./components/NewTaskModal";
 import { ShortcutsPanel } from "./components/ShortcutsPanel";
 import { ExportDialog } from "./components/ExportDialog";
 import { buildHtmlExport, buildMarkdownExport, type ExportFormat } from "./export/vaultExport";
@@ -23,6 +24,7 @@ import {
   addTab as addTabPath,
   GRAPH_TAB_ID,
   SETTINGS_TAB_ID,
+  TASKS_TAB_ID,
   closeOtherTabs,
   closeTabsLeft,
   closeTabsRight,
@@ -44,6 +46,7 @@ import { templatePlaceholders } from "@shared/templateRender";
 import { defaultColorsFor } from "@shared/themeColors";
 import type { AppSettings, FileTemplate, LayoutRegionName, Note, NotesFolderEntry } from "@shared/types";
 import { applyCustomThemeProperties, clearCustomThemeProperties } from "./applyCustomTheme";
+import { appendTaskToContent, collectTasks, isOutstanding, isOverdue, setTaskStatusInContent, todayIsoDate, type Task, type TaskStatus } from "@shared/tasks";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -69,6 +72,7 @@ type DialogState =
   | { kind: "shortcuts" }
   | { kind: "fill-template"; dir: string; templatePath: string; placeholders: string[] }
   | { kind: "export-notes-folder" }
+  | { kind: "new-task" }
   | null;
 
 type NotesFolderContextMenuState = { notesFolder: NotesFolderEntry; x: number; y: number };
@@ -280,6 +284,15 @@ export default function App() {
 
   const activeNoteSchema = notesFolderRoot ? propertySchemas[notesFolderRoot] ?? [] : [];
 
+  // Outstanding (not-done) task count, and how many of those are overdue —
+  // drives the title bar's task callout (see TitleBarChrome).
+  const tasks = useMemo(() => collectTasks(notes), [notes]);
+  const outstandingTaskCount = useMemo(() => tasks.filter(isOutstanding).length, [tasks]);
+  const overdueTaskCount = useMemo(() => {
+    const today = todayIsoDate();
+    return tasks.filter((t) => isOverdue(t, today)).length;
+  }, [tasks]);
+
   const openTabItems = useMemo<TabItem[]>(
     () =>
       openPaths
@@ -315,7 +328,9 @@ export default function App() {
   useEffect(() => {
     const existing = new Set([...notes.map((n) => n.path), ...Object.keys(templateNotesByPath)]);
     setOpenPaths((paths) => reconcileTabs(paths, existing));
-    setActivePath((path) => (path === null || path === GRAPH_TAB_ID || existing.has(path) ? path : null));
+    setActivePath((path) =>
+      path === null || path === GRAPH_TAB_ID || path === TASKS_TAB_ID || existing.has(path) ? path : null
+    );
   }, [notes, templateNotesByPath]);
 
   // Reads the currently open notes folder's <root>/.cairn/workspace.json.
@@ -557,6 +572,32 @@ export default function App() {
     openTab(result.path);
   }
 
+  // Where a task typed into the "New task" modal lands: the currently open
+  // note, so it's captured in context, or today's daily note (created if
+  // needed) when nothing is open to capture it into.
+  async function handleAddTask(text: string, deadline: string | null, status: TaskStatus) {
+    if (!notesFolderRoot) return;
+    const targetPath = activeNote ? activeNote.path : (await window.memoryStack.openOrCreateDailyNote(notesFolderRoot)).path;
+    const body = await window.memoryStack.readNoteBody(targetPath);
+    await window.memoryStack.saveNote(targetPath, appendTaskToContent(body, text, status, deadline));
+    setDialog(null);
+    await refresh({ showReindexing: true });
+    openTab(targetPath);
+  }
+
+  async function handleSetTaskStatus(task: Task, status: TaskStatus) {
+    const body = await window.memoryStack.readNoteBody(task.notePath);
+    await window.memoryStack.saveNote(task.notePath, setTaskStatusInContent(body, task.lineNumber, status));
+    await refresh();
+  }
+
+  // Label shown in the "New task" modal for where the task will land —
+  // mirrors handleAddTask's own target-note choice.
+  function newTaskTargetLabel(): string {
+    if (activeNote) return `"${stripMdExtension(activeNote.relativePath)}"`;
+    return "today's daily note";
+  }
+
   // Where "New Note" creates: the selected sidebar folder if one is
   // selected, otherwise the notes folder root.
   function currentCreateDir(): string | null {
@@ -776,6 +817,8 @@ export default function App() {
     pluginRegistry.registerCommand("view.toggleRightPanel", () => setRightPanelCollapsed((v) => !v));
     pluginRegistry.registerCommand("view.openGraph", () => openTab(GRAPH_TAB_ID));
     pluginRegistry.registerCommand("view.openSettings", () => openTab(SETTINGS_TAB_ID));
+    pluginRegistry.registerCommand("view.openTasks", () => openTab(TASKS_TAB_ID));
+    pluginRegistry.registerCommand("stack.newTask", () => setDialog({ kind: "new-task" }));
     pluginRegistry.registerCommand("properties.manageSchema", (schemaRoot: string) =>
       setDialog({ kind: "manage-properties", root: schemaRoot })
     );
@@ -932,6 +975,9 @@ export default function App() {
           activeName={activeName}
           root={notesFolderRoot}
           hasActiveNote={!!activeNote}
+          outstandingTaskCount={outstandingTaskCount}
+          overdueTaskCount={overdueTaskCount}
+          onOpenTasks={() => pluginRegistry.runCommand("view.openTasks")}
         />
       )}
       <div
@@ -1048,6 +1094,8 @@ export default function App() {
                   notesFolderRoot && pluginRegistry.runCommand("properties.manageSchema", notesFolderRoot),
                 onWikilinkStarted: () => showHint("wikilink"),
                 onTagTyped: () => showHint("tag"),
+                onOpenNote: openTab,
+                onSetTaskStatus: handleSetTaskStatus,
               }}
             />
           </main>
@@ -1160,6 +1208,13 @@ export default function App() {
               setDialog(null);
               handleExport(format);
             }}
+            onCancel={() => setDialog(null)}
+          />
+        )}
+        {dialog?.kind === "new-task" && (
+          <NewTaskModal
+            targetLabel={newTaskTargetLabel()}
+            onSubmit={(text, deadline, status) => handleAddTask(text, deadline, status)}
             onCancel={() => setDialog(null)}
           />
         )}

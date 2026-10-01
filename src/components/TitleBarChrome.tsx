@@ -8,6 +8,11 @@ interface Props {
   root?: string | null;
   /** Whether a file is currently selected — gates "New Folder", which needs one to know where to nest. */
   hasActiveNote?: boolean;
+  /** Not-done task count across the notes folder, for the title bar's task callout. */
+  outstandingTaskCount?: number;
+  /** How many of those outstanding tasks are past their deadline — shown as a stronger callout. */
+  overdueTaskCount?: number;
+  onOpenTasks?: () => void;
 }
 
 // No notes folder is open yet (the home/picker screen) - there's no
@@ -34,6 +39,7 @@ function notesFolderMenus(hasActiveNote: boolean): { id: string; label: string; 
         { separator: true },
         { label: "New Note", onClick: () => pluginRegistry.runCommand("stack.newNote") },
         { label: "New Daily Note", onClick: () => pluginRegistry.runCommand("stack.openDailyNote") },
+        { label: "New Task", onClick: () => pluginRegistry.runCommand("stack.newTask") },
         {
           label: "New Folder",
           disabled: !hasActiveNote,
@@ -51,13 +57,22 @@ function notesFolderMenus(hasActiveNote: boolean): { id: string; label: string; 
         { label: "Toggle Right Panel", onClick: () => pluginRegistry.runCommand("view.toggleRightPanel") },
         { separator: true },
         { label: "Graph", onClick: () => pluginRegistry.runCommand("view.openGraph") },
+        { label: "Tasks", onClick: () => pluginRegistry.runCommand("view.openTasks") },
         { label: "Settings", onClick: () => pluginRegistry.runCommand("view.openSettings") },
       ],
     },
   ];
 }
 
-export function TitleBarChrome({ regionId, activeName, root, hasActiveNote }: Props) {
+export function TitleBarChrome({
+  regionId,
+  activeName,
+  root,
+  hasActiveNote,
+  outstandingTaskCount = 0,
+  overdueTaskCount = 0,
+  onOpenTasks,
+}: Props) {
   const notesFolderLabel = activeName ?? root?.split(/[\\/]/).pop();
   const [openMenu, setOpenMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const menus = root == null ? homeMenus() : notesFolderMenus(!!hasActiveNote);
@@ -99,6 +114,21 @@ export function TitleBarChrome({ regionId, activeName, root, hasActiveNote }: Pr
           ))}
         </div>
       </div>
+      {root != null && outstandingTaskCount > 0 && (
+        <div className="titlebar-right">
+          <button
+            className={`titlebar-tasks-badge${overdueTaskCount > 0 ? " titlebar-tasks-badge-overdue" : ""}`}
+            onClick={onOpenTasks}
+            title={
+              overdueTaskCount > 0
+                ? `${overdueTaskCount} task${overdueTaskCount === 1 ? "" : "s"} overdue`
+                : `${outstandingTaskCount} outstanding task${outstandingTaskCount === 1 ? "" : "s"}`
+            }
+          >
+            ☑ {outstandingTaskCount}
+          </button>
+        </div>
+      )}
       {openMenu && (
         <ContextMenu
           x={openMenu.x}

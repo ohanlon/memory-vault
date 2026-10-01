@@ -9,8 +9,9 @@ import { LinksPanel } from "../components/LinksPanel";
 import { TagsPanel } from "../components/TagsPanel";
 import { PropertiesPanel } from "../components/PropertiesPanel";
 import { SettingsView } from "../components/SettingsView";
+import { TasksView } from "../components/TasksView";
 import { BacklinksStat, CharactersStat, PropertiesStat, WordsStat } from "../components/StatusItems";
-import { GRAPH_TAB_ID, SETTINGS_TAB_ID, isSentinelTabId } from "../notesFolder/tabs";
+import { GRAPH_TAB_ID, SETTINGS_TAB_ID, TASKS_TAB_ID, isSentinelTabId } from "../notesFolder/tabs";
 
 // The app's built-in functionality, expressed as a plugin against the same
 // API a future third-party plugin would use.
@@ -41,6 +42,12 @@ export function registerCorePlugin(): void {
     title: "Settings",
     matches: (tabId) => tabId === SETTINGS_TAB_ID,
     component: SettingsView,
+  });
+  pluginRegistry.registerTabKind({
+    id: "tasks",
+    title: "Tasks",
+    matches: (tabId) => tabId === TASKS_TAB_ID,
+    component: TasksView,
   });
   pluginRegistry.registerTabKind({
     id: "note",
