@@ -2,72 +2,55 @@ import type { Note } from "./types";
 
 export type TaskStatus = "todo" | "in-progress" | "done";
 
+export const TASK_STATUSES: TaskStatus[] = ["todo", "in-progress", "done"];
+
+/** Name given to the top-level folder tasks live in when the user hasn't made one themselves. */
+export const TASKS_FOLDER_NAME = "Tasks";
+
 export interface Task {
-  /** Absolute path of the note this task line lives in. */
+  /** Absolute path of the task's own note. */
   notePath: string;
-  noteTitle: string;
-  /** 0-based index into the note's body (Note.content) lines — used to write status changes back to the exact line. */
-  lineNumber: number;
+  /** The task's action — the note's title. */
   text: string;
   status: TaskStatus;
-  /** ISO "YYYY-MM-DD", or null if the task has no deadline. */
+  /** ISO "YYYY-MM-DD" from the note's `deadline` property, or null if it has none. */
   deadline: string | null;
 }
 
-// "- [ ] text", "- [/] text" (in progress), "- [x] text" (done) — the same
-// checkbox syntax common markdown renders as a checklist, extended with "/"
-// for a third state plain GFM checkboxes don't have.
-const TASK_LINE_RE = /^(\s*)-\s\[([ xX/])\]\s+(.*)$/;
-const FENCE_RE = /^\s*(```|~~~)/;
-// A trailing "(due: YYYY-MM-DD)" token, stripped from the displayed text.
-const DUE_RE = /\s*\(due:\s*(\d{4}-\d{2}-\d{2})\)\s*$/;
-
-function statusFromMarker(marker: string): TaskStatus {
-  if (marker === "/") return "in-progress";
-  if (marker.toLowerCase() === "x") return "done";
-  return "todo";
+/** A task is any note under the top-level tasks folder (matched case-insensitively, since the user may have made it by hand). */
+export function isTaskNote(note: Pick<Note, "relativePath">): boolean {
+  const segments = note.relativePath.replace(/\\/g, "/").split("/");
+  return segments.length > 1 && segments[0].toLowerCase() === TASKS_FOLDER_NAME.toLowerCase();
 }
 
-function markerFromStatus(status: TaskStatus): string {
-  if (status === "in-progress") return "/";
-  if (status === "done") return "x";
-  return " ";
+function normalizeStatus(value: unknown): TaskStatus {
+  return TASK_STATUSES.includes(value as TaskStatus) ? (value as TaskStatus) : "todo";
 }
 
-/** Every task checkbox line in a note's body, skipping fenced code blocks so an example checkbox in a code sample isn't picked up. */
-export function parseTasksFromNote(note: Note): Task[] {
-  const tasks: Task[] = [];
-  let inFence = false;
-  note.content.split("\n").forEach((line, lineNumber) => {
-    if (FENCE_RE.test(line)) {
-      inFence = !inFence;
-      return;
-    }
-    if (inFence) return;
-    const m = TASK_LINE_RE.exec(line);
-    if (!m) return;
-    let text = m[3];
-    let deadline: string | null = null;
-    const dueMatch = DUE_RE.exec(text);
-    if (dueMatch) {
-      deadline = dueMatch[1];
-      text = text.slice(0, dueMatch.index).trimEnd();
-    }
-    tasks.push({
-      notePath: note.path,
-      noteTitle: note.title,
-      lineNumber,
-      text,
-      status: statusFromMarker(m[2]),
-      deadline,
-    });
-  });
-  return tasks;
+// An unquoted `deadline: 2026-10-05` is parsed by YAML as a Date (UTC
+// midnight), and a Date that has been through the notes folder cache's JSON
+// comes back as a full ISO timestamp string — both reduce to the date part.
+function normalizeDeadline(value: unknown): string | null {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  if (typeof value === "string") {
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+    return m ? m[1] : null;
+  }
+  return null;
 }
 
-/** Every task across every note. */
+export function taskFromNote(note: Note): Task {
+  return {
+    notePath: note.path,
+    text: note.title,
+    status: normalizeStatus(note.frontmatter.status),
+    deadline: normalizeDeadline(note.frontmatter.deadline),
+  };
+}
+
+/** Every task note across the notes folder. */
 export function collectTasks(notes: Note[]): Task[] {
-  return notes.flatMap(parseTasksFromNote);
+  return notes.filter(isTaskNote).map(taskFromNote);
 }
 
 const STATUS_ORDER: Record<TaskStatus, number> = { "in-progress": 0, todo: 1, done: 2 };
@@ -98,28 +81,4 @@ export function isOverdue(task: Task, todayIso: string): boolean {
 export function todayIsoDate(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-/** Renders a task as its markdown checkbox line, e.g. "- [ ] Buy milk (due: 2026-10-05)". */
-export function formatTaskLine(text: string, status: TaskStatus, deadline: string | null): string {
-  const due = deadline ? ` (due: ${deadline})` : "";
-  return `- [${markerFromStatus(status)}] ${text.trim()}${due}`;
-}
-
-/** Appends a new task line to a note's body, adding a trailing newline first if the body doesn't already end with one. */
-export function appendTaskToContent(content: string, text: string, status: TaskStatus, deadline: string | null): string {
-  const line = formatTaskLine(text, status, deadline);
-  if (content.length === 0) return `${line}\n`;
-  return `${content}${content.endsWith("\n") ? "" : "\n"}${line}\n`;
-}
-
-/** Rewrites just the checkbox marker on `lineNumber`, leaving the task's text/deadline untouched. No-op if that line isn't a task line any more (e.g. edited concurrently). */
-export function setTaskStatusInContent(content: string, lineNumber: number, status: TaskStatus): string {
-  const lines = content.split("\n");
-  const line = lines[lineNumber];
-  if (line === undefined) return content;
-  const m = TASK_LINE_RE.exec(line);
-  if (!m) return content;
-  lines[lineNumber] = `${m[1]}- [${markerFromStatus(status)}] ${m[3]}`;
-  return lines.join("\n");
 }

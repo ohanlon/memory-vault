@@ -42,6 +42,8 @@ import { readWorkspaceState, writeWorkspaceState } from "./workspaceState";
 import { DEFAULT_WORKSPACE_STATE } from "../shared/workspaceState";
 import { readAppSettingsFile, writeAppSettingsFile } from "./appSettings";
 import { openOrCreateDailyNote } from "./dailyNote";
+import { createTaskNote } from "./tasks";
+import type { TaskStatus } from "../shared/tasks";
 import { isAllowedExternalUrl, isAllowedForPlugin } from "./domainPolicy";
 import { PLUGIN_SCHEME, contentTypeFor, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
 import { handleAttachmentProtocol, registerAttachmentScheme, resolveAttachmentFilePath } from "./attachmentProtocol";
@@ -504,6 +506,12 @@ ipcMain.handle("notesFolder:openOrCreateDailyNote", async (_event, root: string)
   const dateFormat = readAppSettingsFile(appSettingsFilePath()).dateFormat;
   return openOrCreateDailyNote(root, dateFormat, new Date());
 });
+
+ipcMain.handle(
+  "tasks:create",
+  async (_event, text: string, deadline: string | null, status: TaskStatus) =>
+    createTaskNote(requireActiveRoot(), text, deadline, status)
+);
 
 ipcMain.handle(
   "notesFolder:createNote",

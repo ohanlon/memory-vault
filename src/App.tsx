@@ -46,7 +46,7 @@ import { templatePlaceholders } from "@shared/templateRender";
 import { defaultColorsFor } from "@shared/themeColors";
 import type { AppSettings, FileTemplate, LayoutRegionName, Note, NotesFolderEntry } from "@shared/types";
 import { applyCustomThemeProperties, clearCustomThemeProperties } from "./applyCustomTheme";
-import { appendTaskToContent, collectTasks, isOutstanding, isOverdue, setTaskStatusInContent, todayIsoDate, type Task, type TaskStatus } from "@shared/tasks";
+import { collectTasks, isOutstanding, isOverdue, todayIsoDate, type Task, type TaskStatus } from "@shared/tasks";
 
 // Which named layout drives the screen. No UI to switch layouts yet — the
 // data model (shared/layouts.json) already supports more than one.
@@ -572,30 +572,22 @@ export default function App() {
     openTab(result.path);
   }
 
-  // Where a task typed into the "New task" modal lands: the currently open
-  // note, so it's captured in context, or today's daily note (created if
-  // needed) when nothing is open to capture it into.
+  // Each task is its own note in the tasks folder (see electron/tasks.ts),
+  // so adding one doesn't touch whatever note is open — the callout and the
+  // Tasks view pick it up on refresh.
   async function handleAddTask(text: string, deadline: string | null, status: TaskStatus) {
-    if (!notesFolderRoot) return;
-    const targetPath = activeNote ? activeNote.path : (await window.memoryStack.openOrCreateDailyNote(notesFolderRoot)).path;
-    const body = await window.memoryStack.readNoteBody(targetPath);
-    await window.memoryStack.saveNote(targetPath, appendTaskToContent(body, text, status, deadline));
+    await window.memoryStack.createTask(text, deadline, status);
     setDialog(null);
     await refresh({ showReindexing: true });
-    openTab(targetPath);
   }
 
   async function handleSetTaskStatus(task: Task, status: TaskStatus) {
-    const body = await window.memoryStack.readNoteBody(task.notePath);
-    await window.memoryStack.saveNote(task.notePath, setTaskStatusInContent(body, task.lineNumber, status));
+    const properties = await window.memoryStack.readNoteProperties(task.notePath);
+    // A hand-written unquoted `deadline: 2026-10-05` reads back as a Date;
+    // write it back as the plain date it was rather than a full timestamp.
+    const deadline = properties.deadline instanceof Date ? properties.deadline.toISOString().slice(0, 10) : properties.deadline;
+    await window.memoryStack.saveNoteProperties(task.notePath, { ...properties, ...(deadline === undefined ? {} : { deadline }), status });
     await refresh();
-  }
-
-  // Label shown in the "New task" modal for where the task will land —
-  // mirrors handleAddTask's own target-note choice.
-  function newTaskTargetLabel(): string {
-    if (activeNote) return `"${stripMdExtension(activeNote.relativePath)}"`;
-    return "today's daily note";
   }
 
   // Where "New Note" creates: the selected sidebar folder if one is
@@ -1213,7 +1205,6 @@ export default function App() {
         )}
         {dialog?.kind === "new-task" && (
           <NewTaskModal
-            targetLabel={newTaskTargetLabel()}
             onSubmit={(text, deadline, status) => handleAddTask(text, deadline, status)}
             onCancel={() => setDialog(null)}
           />

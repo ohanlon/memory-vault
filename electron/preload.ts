@@ -20,6 +20,7 @@ import type {
   SearchOptions,
   WorkspaceState,
 } from "../shared/types";
+import type { TaskStatus } from "../shared/tasks";
 
 const api = {
   pickNotesFolder: (): Promise<string | null> => ipcRenderer.invoke("notesFolder:pick"),
@@ -129,6 +130,8 @@ const api = {
     ipcRenderer.invoke("window:showSystemMenu", x, y),
   openOrCreateDailyNote: (root: string): Promise<DailyNoteResult> =>
     ipcRenderer.invoke("notesFolder:openOrCreateDailyNote", root),
+  createTask: (text: string, deadline: string | null, status: TaskStatus): Promise<string> =>
+    ipcRenderer.invoke("tasks:create", text, deadline, status),
   listPlugins: (): Promise<PluginManifest[]> => ipcRenderer.invoke("plugin:list"),
   getPluginPermissions: (): Promise<PluginPermissionsFile> =>
     ipcRenderer.invoke("plugin:getPermissions"),

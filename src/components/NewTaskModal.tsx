@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type { TaskStatus } from "@shared/tasks";
 
 interface Props {
-  /** Where the task will be saved — shown so it's clear before submitting. */
-  targetLabel: string;
   onSubmit: (text: string, deadline: string | null, status: TaskStatus) => void | Promise<void>;
   onCancel: () => void;
 }
@@ -14,7 +12,7 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "done", label: "Completed" },
 ];
 
-export function NewTaskModal({ targetLabel, onSubmit, onCancel }: Props) {
+export function NewTaskModal({ onSubmit, onCancel }: Props) {
   const [text, setText] = useState("");
   const [deadline, setDeadline] = useState("");
   const [status, setStatus] = useState<TaskStatus>("todo");
@@ -68,7 +66,6 @@ export function NewTaskModal({ targetLabel, onSubmit, onCancel }: Props) {
             ))}
           </select>
         </label>
-        <p className="new-task-target">Will be added to {targetLabel}.</p>
         {error && <p className="modal-error">{error}</p>}
         <div className="modal-actions">
           <button type="button" onClick={onCancel}>

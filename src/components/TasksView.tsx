@@ -40,13 +40,12 @@ function TaskRow({
           </option>
         ))}
       </select>
-      <span className="task-row-text">{task.text}</span>
+      <button className="task-row-text" onClick={() => onOpenNote(task.notePath)} title="Open task">
+        {task.text}
+      </button>
       {task.deadline && (
         <span className={`task-row-deadline${overdue ? " task-row-deadline-overdue" : ""}`}>{task.deadline}</span>
       )}
-      <button className="task-row-note" onClick={() => onOpenNote(task.notePath)} title="Open note">
-        {task.noteTitle}
-      </button>
     </li>
   );
 }
@@ -65,13 +64,13 @@ export function TasksView({ notes, onOpenNote, onSetTaskStatus }: Props) {
       </div>
       {tasks.length === 0 ? (
         <p className="tasks-view-empty">
-          No tasks yet. Add one with a checkbox line like "- [ ] Buy milk", or click "+ New task" above.
+          No tasks yet. Click "+ New task" above — each task is saved as its own note in the Tasks folder.
         </p>
       ) : (
         <ul className="task-list">
           {tasks.map((task) => (
             <TaskRow
-              key={`${task.notePath}:${task.lineNumber}`}
+              key={task.notePath}
               task={task}
               today={today}
               onOpenNote={onOpenNote}

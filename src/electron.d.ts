@@ -19,6 +19,7 @@ import type {
   SearchOptions,
   WorkspaceState,
 } from "@shared/types";
+import type { TaskStatus } from "@shared/tasks";
 
 export interface MemoryStackAPI {
   pickNotesFolder(): Promise<string | null>;
@@ -87,6 +88,8 @@ export interface MemoryStackAPI {
   setTitleBarOverlay(colors: { color: string; symbolColor: string }): Promise<boolean>;
   showSystemMenu(x: number, y: number): Promise<boolean>;
   openOrCreateDailyNote(root: string): Promise<DailyNoteResult>;
+  /** Creates a task as its own note in the notes folder's tasks folder (reusing one the user made, else creating "Tasks"); resolves with the new note's path. */
+  createTask(text: string, deadline: string | null, status: TaskStatus): Promise<string>;
   listPlugins(): Promise<PluginManifest[]>;
   getPluginPermissions(): Promise<PluginPermissionsFile>;
   revokePluginPermission(pluginId: string, permission: PluginPermission): Promise<boolean>;
