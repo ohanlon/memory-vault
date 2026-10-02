@@ -813,6 +813,34 @@ export default function App() {
     pluginRegistry.registerCommand("view.openSettings", () => openTab(SETTINGS_TAB_ID));
     pluginRegistry.registerCommand("view.openTasks", () => openTab(TASKS_TAB_ID));
     pluginRegistry.registerCommand("stack.newTask", () => setDialog({ kind: "new-task" }));
+    pluginRegistry.registerCommand("sync.configure", () => {
+      if (activeNotesFolder) setDialog({ kind: "github-sync", notesFolder: activeNotesFolder });
+    });
+    pluginRegistry.registerCommand("sync.now", async () => {
+      if (!activeNotesFolder) return;
+      const cfg = await window.memoryStack.getSyncConfig();
+      if (!Object.keys(cfg).some((n) => n.toLowerCase() === activeNotesFolder.name.toLowerCase())) {
+        setDialog({ kind: "github-sync", notesFolder: activeNotesFolder });
+        return;
+      }
+      try {
+        window.alert((await window.memoryStack.syncNow(activeNotesFolder.name)).message);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : String(err));
+      }
+    });
+    pluginRegistry.registerCommand("sync.fetchAll", async () => {
+      try {
+        const results = await window.memoryStack.syncFetchAll();
+        window.alert(
+          results.length === 0
+            ? "No notes folders are linked to GitHub yet."
+            : results.map((r) => `${r.name}: ${r.result.message}`).join("\n")
+        );
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : String(err));
+      }
+    });
     pluginRegistry.registerCommand("properties.manageSchema", (schemaRoot: string) =>
       setDialog({ kind: "manage-properties", root: schemaRoot })
     );
@@ -1202,6 +1230,9 @@ export default function App() {
             }}
             onCancel={() => setDialog(null)}
           />
+        )}
+        {dialog?.kind === "github-sync" && (
+          <GitHubSyncDialog notesFolder={dialog.notesFolder} onClose={() => setDialog(null)} />
         )}
         {dialog?.kind === "export-notes-folder" && (
           <ExportDialog

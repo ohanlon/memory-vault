@@ -71,6 +71,7 @@ import type {
   PluginPermission,
   PropertyDef,
   SearchOptions,
+  SyncResult,
   WorkspaceState,
 } from "../shared/types";
 
@@ -396,7 +397,7 @@ ipcMain.handle("sync:unlink", async (_event, folderName: string) => {
 
 const syncing = new Set<string>();
 
-ipcMain.handle("sync:now", async (_event, folderName: string) => {
+async function runSync(folderName: string, pullOnly: boolean): Promise<SyncResult> {
   const entry = readNotesFoldersFile(notesFoldersFilePath()).find(
     (f) => f.name.toLowerCase() === folderName.toLowerCase()
   );
@@ -415,6 +416,7 @@ ipcMain.handle("sync:now", async (_event, folderName: string) => {
       branch: link.branch,
       token,
       author: { name: login, email: `${login}@users.noreply.github.com` },
+      pullOnly,
     });
     writeSyncConfigFile(
       syncConfigFilePath(),
@@ -430,6 +432,34 @@ ipcMain.handle("sync:now", async (_event, folderName: string) => {
   } finally {
     syncing.delete(entry.root);
   }
+}
+
+ipcMain.handle("sync:now", (_event, folderName: string, pullOnly = false) => runSync(folderName, pullOnly));
+
+// Pull-only across every linked folder. One folder's failure doesn't stop
+// the rest.
+ipcMain.handle("sync:fetchAll", async () => {
+  const linked = readNotesFoldersFile(notesFoldersFilePath()).filter((f) =>
+    Object.keys(readSyncConfigFile(syncConfigFilePath())).some((n) => n.toLowerCase() === f.name.toLowerCase())
+  );
+  const out: { name: string; result: SyncResult }[] = [];
+  for (const f of linked) {
+    try {
+      out.push({ name: f.name, result: await runSync(f.name, true) });
+    } catch (err) {
+      out.push({
+        name: f.name,
+        result: {
+          status: "error",
+          message: err instanceof Error ? err.message : String(err),
+          committed: false,
+          pushed: false,
+          pulled: false,
+        },
+      });
+    }
+  }
+  return out;
 });
 
 // Loads (or serves from cache) a notes folder's notes and starts watching

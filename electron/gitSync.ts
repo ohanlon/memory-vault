@@ -81,6 +81,8 @@ export interface SyncOptions {
   branch: string;
   token: string;
   author: { name: string; email: string };
+  /** Only bring GitHub's changes down: never commit local edits or push. */
+  pullOnly?: boolean;
 }
 
 export async function syncFolder(opts: SyncOptions): Promise<SyncResult> {
@@ -112,6 +114,10 @@ export async function syncFolder(opts: SyncOptions): Promise<SyncResult> {
     const plan = planSync(relation, dirty);
     if (plan.kind === "conflict") return { ...result, status: "conflict", message: plan.message };
 
+    if (opts.pullOnly && plan.kind === "commit-push") {
+      return { ...result, message: relation === "ahead" ? "Nothing new on GitHub." : "Already up to date." };
+    }
+
     if (plan.kind === "fast-forward") {
       await git.writeRef({ fs, dir, ref: `refs/heads/${branch}`, value: remoteOid!, force: true });
       await git.checkout({ fs, dir, ref: branch });
@@ -122,6 +128,7 @@ export async function syncFolder(opts: SyncOptions): Promise<SyncResult> {
       await git.writeRef({ fs, dir, ref: `refs/heads/${branch}`, value: remoteOid!, force: true });
       await git.checkout({ fs, dir, ref: branch }); // non-forced: throws rather than clobber local files
       result.pulled = true;
+      if (opts.pullOnly) return { ...result, message: "Pulled changes from GitHub." };
       result.committed = (await commitAll(dir, author)) > 0;
       if (result.committed) {
         await git.push({ fs, http, dir, remote: "origin", ref: branch, onAuth });

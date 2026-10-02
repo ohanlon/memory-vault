@@ -65,7 +65,9 @@ const api = {
   linkSync: (folderName: string, repoFullName: string, branch: string): Promise<SyncConfigFile> =>
     ipcRenderer.invoke("sync:link", folderName, repoFullName, branch),
   unlinkSync: (folderName: string): Promise<SyncConfigFile> => ipcRenderer.invoke("sync:unlink", folderName),
-  syncNow: (folderName: string): Promise<SyncResult> => ipcRenderer.invoke("sync:now", folderName),
+  syncNow: (folderName: string, pullOnly = false): Promise<SyncResult> =>
+    ipcRenderer.invoke("sync:now", folderName, pullOnly),
+  syncFetchAll: (): Promise<{ name: string; result: SyncResult }[]> => ipcRenderer.invoke("sync:fetchAll"),
   readNote: (absPath: string): Promise<Note> =>
     ipcRenderer.invoke("notesFolder:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>

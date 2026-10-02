@@ -48,7 +48,8 @@ export interface MemoryStackAPI {
   getSyncConfig(): Promise<SyncConfigFile>;
   linkSync(folderName: string, repoFullName: string, branch: string): Promise<SyncConfigFile>;
   unlinkSync(folderName: string): Promise<SyncConfigFile>;
-  syncNow(folderName: string): Promise<SyncResult>;
+  syncNow(folderName: string, pullOnly?: boolean): Promise<SyncResult>;
+  syncFetchAll(): Promise<{ name: string; result: SyncResult }[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   /** Resolves with the note's new mtime, so callers can tell their own save apart from a later external write. */
