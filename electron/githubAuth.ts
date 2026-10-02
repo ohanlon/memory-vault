@@ -13,6 +13,9 @@ export interface DeviceFlowStart extends GithubDeviceCode {
 const JSON_HEADERS = { Accept: "application/json", "Content-Type": "application/json" };
 
 export async function startDeviceFlow(clientId: string, fetchFn: FetchFn = fetch): Promise<DeviceFlowStart> {
+  if (!clientId || clientId.startsWith("REPLACE_")) {
+    throw new Error("GitHub sign-in isn't configured: set GITHUB_CLIENT_ID in shared/githubConfig.ts.");
+  }
   const res = await fetchFn("https://github.com/login/device/code", {
     method: "POST",
     headers: JSON_HEADERS,
