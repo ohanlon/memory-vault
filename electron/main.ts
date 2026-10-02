@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, session as electronSession, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage, session as electronSession, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,6 +45,11 @@ import { openOrCreateDailyNote } from "./dailyNote";
 import { createTaskNote } from "./tasks";
 import type { TaskStatus } from "../shared/tasks";
 import { isAllowedExternalUrl, isAllowedForPlugin } from "./domainPolicy";
+import { deleteToken, pollForToken, readToken, startDeviceFlow, writeToken, type DeviceFlowStart } from "./githubAuth";
+import { createRepo, getUser, listRepos } from "./githubApi";
+import { syncFolder } from "./gitSync";
+import { readSyncConfigFile, removeSyncLink, renameSyncLink, setSyncLink, writeSyncConfigFile } from "./syncConfig";
+import { GITHUB_CLIENT_ID } from "../shared/githubConfig";
 import { PLUGIN_SCHEME, contentTypeFor, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
 import { handleAttachmentProtocol, registerAttachmentScheme, resolveAttachmentFilePath } from "./attachmentProtocol";
 import { saveTextFile, savePdfFromHtml, type SaveDialogFilter } from "./exportFiles";
@@ -136,6 +141,15 @@ function notesFoldersFilePath(): string {
 // Which notes folders the CLI/MCP server may touch - see cliAccess.ts.
 function cliAccessFilePath(): string {
   return path.join(app.getPath("userData"), "cli-access.json");
+}
+
+// GitHub sync: the encrypted OAuth token and the per-folder repo links.
+function githubTokenFilePath(): string {
+  return path.join(app.getPath("userData"), "github-auth.bin");
+}
+
+function syncConfigFilePath(): string {
+  return path.join(app.getPath("userData"), "sync-config.json");
 }
 
 // Local version history for notes - see noteHistory.ts.
@@ -284,6 +298,9 @@ ipcMain.handle("notesFolders:remove", async (_event, name: string) => {
   // silently inherit whatever access this one had, without the grant
   // decision ever being re-made for it.
   writeCliAccessFile(cliAccessFilePath(), denyFolder(readCliAccessFile(cliAccessFilePath()), name));
+  // Same reasoning for the GitHub link: don't let a re-registered folder
+  // inherit a repo it was never linked to.
+  writeSyncConfigFile(syncConfigFilePath(), removeSyncLink(readSyncConfigFile(syncConfigFilePath()), name));
   return updated;
 });
 
@@ -303,7 +320,116 @@ ipcMain.handle("notesFolders:rename", async (_event, oldName: string, newName: s
   const updated = renameNotesFolder(notesFolders, oldName, newName); // throws on empty/duplicate name
   writeNotesFoldersFile(notesFoldersFilePath(), updated);
   writeCliAccessFile(cliAccessFilePath(), renameFolderAccess(readCliAccessFile(cliAccessFilePath()), oldName, newName));
+  writeSyncConfigFile(syncConfigFilePath(), renameSyncLink(readSyncConfigFile(syncConfigFilePath()), oldName, newName));
   return updated;
+});
+
+// --- GitHub sync (see githubAuth.ts, githubApi.ts, gitSync.ts) ---------
+// The token never leaves the main process; the renderer only sees status.
+let pendingAuth: { start: DeviceFlowStart; signal: { aborted: boolean } } | null = null;
+
+function requireGithubToken(): string {
+  const token = readToken(githubTokenFilePath(), safeStorage);
+  if (!token) throw new Error("Not connected to GitHub. Connect in Settings first.");
+  return token;
+}
+
+ipcMain.handle("github:getStatus", async () => {
+  const token = readToken(githubTokenFilePath(), safeStorage);
+  if (!token) return { connected: false, login: null };
+  try {
+    return { connected: true, login: (await getUser(token)).login };
+  } catch {
+    return { connected: true, login: null }; // offline or token revoked; the next real call surfaces it
+  }
+});
+
+ipcMain.handle("github:startAuth", async () => {
+  if (pendingAuth) pendingAuth.signal.aborted = true;
+  const start = await startDeviceFlow(GITHUB_CLIENT_ID);
+  pendingAuth = { start, signal: { aborted: false } };
+  return { userCode: start.userCode, verificationUri: start.verificationUri };
+});
+
+// Long-running: resolves once the user has authorised in the browser.
+ipcMain.handle("github:awaitAuth", async () => {
+  const flow = pendingAuth;
+  if (!flow) throw new Error("Sign-in was not started");
+  try {
+    const token = await pollForToken(GITHUB_CLIENT_ID, flow.start, { signal: flow.signal });
+    writeToken(githubTokenFilePath(), token, safeStorage);
+    return { connected: true, login: (await getUser(token)).login };
+  } finally {
+    if (pendingAuth === flow) pendingAuth = null;
+  }
+});
+
+ipcMain.handle("github:cancelAuth", () => {
+  if (pendingAuth) pendingAuth.signal.aborted = true;
+  return true;
+});
+
+ipcMain.handle("github:disconnect", () => {
+  deleteToken(githubTokenFilePath());
+  return { connected: false, login: null };
+});
+
+ipcMain.handle("github:listRepos", async () => listRepos(requireGithubToken()));
+
+ipcMain.handle("github:createRepo", async (_event, name: string, isPrivate: boolean) =>
+  createRepo(requireGithubToken(), name, isPrivate)
+);
+
+ipcMain.handle("sync:getConfig", async () => readSyncConfigFile(syncConfigFilePath()));
+
+ipcMain.handle("sync:link", async (_event, folderName: string, repoFullName: string, branch: string) => {
+  const updated = setSyncLink(readSyncConfigFile(syncConfigFilePath()), folderName, { repoFullName, branch });
+  writeSyncConfigFile(syncConfigFilePath(), updated);
+  return updated;
+});
+
+ipcMain.handle("sync:unlink", async (_event, folderName: string) => {
+  const updated = removeSyncLink(readSyncConfigFile(syncConfigFilePath()), folderName);
+  writeSyncConfigFile(syncConfigFilePath(), updated);
+  return updated;
+});
+
+const syncing = new Set<string>();
+
+ipcMain.handle("sync:now", async (_event, folderName: string) => {
+  const entry = readNotesFoldersFile(notesFoldersFilePath()).find(
+    (f) => f.name.toLowerCase() === folderName.toLowerCase()
+  );
+  const link = Object.entries(readSyncConfigFile(syncConfigFilePath())).find(
+    ([n]) => n.toLowerCase() === folderName.toLowerCase()
+  )?.[1];
+  if (!entry || !link) throw new Error("This folder is not linked to a GitHub repo");
+  if (syncing.has(entry.root)) throw new Error("A sync is already running for this folder");
+  syncing.add(entry.root);
+  try {
+    const token = requireGithubToken();
+    const { login } = await getUser(token);
+    const result = await syncFolder({
+      root: entry.root,
+      repoFullName: link.repoFullName,
+      branch: link.branch,
+      token,
+      author: { name: login, email: `${login}@users.noreply.github.com` },
+    });
+    writeSyncConfigFile(
+      syncConfigFilePath(),
+      setSyncLink(readSyncConfigFile(syncConfigFilePath()), entry.name, {
+        ...link,
+        lastSyncAt: Date.now(),
+        lastStatus: result.status,
+        lastMessage: result.message,
+      })
+    );
+    // Pulled files reach the UI through the existing chokidar watcher.
+    return result;
+  } finally {
+    syncing.delete(entry.root);
+  }
 });
 
 // Loads (or serves from cache) a notes folder's notes and starts watching

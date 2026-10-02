@@ -3,6 +3,9 @@ import type {
   DailyNoteResult,
   FileChangeEvent,
   FileTemplate,
+  GithubDeviceCode,
+  GithubRepo,
+  GithubStatus,
   LayoutPrefs,
   Note,
   NoteHistoryEntry,
@@ -17,6 +20,8 @@ import type {
   ReplaceAllResult,
   SearchFileResult,
   SearchOptions,
+  SyncConfigFile,
+  SyncResult,
   WorkspaceState,
 } from "@shared/types";
 import type { TaskStatus } from "@shared/tasks";
@@ -33,6 +38,17 @@ export interface MemoryStackAPI {
   renameNotesFolder(oldName: string, newName: string): Promise<NotesFolderEntry[]>;
   listCliAccess(): Promise<string[]>;
   setCliAccess(name: string, allowed: boolean): Promise<string[]>;
+  githubGetStatus(): Promise<GithubStatus>;
+  githubStartAuth(): Promise<GithubDeviceCode>;
+  githubAwaitAuth(): Promise<GithubStatus>;
+  githubCancelAuth(): Promise<boolean>;
+  githubDisconnect(): Promise<GithubStatus>;
+  githubListRepos(): Promise<GithubRepo[]>;
+  githubCreateRepo(name: string, isPrivate: boolean): Promise<GithubRepo>;
+  getSyncConfig(): Promise<SyncConfigFile>;
+  linkSync(folderName: string, repoFullName: string, branch: string): Promise<SyncConfigFile>;
+  unlinkSync(folderName: string): Promise<SyncConfigFile>;
+  syncNow(folderName: string): Promise<SyncResult>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   /** Resolves with the note's new mtime, so callers can tell their own save apart from a later external write. */

@@ -10,6 +10,7 @@ import { TemplatePlaceholdersModal } from "./components/TemplatePlaceholdersModa
 import { NewTaskModal } from "./components/NewTaskModal";
 import { ShortcutsPanel } from "./components/ShortcutsPanel";
 import { ExportDialog } from "./components/ExportDialog";
+import { GitHubSyncDialog } from "./components/GitHubSyncDialog";
 import { buildHtmlExport, buildMarkdownExport, type ExportFormat } from "./export/vaultExport";
 import { HintToast } from "./components/HintToast";
 import { DeleteIcon, RenameIcon } from "./components/icons";
@@ -66,6 +67,7 @@ function deleteConfirmMessage(note: Note): string {
 type DialogState =
   | { kind: "name-notes-folder"; root: string }
   | { kind: "rename-notes-folder"; notesFolder: NotesFolderEntry }
+  | { kind: "github-sync"; notesFolder: NotesFolderEntry }
   | { kind: "manage-properties"; root: string }
   | { kind: "confirm-delete"; note: Note }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
@@ -859,6 +861,10 @@ export default function App() {
             },
           },
           {
+            label: "Sync to GitHub...",
+            onClick: () => setDialog({ kind: "github-sync", notesFolder: notesFolderContextMenu.notesFolder }),
+          },
+          {
             label: "Clean up unused attachments",
             onClick: () => handleCleanUpAttachments(notesFolderContextMenu.notesFolder.root),
           },
@@ -945,6 +951,9 @@ export default function App() {
               onSubmit={handleRenameNotesFolderSubmit}
               onCancel={() => setDialog(null)}
             />
+          )}
+          {dialog?.kind === "github-sync" && (
+            <GitHubSyncDialog notesFolder={dialog.notesFolder} onClose={() => setDialog(null)} />
           )}
           {notesFolderContextMenu && notesFolderContextMenuItems && (
             <ContextMenu

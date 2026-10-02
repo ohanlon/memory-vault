@@ -62,6 +62,19 @@ empty one to start fresh) — that becomes a notes folder.
 See [docs/reference.md](docs/reference.md) for exact link syntax, the graph
 model, and how notes folders are stored on disk.
 
+## GitHub sync
+
+Right-click a notes folder on the home screen and choose **Sync to GitHub...**
+to link it to a repository (create a new one, private by default, or pick an
+existing one). Sign in once under Settings > GitHub sync; Cairn uses GitHub's
+device flow and stores the token encrypted via the OS keychain
+(`safeStorage`). **Sync now** commits local changes, pulls fast-forward
+changes from GitHub, and pushes. If both sides have diverged, nothing is
+overwritten and the conflict is reported. Sync is manual for now.
+
+Before this works in a build, register a GitHub OAuth App (device flow
+enabled) and set its client ID in `shared/githubConfig.ts`.
+
 ## Scripts
 
 - `npm run dev` — run in development with hot reload

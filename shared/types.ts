@@ -338,3 +338,37 @@ export interface NoteHistoryEntry {
   /** ISO 8601 timestamp, also the key used to read/restore this snapshot. */
   timestamp: string;
 }
+
+export interface GithubStatus {
+  connected: boolean;
+  login: string | null;
+}
+
+export interface GithubDeviceCode {
+  userCode: string;
+  verificationUri: string;
+}
+
+export interface GithubRepo {
+  fullName: string;
+  defaultBranch: string;
+  private: boolean;
+}
+
+export interface SyncLink {
+  repoFullName: string;
+  branch: string;
+  lastSyncAt?: number;
+  lastStatus?: "synced" | "conflict" | "error";
+  lastMessage?: string;
+}
+
+export type SyncConfigFile = Record<string, SyncLink>;
+
+export interface SyncResult {
+  status: "synced" | "conflict" | "error";
+  message: string;
+  committed: boolean;
+  pushed: boolean;
+  pulled: boolean;
+}

@@ -11,6 +11,7 @@ import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from 
 import { CODE_LANGUAGES } from "@shared/codeLanguages";
 import { formatDateWithPattern, isValidDateFormat } from "@shared/dateFormat";
 import { CustomThemesModal } from "./CustomThemesModal";
+import { GitHubConnect } from "./GitHubConnect";
 
 interface Props {
   settings: AppSettings;
@@ -333,6 +334,9 @@ export function SettingsView({ settings, onChange, canManageProperties, onManage
             Manage properties…
           </button>
         </div>
+
+        <h3>GitHub sync</h3>
+        <GitHubConnect />
 
         <PluginsSection />
       </section>
