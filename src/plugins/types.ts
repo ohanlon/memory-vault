@@ -11,6 +11,8 @@ export interface ViewContribution {
   region: TabbedRegionName;
   title: string;
   component: ComponentType<any>;
+  /** No tab of its own: replaces the region's other views while focused. See TabbedRegion. */
+  exclusive?: boolean;
 }
 
 // The editor region picks a renderer for the active tab based on which
@@ -35,7 +37,10 @@ export interface StatusItemContribution {
 export interface RibbonItemContribution {
   id: string;
   title: string;
-  icon: string;
+  /** SVG path data (stroke style). Absent when `iconSvg` is used. */
+  icon?: string;
+  /** A whole plugin-supplied SVG (fill style); untrusted, sanitised at render. */
+  iconSvg?: string;
   viewId?: string;
   tabId?: string;
 }

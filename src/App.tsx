@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useNotesFolders } from "./notesFolder/useNotesFolders";
 import { StatusBar } from "./components/StatusBar";
 import { ResizeHandle } from "./components/ResizeHandle";
@@ -10,7 +10,6 @@ import { TemplatePlaceholdersModal } from "./components/TemplatePlaceholdersModa
 import { NewTaskModal } from "./components/NewTaskModal";
 import { ShortcutsPanel } from "./components/ShortcutsPanel";
 import { ExportDialog } from "./components/ExportDialog";
-import { GitHubSyncDialog } from "./components/GitHubSyncDialog";
 import { buildHtmlExport, buildMarkdownExport, type ExportFormat } from "./export/vaultExport";
 import { HintToast } from "./components/HintToast";
 import { DeleteIcon, RenameIcon } from "./components/icons";
@@ -18,7 +17,9 @@ import { TabBar, type TabItem } from "./components/TabBar";
 import { pluginRegistry } from "./plugins/registry";
 import { TabbedRegion } from "./plugins/TabbedRegion";
 import { TabKindSlot } from "./plugins/TabKindSlot";
-import { focusView } from "./plugins/focusedViewStore";
+import { loadThirdPartyPlugins } from "./plugins/loader";
+import { setActiveFolderName } from "./plugins/activeFolderStore";
+import { clearFocusedView, focusView, getFocusedView, subscribeFocusedView } from "./plugins/focusedViewStore";
 import { flushPendingSave } from "./editor/pendingSave";
 import type { RibbonItemContribution } from "./plugins/types";
 import {
@@ -67,7 +68,6 @@ function deleteConfirmMessage(note: Note): string {
 type DialogState =
   | { kind: "name-notes-folder"; root: string }
   | { kind: "rename-notes-folder"; notesFolder: NotesFolderEntry }
-  | { kind: "github-sync"; notesFolder: NotesFolderEntry }
   | { kind: "manage-properties"; root: string }
   | { kind: "confirm-delete"; note: Note }
   | { kind: "rename-links"; note: Note; newTitle: string; backlinks: string[] }
@@ -146,6 +146,22 @@ export default function App() {
   // Every file template in the currently open notes folder. See loadFileTemplates.
   const [allTemplates, setAllTemplates] = useState<FileTemplate[]>([]);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
+  // Re-render when plugins are (un)registered, and track which sidebar views
+  // are focused so a plugin's ribbon toggle can show as pressed.
+  useSyncExternalStore(
+    (listener) => pluginRegistry.subscribe(listener),
+    () => pluginRegistry.getVersion()
+  );
+  useEffect(() => {
+    setActiveFolderName(activeNotesFolder?.name ?? null);
+  }, [activeNotesFolder?.name]);
+  // Plugins are global, so register them at startup rather than waiting for a
+  // notes folder to be opened.
+  useEffect(() => {
+    void loadThirdPartyPlugins();
+  }, []);
+  const focusedLeftView = useSyncExternalStore(subscribeFocusedView, () => getFocusedView("left-sidebar"));
+  const focusedRightView = useSyncExternalStore(subscribeFocusedView, () => getFocusedView("right-sidebar"));
   const activeName = activeNotesFolder?.name ?? null;
   const notesFolderRoot = activeNotesFolder?.root ?? null;
   // Stable identity for the currently-open session, used to gate the
@@ -471,11 +487,31 @@ export default function App() {
         (v) => v.id === item.viewId
       );
       if (!view) return;
+      const collapsed = view.region === "left-sidebar" ? sidebarCollapsed : rightPanelCollapsed;
+      // An exclusive view is a toggle: a second click puts the region's
+      // normal views back.
+      if (view.exclusive && !collapsed && getFocusedView(view.region) === view.id) {
+        clearFocusedView(view.region);
+        return;
+      }
       if (view.region === "left-sidebar") setSidebarCollapsed(false);
       else setRightPanelCollapsed(false);
       focusView(view.region, view.id);
     },
-    [openTab]
+    [openTab, sidebarCollapsed, rightPanelCollapsed]
+  );
+
+  // A ribbon item reads as pressed while the view it opens is the focused
+  // one in a visible panel.
+  const isRibbonItemActive = useCallback(
+    (item: RibbonItemContribution) => {
+      if (!item.viewId) return false;
+      return (
+        (!sidebarCollapsed && focusedLeftView === item.viewId) ||
+        (!rightPanelCollapsed && focusedRightView === item.viewId)
+      );
+    },
+    [sidebarCollapsed, rightPanelCollapsed, focusedLeftView, focusedRightView]
   );
 
   async function handlePickFolder() {
@@ -813,34 +849,6 @@ export default function App() {
     pluginRegistry.registerCommand("view.openSettings", () => openTab(SETTINGS_TAB_ID));
     pluginRegistry.registerCommand("view.openTasks", () => openTab(TASKS_TAB_ID));
     pluginRegistry.registerCommand("stack.newTask", () => setDialog({ kind: "new-task" }));
-    pluginRegistry.registerCommand("sync.configure", () => {
-      if (activeNotesFolder) setDialog({ kind: "github-sync", notesFolder: activeNotesFolder });
-    });
-    pluginRegistry.registerCommand("sync.now", async () => {
-      if (!activeNotesFolder) return;
-      const cfg = await window.memoryStack.getSyncConfig();
-      if (!Object.keys(cfg).some((n) => n.toLowerCase() === activeNotesFolder.name.toLowerCase())) {
-        setDialog({ kind: "github-sync", notesFolder: activeNotesFolder });
-        return;
-      }
-      try {
-        window.alert((await window.memoryStack.syncNow(activeNotesFolder.name)).message);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : String(err));
-      }
-    });
-    pluginRegistry.registerCommand("sync.fetchAll", async () => {
-      try {
-        const results = await window.memoryStack.syncFetchAll();
-        window.alert(
-          results.length === 0
-            ? "No notes folders are linked to GitHub yet."
-            : results.map((r) => `${r.name}: ${r.result.message}`).join("\n")
-        );
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : String(err));
-      }
-    });
     pluginRegistry.registerCommand("properties.manageSchema", (schemaRoot: string) =>
       setDialog({ kind: "manage-properties", root: schemaRoot })
     );
@@ -887,10 +895,6 @@ export default function App() {
               const currentlyAllowed = cliAccessFolders.some((n) => n.toLowerCase() === name.toLowerCase());
               setCliAccess(name, !currentlyAllowed);
             },
-          },
-          {
-            label: "Sync to GitHub...",
-            onClick: () => setDialog({ kind: "github-sync", notesFolder: notesFolderContextMenu.notesFolder }),
           },
           {
             label: "Clean up unused attachments",
@@ -980,9 +984,6 @@ export default function App() {
               onCancel={() => setDialog(null)}
             />
           )}
-          {dialog?.kind === "github-sync" && (
-            <GitHubSyncDialog notesFolder={dialog.notesFolder} onClose={() => setDialog(null)} />
-          )}
           {notesFolderContextMenu && notesFolderContextMenuItems && (
             <ContextMenu
               x={notesFolderContextMenu.x}
@@ -1033,6 +1034,7 @@ export default function App() {
             regionId={regionId("left-ribbon")}
             ribbonItems={pluginRegistry.getRibbonItems()}
             onOpenRibbonItem={openRibbonItem}
+            isRibbonItemActive={isRibbonItemActive}
           />
         )}
 
@@ -1230,9 +1232,6 @@ export default function App() {
             }}
             onCancel={() => setDialog(null)}
           />
-        )}
-        {dialog?.kind === "github-sync" && (
-          <GitHubSyncDialog notesFolder={dialog.notesFolder} onClose={() => setDialog(null)} />
         )}
         {dialog?.kind === "export-notes-folder" && (
           <ExportDialog

@@ -47,10 +47,6 @@ function notesFolderMenus(hasActiveNote: boolean): { id: string; label: string; 
         },
         { separator: true },
         { label: "Export…", onClick: () => pluginRegistry.runCommand("stack.exportNotesFolder") },
-        { separator: true },
-        { label: "Sync to GitHub…", onClick: () => pluginRegistry.runCommand("sync.configure") },
-        { label: "Sync Now", onClick: () => pluginRegistry.runCommand("sync.now") },
-        { label: "Fetch Latest (All Folders)", onClick: () => pluginRegistry.runCommand("sync.fetchAll") },
       ],
     },
     {

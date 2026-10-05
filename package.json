@@ -75,6 +75,12 @@
       "dist",
       "dist-electron"
     ],
+    "extraResources": [
+      {
+        "from": "plugins",
+        "to": "plugins"
+      }
+    ],
     "directories": {
       "output": "release",
       "buildResources": "build"

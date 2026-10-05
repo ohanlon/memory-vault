@@ -16,8 +16,8 @@ function makeStatusItemComponent(manifest: PluginManifest) {
   };
 }
 
-// Discovers third-party plugins declared under the current notes folder's
-// .cairn/plugins folder (electron/pluginRegistry.ts) and registers a
+// Discovers the enabled third-party plugins in the global plugins directory
+// (electron/pluginRegistry.ts) and registers a
 // status-bar badge plus any declared sidebar views for each one, through
 // the same PluginRegistry API the built-in app uses (see plugins/core.tsx).
 // A plugin's view renders as a sandboxed <iframe> (PluginViewFrame) pointed
@@ -43,6 +43,7 @@ export async function loadThirdPartyPlugins(): Promise<void> {
           id: `plugin:${manifest.id}:${view.id}`,
           region: view.region,
           title: view.title,
+          exclusive: view.exclusive,
           component: makePluginViewComponent(manifest.id, manifest.name, view.entry),
         },
         manifest.id
@@ -66,6 +67,7 @@ export async function loadThirdPartyPlugins(): Promise<void> {
           id: `plugin:${manifest.id}:${item.id}`,
           title: item.title,
           icon: item.icon,
+          iconSvg: item.iconSvg,
           viewId: item.opensView ? `plugin:${manifest.id}:${item.opensView}` : undefined,
           tabId: item.opensTab ? `@plugin:${manifest.id}:${item.opensTab}` : undefined,
         },
@@ -82,4 +84,5 @@ export async function loadThirdPartyPlugins(): Promise<void> {
     }
     registeredPluginIds.push(manifest.id);
   }
+  pluginRegistry.notifyChanged();
 }

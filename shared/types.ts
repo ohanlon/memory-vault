@@ -225,7 +225,7 @@ export interface DailyNoteResult {
 // the current notes folder is default-granted (see electron/pluginPermissions.ts)
 // and therefore isn't a declarable permission here — only capabilities that
 // reach outside the current notes folder need an explicit grant.
-export type PluginPermission = "network" | "shell:openExternal";
+export type PluginPermission = "network" | "shell:openExternal" | "git-sync";
 
 /** A sidebar panel a plugin contributes, rendered via a sandboxed iframe (see src/plugins/PluginViewFrame.tsx). */
 export interface PluginView {
@@ -234,6 +234,8 @@ export interface PluginView {
   region: "left-sidebar" | "right-sidebar";
   /** HTML entry point for this view, relative to the plugin's own folder. */
   entry: string;
+  /** When true the view gets no tab of its own: it replaces the region's other views while focused (toggled from a ribbon item). */
+  exclusive?: boolean;
 }
 
 /** A full-pane tab this plugin contributes to the main editor area, rendered via a sandboxed iframe like a view. */
@@ -248,8 +250,12 @@ export interface PluginTab {
 export interface PluginRibbonItem {
   id: string;
   title: string;
-  /** SVG path `d` data, rendered at 16x16 with stroke="currentColor". */
-  icon: string;
+  /** SVG path `d` data, rendered at 16x16 with stroke="currentColor". Optional when `iconFile` is given. */
+  icon?: string;
+  /** An .svg file in the plugin's folder to use instead of `icon`; rendered at 16x16 with fill="currentColor". */
+  iconFile?: string;
+  /** Contents of `iconFile`, filled in by the host at discovery (never read from the manifest); sanitised again at render. */
+  iconSvg?: string;
   /** id of one of this plugin's declared `views` to reveal and focus when clicked. */
   opensView?: string;
   /** id of one of this plugin's declared `tabs` to open when clicked. */
@@ -284,6 +290,14 @@ export interface PluginManifest {
   ribbonItems?: PluginRibbonItem[];
   /** File-tree context-menu entries this plugin contributes, if any. */
   contextMenuItems?: PluginContextMenuItem[];
+}
+
+/** Install/enable state for a plugin, kept apart from its permission grants. */
+export type PluginStateFile = Record<string, { enabled: boolean }>;
+
+export interface PluginListEntry {
+  manifest: PluginManifest;
+  enabled: boolean;
 }
 
 export interface PluginPermissionState {
@@ -371,4 +385,10 @@ export interface SyncResult {
   committed: boolean;
   pushed: boolean;
   pulled: boolean;
+}
+
+export interface SyncChange {
+  /** Path relative to the notes folder, forward-slashed. */
+  path: string;
+  state: "added" | "modified" | "deleted";
 }

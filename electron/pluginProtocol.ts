@@ -98,6 +98,7 @@ export function buildSdkScript(): string {
   var pending = new Map();
   var counter = 0;
   var contextMenuListeners = [];
+  var changeListeners = [];
   window.addEventListener("message", function (event) {
     if (event.source !== window.parent) return;
     var data = event.data;
@@ -108,6 +109,10 @@ export function buildSdkScript(): string {
       pending.delete(data.id);
       if (data.error) entry.reject(new Error(data.error));
       else entry.resolve(data.result);
+      return;
+    }
+    if (data.kind === "push" && data.event === "change") {
+      changeListeners.forEach(function (cb) { cb(data.reason); });
       return;
     }
     if (data.kind === "push" && data.event === "contextMenuAction") {
@@ -131,6 +136,10 @@ export function buildSdkScript(): string {
     openExternal: function (url) { return call("openExternal", [url]); },
     setStatus: function (text) { return call("setStatus", [text]); },
     onContextMenuAction: function (cb) { contextMenuListeners.push(cb); },
+    // Calls a host capability by name (e.g. "sync.status"); needs the matching permission.
+    invoke: function (method) { return call("invoke", [method].concat(Array.prototype.slice.call(arguments, 1))); },
+    // cb(reason) fires, debounced, when the open folder or its files changed, or the app regained focus.
+    onChange: function (cb) { changeListeners.push(cb); },
   };
 })();
 `;

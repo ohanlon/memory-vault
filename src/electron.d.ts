@@ -3,9 +3,6 @@ import type {
   DailyNoteResult,
   FileChangeEvent,
   FileTemplate,
-  GithubDeviceCode,
-  GithubRepo,
-  GithubStatus,
   LayoutPrefs,
   Note,
   NoteHistoryEntry,
@@ -13,6 +10,7 @@ import type {
   NotesFolderIndex,
   NotesFolderReconciledEvent,
   NotesFolderReconcileStatusEvent,
+  PluginListEntry,
   PluginManifest,
   PluginPermission,
   PluginPermissionsFile,
@@ -20,8 +18,6 @@ import type {
   ReplaceAllResult,
   SearchFileResult,
   SearchOptions,
-  SyncConfigFile,
-  SyncResult,
   WorkspaceState,
 } from "@shared/types";
 import type { TaskStatus } from "@shared/tasks";
@@ -38,18 +34,6 @@ export interface MemoryStackAPI {
   renameNotesFolder(oldName: string, newName: string): Promise<NotesFolderEntry[]>;
   listCliAccess(): Promise<string[]>;
   setCliAccess(name: string, allowed: boolean): Promise<string[]>;
-  githubGetStatus(): Promise<GithubStatus>;
-  githubStartAuth(): Promise<GithubDeviceCode>;
-  githubAwaitAuth(): Promise<GithubStatus>;
-  githubCancelAuth(): Promise<boolean>;
-  githubDisconnect(): Promise<GithubStatus>;
-  githubListRepos(): Promise<GithubRepo[]>;
-  githubCreateRepo(name: string, isPrivate: boolean): Promise<GithubRepo>;
-  getSyncConfig(): Promise<SyncConfigFile>;
-  linkSync(folderName: string, repoFullName: string, branch: string): Promise<SyncConfigFile>;
-  unlinkSync(folderName: string): Promise<SyncConfigFile>;
-  syncNow(folderName: string, pullOnly?: boolean): Promise<SyncResult>;
-  syncFetchAll(): Promise<{ name: string; result: SyncResult }[]>;
   readNote(absPath: string): Promise<Note>;
   readRaw(absPath: string): Promise<string>;
   /** Resolves with the note's new mtime, so callers can tell their own save apart from a later external write. */
@@ -108,11 +92,14 @@ export interface MemoryStackAPI {
   /** Creates a task as its own note in the notes folder's tasks folder (reusing one the user made, else creating "Tasks"); resolves with the new note's path. */
   createTask(text: string, deadline: string | null, status: TaskStatus): Promise<string>;
   listPlugins(): Promise<PluginManifest[]>;
+  listAllPlugins(): Promise<PluginListEntry[]>;
+  setPluginEnabled(pluginId: string, enabled: boolean): Promise<boolean>;
   getPluginPermissions(): Promise<PluginPermissionsFile>;
   revokePluginPermission(pluginId: string, permission: PluginPermission): Promise<boolean>;
   pluginNotesRead(relativePath: string): Promise<string>;
   pluginNotesWrite(relativePath: string, body: string): Promise<boolean>;
   pluginRequestPermission(pluginId: string, pluginName: string, permission: PluginPermission): Promise<boolean>;
+  pluginInvoke(pluginId: string, method: string, args: unknown[]): Promise<unknown>;
   pluginOpenExternal(pluginId: string, url: string): Promise<boolean>;
   startSearch(options: SearchOptions): Promise<string>;
   cancelSearch(searchId: string): Promise<boolean>;

@@ -19,3 +19,14 @@ export interface ContextMenuActionPush {
   itemId: string;
   targetPath: string;
 }
+
+// Host -> plugin push telling a mounted view that what it may be showing is
+// stale: the active notes folder changed, files on disk changed, or the app
+// window regained focus (the watcher doesn't see non-markdown files). Debounced
+// by the host (PluginViewFrame.tsx); the plugin re-queries whatever it needs.
+export interface ChangePush {
+  channel: "cairn-plugin-rpc";
+  kind: "push";
+  event: "change";
+  reason: "folder" | "files" | "focus";
+}

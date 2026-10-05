@@ -26,6 +26,25 @@ class PluginRegistry {
   private ribbonItems: (RibbonItemContribution & { pluginId?: string })[] = [];
   private contextMenuItems: ContextMenuItemContribution[] = [];
   private commands = new Map<string, { handler: CommandHandler; pluginId?: string }>();
+  private listeners = new Set<() => void>();
+  private version = 0;
+
+  // Registrations themselves aren't reactive (they're read at render time).
+  // The loader calls notifyChanged() once after a batch so the app can
+  // re-render, e.g. after a plugin is enabled or disabled.
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  getVersion(): number {
+    return this.version;
+  }
+
+  notifyChanged(): void {
+    this.version++;
+    this.listeners.forEach((l) => l());
+  }
 
   registerRegion(region: SingleSlotRegion, component: ComponentType<any>, pluginId?: string): void {
     this.regions.set(region, component);

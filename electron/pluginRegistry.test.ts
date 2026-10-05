@@ -285,4 +285,79 @@ describe("discoverPlugins", () => {
     });
     expect(discoverPlugins(pluginsDir)).toEqual([]);
   });
+
+  it("accepts the git-sync permission and an exclusive view", () => {
+    writeManifest("sync", {
+      id: "sync",
+      name: "Sync",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: ["git-sync"],
+      views: [{ id: "v", title: "V", region: "left-sidebar", entry: "index.html", exclusive: true }],
+    });
+    const [plugin] = discoverPlugins(pluginsDir);
+    expect(plugin.manifest.permissions).toEqual(["git-sync"]);
+    expect(plugin.manifest.views?.[0].exclusive).toBe(true);
+  });
+
+  it("skips a view whose exclusive flag is not a boolean", () => {
+    writeManifest("bad-exclusive", {
+      id: "bad-exclusive",
+      name: "Bad",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      views: [{ id: "v", title: "V", region: "left-sidebar", entry: "index.html", exclusive: "yes" }],
+    });
+    expect(discoverPlugins(pluginsDir)).toEqual([]);
+  });
+
+  describe("ribbon iconFile", () => {
+    const base = {
+      id: "icons",
+      name: "Icons",
+      version: "1.0.0",
+      main: "index.html",
+      permissions: [],
+      views: [{ id: "v", title: "V", region: "left-sidebar", entry: "index.html" }],
+    };
+
+    it("inlines an .svg icon file as iconSvg", () => {
+      const dir = writeManifest("icons", {
+        ...base,
+        ribbonItems: [{ id: "r", title: "R", iconFile: "icon.svg", opensView: "v" }],
+      });
+      fs.writeFileSync(path.join(dir, "icon.svg"), "<svg/>");
+      const [plugin] = discoverPlugins(pluginsDir);
+      expect(plugin.manifest.ribbonItems?.[0].iconSvg).toBe("<svg/>");
+    });
+
+    it("ignores a manifest-supplied iconSvg and drops items left with no icon", () => {
+      writeManifest("icons", {
+        ...base,
+        ribbonItems: [{ id: "r", title: "R", iconFile: "missing.svg", iconSvg: "<svg onload=x/>", opensView: "v" }],
+      });
+      const [plugin] = discoverPlugins(pluginsDir);
+      expect(plugin.manifest.ribbonItems).toEqual([]);
+    });
+
+    it("refuses icon files outside the plugin folder and non-svg files", () => {
+      const dir = writeManifest("icons", {
+        ...base,
+        ribbonItems: [
+          { id: "a", title: "A", iconFile: "../outside.svg", icon: "M0 0", opensView: "v" },
+          { id: "b", title: "B", iconFile: "notes.txt", icon: "M0 0", opensView: "v" },
+        ],
+      });
+      fs.writeFileSync(path.join(path.dirname(dir), "outside.svg"), "<svg/>");
+      fs.writeFileSync(path.join(dir, "notes.txt"), "<svg/>");
+      const [plugin] = discoverPlugins(pluginsDir);
+      expect(plugin.manifest.ribbonItems?.every((r) => r.iconSvg === undefined)).toBe(true);
+    });
+
+    it("rejects a ribbon item with neither icon nor iconFile", () => {
+      writeManifest("icons", { ...base, ribbonItems: [{ id: "r", title: "R", opensView: "v" }] });
+      expect(discoverPlugins(pluginsDir)).toEqual([]);
+    });
+  });
 });

@@ -317,8 +317,43 @@ button, over its own IPC handlers (`notesFolder:getNoteHistory`/
 than the CLI/MCP path, since the GUI's open notes folder may not be
 CLI/MCP-access-granted.
 
+## Plugins
+
+A plugin is a folder under `<userData>/plugins/<id>/` with a `manifest.json`,
+served from its own `cairn-plugin://<id>/` origin and rendered in a sandboxed
+iframe (`src/plugins/PluginViewFrame.tsx`). Install state lives in
+`plugin-state.json` (a plugin with no entry is enabled; plugins bundled with
+the app are seeded as disabled by `electron/bundledPlugins.ts`), separately from
+`plugin-permissions.json`, so disabling never revokes a grant. Only enabled
+plugins are registered, served, or allowed to call host capabilities.
+
+Manifest additions beyond the basics:
+
+- `permissions` may include `git-sync` (see below) as well as `network` and
+  `shell:openExternal`. Each is requested by the plugin at runtime and
+  confirmed by the user in a native dialog.
+- A view with `"exclusive": true` has no tab: while focused it replaces the
+  region's other views (a ribbon item that opens it acts as a toggle).
+- A ribbon item may use `"iconFile": "icon.svg"` (inside the plugin folder,
+  16 KB max, sanitised before display and drawn with `currentColor`) instead of
+  the stroke-style path data in `"icon"`.
+
+SDK (`/__cairn_sdk.js`), in addition to `readNote`, `writeNote`,
+`requestPermission`, `openExternal` and `setStatus`:
+
+- `cairnPlugin.invoke(method, ...args)` calls a host capability by name.
+- `cairnPlugin.onChange(cb)` fires (debounced) with `"folder"`, `"files"` or
+  `"focus"` when the open notes folder, its files, or the window focus changed.
+
+`git-sync` unlocks the capability in `electron/gitSyncCapability.ts` (`auth.*`,
+`repo.*`, `folder.get`, `link.*`, `sync.status|pull|commitPush|fetchAll`). It
+only ever acts on the active notes folder, validates selected files against the
+current change list, and never returns the GitHub token. Because an iframe
+can't run Node, git and the OAuth token stay in the main process; the bundled
+GitHub Sync plugin is its only client.
+
 ## Out of scope
 
-Cloud sync — notes stay local; syncing them is left to whatever the user
-layers on top (a synced folder, git, etc.). A plugin API exists for
-extending the app itself (see `src/plugins/`).
+Built-in cloud sync — notes stay local. Optional GitHub sync is provided by
+the bundled GitHub Sync plugin (see Plugins above); anything else is left to
+whatever the user layers on top (a synced folder, git, etc.).

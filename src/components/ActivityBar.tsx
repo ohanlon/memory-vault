@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import type { RibbonItemContribution } from "../plugins/types";
+import { sanitizePluginIcon } from "../plugins/sanitizeIcon";
 
 interface Props {
   onNewNote: (x: number, y: number) => void;
@@ -12,15 +14,20 @@ interface Props {
   /** Left-ribbon launcher icons contributed by plugins, if any. */
   ribbonItems?: RibbonItemContribution[];
   onOpenRibbonItem?: (item: RibbonItemContribution) => void;
+  /** Whether a plugin's ribbon item should read as pressed (its view is showing). */
+  isRibbonItemActive?: (item: RibbonItemContribution) => boolean;
 }
 
-// Renders an arbitrary, plugin-supplied SVG path (icon.icon is untrusted
-// path data, not a fixed icon from src/components/icons.tsx) at the same
-// 16x16/stroke-based size as the app's own menu icons.
-function RibbonIcon({ d }: { d: string }) {
+// Renders a plugin-supplied icon (untrusted, not a fixed icon from
+// src/components/icons.tsx) at the same 16x16 size as the app's own menu
+// icons: either a whole SVG (sanitised first) or just stroke-style path data.
+function RibbonIcon({ item }: { item: RibbonItemContribution }) {
+  const svg = useMemo(() => (item.iconSvg ? sanitizePluginIcon(item.iconSvg) : null), [item.iconSvg]);
+  if (svg) return <span style={{ display: "flex" }} dangerouslySetInnerHTML={{ __html: svg }} />;
+  if (!item.icon) return null;
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
+      <path d={item.icon} />
     </svg>
   );
 }
@@ -35,6 +42,7 @@ export function ActivityBar({
   regionId,
   ribbonItems = [],
   onOpenRibbonItem,
+  isRibbonItemActive,
 }: Props) {
   return (
     <nav className="activity-bar" data-region-id={regionId}>
@@ -62,11 +70,12 @@ export function ActivityBar({
       {ribbonItems.map((item) => (
         <button
           key={item.id}
-          className="activity-bar-btn"
+          className={`activity-bar-btn${isRibbonItemActive?.(item) ? " active" : ""}`}
+          aria-pressed={isRibbonItemActive?.(item) ?? false}
           onClick={() => onOpenRibbonItem?.(item)}
           title={item.title}
         >
-          <RibbonIcon d={item.icon} />
+          <RibbonIcon item={item} />
         </button>
       ))}
       <button className="activity-bar-btn activity-bar-btn-bottom" onClick={onOpenHelp} title="Keyboard shortcuts & help">

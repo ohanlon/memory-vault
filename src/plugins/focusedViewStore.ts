@@ -13,6 +13,13 @@ export function focusView(region: string, viewId: string): void {
   listeners.forEach((l) => l());
 }
 
+// Forgets the focus so the region falls back to its default (first) view -
+// what toggling an exclusive view off does.
+export function clearFocusedView(region: string): void {
+  focused.delete(region);
+  listeners.forEach((l) => l());
+}
+
 export function getFocusedView(region: string): string | undefined {
   return focused.get(region);
 }

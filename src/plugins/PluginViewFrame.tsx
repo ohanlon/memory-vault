@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import { pluginOrigin } from "@shared/pluginProtocol";
+import type { ChangePush } from "@shared/pluginProtocol";
 import type { PluginPermission } from "@shared/types";
 import { setPluginStatus } from "./pluginStatusStore";
 import { registerPluginFrame, unregisterPluginFrame } from "./pluginFrameRegistry";
+import { subscribeActiveFolder } from "./activeFolderStore";
 
 interface Props {
   pluginId: string;
@@ -14,7 +16,7 @@ interface RpcRequest {
   channel: "cairn-plugin-rpc";
   kind: "request";
   id: number;
-  method: "readNote" | "writeNote" | "requestPermission" | "openExternal" | "setStatus";
+  method: "readNote" | "writeNote" | "requestPermission" | "openExternal" | "setStatus" | "invoke";
   args: unknown[];
 }
 
@@ -59,6 +61,10 @@ export function PluginViewFrame({ pluginId, pluginName, entry }: Props) {
             case "setStatus":
               setPluginStatus(pluginId, args[0] as string);
               return true;
+            case "invoke":
+              // Main re-checks that this plugin is enabled and holds "git-sync"; the
+              // plugin id comes from this component's props, never from the payload.
+              return window.memoryStack.pluginInvoke(pluginId, args[0] as string, args.slice(1));
             default:
               throw new Error(`Unknown plugin RPC method "${String(method)}"`);
           }
@@ -70,6 +76,29 @@ export function PluginViewFrame({ pluginId, pluginName, entry }: Props) {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [pluginId, pluginName]);
+
+  // Tells the iframe when what it shows may be stale (see ChangePush). Bursts
+  // of file events collapse into one push.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const push = (reason: ChangePush["reason"]) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const message: ChangePush = { channel: "cairn-plugin-rpc", kind: "push", event: "change", reason };
+        iframeRef.current?.contentWindow?.postMessage(message, "*");
+      }, 300);
+    };
+    const offFiles = window.memoryStack.onFileChanged(() => push("files"));
+    const offFolder = subscribeActiveFolder(() => push("folder"));
+    const onFocus = () => push("focus");
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearTimeout(timer);
+      offFiles();
+      offFolder();
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
 
   // Tracks this iframe in pluginFrameRegistry while it's mounted, so a
   // file-tree context-menu action (see FileTree.tsx) has a live window to

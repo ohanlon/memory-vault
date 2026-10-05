@@ -515,6 +515,16 @@ body {
   color: var(--text-strong);
 }
 
+.activity-bar-btn.active {
+  background: var(--bg-surface);
+  border-color: var(--border-control);
+  color: var(--text-strong);
+}
+
+.activity-bar-btn svg {
+  display: block;
+}
+
 .activity-bar-btn-bottom {
   margin-top: auto;
 }

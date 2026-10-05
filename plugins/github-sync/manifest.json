@@ -1,0 +1,24 @@
+{
+  "id": "github-sync",
+  "name": "GitHub Sync",
+  "version": "1.0.0",
+  "main": "index.html",
+  "permissions": ["git-sync"],
+  "views": [
+    {
+      "id": "sync",
+      "title": "Sync",
+      "region": "left-sidebar",
+      "entry": "index.html",
+      "exclusive": true
+    }
+  ],
+  "ribbonItems": [
+    {
+      "id": "toggle",
+      "title": "GitHub sync",
+      "iconFile": "icon.svg",
+      "opensView": "sync"
+    }
+  ]
+}

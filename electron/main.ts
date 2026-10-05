@@ -45,10 +45,8 @@ import { openOrCreateDailyNote } from "./dailyNote";
 import { createTaskNote } from "./tasks";
 import type { TaskStatus } from "../shared/tasks";
 import { isAllowedExternalUrl, isAllowedForPlugin } from "./domainPolicy";
-import { deleteToken, pollForToken, readToken, startDeviceFlow, writeToken, type DeviceFlowStart } from "./githubAuth";
-import { createRepo, getUser, listRepos } from "./githubApi";
-import { syncFolder } from "./gitSync";
-import { readSyncConfigFile, removeSyncLink, renameSyncLink, setSyncLink, writeSyncConfigFile } from "./syncConfig";
+import { createGitSyncCapability } from "./gitSyncCapability";
+import { readSyncConfigFile, removeSyncLink, renameSyncLink, writeSyncConfigFile } from "./syncConfig";
 import { GITHUB_CLIENT_ID } from "../shared/githubConfig";
 import { PLUGIN_SCHEME, contentTypeFor, handlePluginProtocol, registerPluginScheme } from "./pluginProtocol";
 import { handleAttachmentProtocol, registerAttachmentScheme, resolveAttachmentFilePath } from "./attachmentProtocol";
@@ -56,6 +54,8 @@ import { saveTextFile, savePdfFromHtml, type SaveDialogFilter } from "./exportFi
 import { transcribeAudio } from "./voiceTranscription";
 import { deleteAttachments, findOrphanedAttachments, saveAttachment } from "./attachments";
 import { discoverPlugins } from "./pluginRegistry";
+import { isPluginEnabled, readPluginStateFile, setPluginEnabled, writePluginStateFile } from "./pluginState";
+import { seedBundledPlugins } from "./bundledPlugins";
 import {
   grantPermission,
   hasPermission,
@@ -68,10 +68,10 @@ import type {
   AppSettings,
   LayoutPrefs,
   Note,
+  PluginListEntry,
   PluginPermission,
   PropertyDef,
   SearchOptions,
-  SyncResult,
   WorkspaceState,
 } from "../shared/types";
 
@@ -179,6 +179,25 @@ function pluginPermissionsFilePath(): string {
 
 function pluginsDirPath(): string {
   return path.join(app.getPath("userData"), "plugins");
+}
+
+function pluginStateFilePath(): string {
+  return path.join(app.getPath("userData"), "plugin-state.json");
+}
+
+// Plugins shipped inside the app, copied into the global plugins directory on
+// startup (see bundledPlugins.ts).
+function bundledPluginsDirPath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "plugins")
+    : path.join(__dirname, "..", "plugins");
+}
+
+// Only enabled plugins are ever live: they're what the renderer registers,
+// what the cairn-plugin:// protocol serves, and what may call host capabilities.
+function enabledPlugins() {
+  const state = readPluginStateFile(pluginStateFilePath());
+  return discoverPlugins(pluginsDirPath()).filter((p) => isPluginEnabled(state, p.manifest.id));
 }
 
 function createWindow() {
@@ -325,142 +344,32 @@ ipcMain.handle("notesFolders:rename", async (_event, oldName: string, newName: s
   return updated;
 });
 
-// --- GitHub sync (see githubAuth.ts, githubApi.ts, gitSync.ts) ---------
-// The token never leaves the main process; the renderer only sees status.
-let pendingAuth: { start: DeviceFlowStart; signal: { aborted: boolean } } | null = null;
-
-function requireGithubToken(): string {
-  const token = readToken(githubTokenFilePath(), safeStorage);
-  if (!token) throw new Error("Not connected to GitHub. Connect in Settings first.");
-  return token;
-}
-
-ipcMain.handle("github:getStatus", async () => {
-  const token = readToken(githubTokenFilePath(), safeStorage);
-  if (!token) return { connected: false, login: null };
-  try {
-    return { connected: true, login: (await getUser(token)).login };
-  } catch {
-    return { connected: true, login: null }; // offline or token revoked; the next real call surfaces it
-  }
+// --- GitHub sync plugin capability (see gitSyncCapability.ts) -----------
+// The "github-sync" plugin runs in a sandboxed iframe and reaches git and the
+// OAuth token only through plugin:invoke, which enforces enabled + permission.
+const gitSyncCapability = createGitSyncCapability({
+  clientId: GITHUB_CLIENT_ID,
+  get tokenFile() {
+    return githubTokenFilePath();
+  },
+  get syncConfigFile() {
+    return syncConfigFilePath();
+  },
+  crypto: safeStorage,
+  isPluginEnabled: (id) => isPluginEnabled(readPluginStateFile(pluginStateFilePath()), id),
+  hasGitSyncPermission: (id) => hasPermission(readPluginPermissionsFile(pluginPermissionsFilePath()), id, "git-sync"),
+  activeFolder: () => {
+    if (!activeRoot) return null;
+    const entry = readNotesFoldersFile(notesFoldersFilePath()).find((f) => f.root === activeRoot);
+    return entry ? { name: entry.name, root: entry.root } : null;
+  },
+  registeredFolders: () => readNotesFoldersFile(notesFoldersFilePath()).map((f) => ({ name: f.name, root: f.root })),
+  openExternal: (url) => shell.openExternal(url),
 });
 
-ipcMain.handle("github:startAuth", async () => {
-  if (pendingAuth) pendingAuth.signal.aborted = true;
-  const start = await startDeviceFlow(GITHUB_CLIENT_ID);
-  pendingAuth = { start, signal: { aborted: false } };
-  return { userCode: start.userCode, verificationUri: start.verificationUri };
-});
-
-// Long-running: resolves once the user has authorised in the browser.
-ipcMain.handle("github:awaitAuth", async () => {
-  const flow = pendingAuth;
-  if (!flow) throw new Error("Sign-in was not started");
-  try {
-    const token = await pollForToken(GITHUB_CLIENT_ID, flow.start, { signal: flow.signal });
-    writeToken(githubTokenFilePath(), token, safeStorage);
-    return { connected: true, login: (await getUser(token)).login };
-  } finally {
-    if (pendingAuth === flow) pendingAuth = null;
-  }
-});
-
-ipcMain.handle("github:cancelAuth", () => {
-  if (pendingAuth) pendingAuth.signal.aborted = true;
-  return true;
-});
-
-ipcMain.handle("github:disconnect", () => {
-  deleteToken(githubTokenFilePath());
-  return { connected: false, login: null };
-});
-
-ipcMain.handle("github:listRepos", async () => listRepos(requireGithubToken()));
-
-ipcMain.handle("github:createRepo", async (_event, name: string, isPrivate: boolean) =>
-  createRepo(requireGithubToken(), name, isPrivate)
+ipcMain.handle("plugin:invoke", async (_event, pluginId: string, method: string, args: unknown[]) =>
+  gitSyncCapability.dispatch(pluginId, method, Array.isArray(args) ? args : [])
 );
-
-ipcMain.handle("sync:getConfig", async () => readSyncConfigFile(syncConfigFilePath()));
-
-ipcMain.handle("sync:link", async (_event, folderName: string, repoFullName: string, branch: string) => {
-  const updated = setSyncLink(readSyncConfigFile(syncConfigFilePath()), folderName, { repoFullName, branch });
-  writeSyncConfigFile(syncConfigFilePath(), updated);
-  return updated;
-});
-
-ipcMain.handle("sync:unlink", async (_event, folderName: string) => {
-  const updated = removeSyncLink(readSyncConfigFile(syncConfigFilePath()), folderName);
-  writeSyncConfigFile(syncConfigFilePath(), updated);
-  return updated;
-});
-
-const syncing = new Set<string>();
-
-async function runSync(folderName: string, pullOnly: boolean): Promise<SyncResult> {
-  const entry = readNotesFoldersFile(notesFoldersFilePath()).find(
-    (f) => f.name.toLowerCase() === folderName.toLowerCase()
-  );
-  const link = Object.entries(readSyncConfigFile(syncConfigFilePath())).find(
-    ([n]) => n.toLowerCase() === folderName.toLowerCase()
-  )?.[1];
-  if (!entry || !link) throw new Error("This folder is not linked to a GitHub repo");
-  if (syncing.has(entry.root)) throw new Error("A sync is already running for this folder");
-  syncing.add(entry.root);
-  try {
-    const token = requireGithubToken();
-    const { login } = await getUser(token);
-    const result = await syncFolder({
-      root: entry.root,
-      repoFullName: link.repoFullName,
-      branch: link.branch,
-      token,
-      author: { name: login, email: `${login}@users.noreply.github.com` },
-      pullOnly,
-    });
-    writeSyncConfigFile(
-      syncConfigFilePath(),
-      setSyncLink(readSyncConfigFile(syncConfigFilePath()), entry.name, {
-        ...link,
-        lastSyncAt: Date.now(),
-        lastStatus: result.status,
-        lastMessage: result.message,
-      })
-    );
-    // Pulled files reach the UI through the existing chokidar watcher.
-    return result;
-  } finally {
-    syncing.delete(entry.root);
-  }
-}
-
-ipcMain.handle("sync:now", (_event, folderName: string, pullOnly = false) => runSync(folderName, pullOnly));
-
-// Pull-only across every linked folder. One folder's failure doesn't stop
-// the rest.
-ipcMain.handle("sync:fetchAll", async () => {
-  const linked = readNotesFoldersFile(notesFoldersFilePath()).filter((f) =>
-    Object.keys(readSyncConfigFile(syncConfigFilePath())).some((n) => n.toLowerCase() === f.name.toLowerCase())
-  );
-  const out: { name: string; result: SyncResult }[] = [];
-  for (const f of linked) {
-    try {
-      out.push({ name: f.name, result: await runSync(f.name, true) });
-    } catch (err) {
-      out.push({
-        name: f.name,
-        result: {
-          status: "error",
-          message: err instanceof Error ? err.message : String(err),
-          committed: false,
-          pushed: false,
-          pulled: false,
-        },
-      });
-    }
-  }
-  return out;
-});
 
 // Loads (or serves from cache) a notes folder's notes and starts watching
 // it. A cached vault loads instantly; only a vault that's never been opened
@@ -546,7 +455,24 @@ ipcMain.handle("search:replaceAll", async (_event, options: SearchOptions, repla
 });
 
 ipcMain.handle("plugin:list", async () => {
-  return discoverPlugins(pluginsDirPath()).map((p) => p.manifest);
+  return enabledPlugins().map((p) => p.manifest);
+});
+
+// Every installed plugin with its on/off state, for the Settings manager.
+ipcMain.handle("plugin:listAll", async (): Promise<PluginListEntry[]> => {
+  const state = readPluginStateFile(pluginStateFilePath());
+  return discoverPlugins(pluginsDirPath()).map((p) => ({
+    manifest: p.manifest,
+    enabled: isPluginEnabled(state, p.manifest.id),
+  }));
+});
+
+ipcMain.handle("plugin:setEnabled", async (_event, pluginId: string, enabled: boolean) => {
+  if (!discoverPlugins(pluginsDirPath()).some((p) => p.manifest.id === pluginId)) {
+    throw new Error(`Unknown plugin "${pluginId}"`);
+  }
+  writePluginStateFile(pluginStateFilePath(), setPluginEnabled(readPluginStateFile(pluginStateFilePath()), pluginId, enabled));
+  return true;
 });
 
 ipcMain.handle("notesFolder:readNote", async (_event, absPath: string) => {
@@ -911,6 +837,13 @@ ipcMain.handle("plugin:notes:write", async (_event, relativePath: string, body: 
   return true;
 });
 
+const PERMISSION_DETAIL: Partial<Record<PluginPermission, string>> = {
+  network: "Lets the plugin make network requests to any site.",
+  "shell:openExternal": "Lets the plugin open links in your default browser.",
+  "git-sync":
+    "Lets the plugin sign in to GitHub on your behalf, list and create your repositories, read which files changed in your notes folder, and commit and push them. It never sees your GitHub token.",
+};
+
 ipcMain.handle("plugin:getPermissions", async () => {
   return readPluginPermissionsFile(pluginPermissionsFilePath());
 });
@@ -929,7 +862,7 @@ ipcMain.handle(
       cancelId: 0,
       title: "Plugin permission request",
       message: `"${pluginName}" wants to use "${permission}"`,
-      detail: "This grants the plugin capability beyond reading and writing notes in this notes folder.",
+      detail: PERMISSION_DETAIL[permission] ?? "This grants the plugin capability beyond reading and writing notes in this notes folder.",
     });
     const granted = result.response === 1;
     if (granted) {
@@ -982,8 +915,12 @@ registerPluginScheme();
 registerAttachmentScheme();
 app.whenReady().then(() => {
   migrateNotesFolderStorage();
+  writePluginStateFile(
+    pluginStateFilePath(),
+    seedBundledPlugins(bundledPluginsDirPath(), pluginsDirPath(), readPluginStateFile(pluginStateFilePath()))
+  );
   createWindow();
-  handlePluginProtocol(() => discoverPlugins(pluginsDirPath()), pluginPermissionsFilePath());
+  handlePluginProtocol(enabledPlugins, pluginPermissionsFilePath());
   handleAttachmentProtocol(() => activeRoot);
 
   // Explicit default (deny-by-default, same philosophy as cliAccess.ts/

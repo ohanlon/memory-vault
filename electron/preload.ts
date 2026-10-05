@@ -4,9 +4,6 @@ import type {
   DailyNoteResult,
   FileChangeEvent,
   FileTemplate,
-  GithubDeviceCode,
-  GithubRepo,
-  GithubStatus,
   LayoutPrefs,
   Note,
   NotesFolderEntry,
@@ -14,6 +11,7 @@ import type {
   NoteHistoryEntry,
   NotesFolderReconciledEvent,
   NotesFolderReconcileStatusEvent,
+  PluginListEntry,
   PluginManifest,
   PluginPermission,
   PluginPermissionsFile,
@@ -21,8 +19,6 @@ import type {
   ReplaceAllResult,
   SearchFileResult,
   SearchOptions,
-  SyncConfigFile,
-  SyncResult,
   WorkspaceState,
 } from "../shared/types";
 import type { TaskStatus } from "../shared/tasks";
@@ -53,21 +49,6 @@ const api = {
   listCliAccess: (): Promise<string[]> => ipcRenderer.invoke("cliAccess:list"),
   setCliAccess: (name: string, allowed: boolean): Promise<string[]> =>
     ipcRenderer.invoke("cliAccess:set", name, allowed),
-  githubGetStatus: (): Promise<GithubStatus> => ipcRenderer.invoke("github:getStatus"),
-  githubStartAuth: (): Promise<GithubDeviceCode> => ipcRenderer.invoke("github:startAuth"),
-  githubAwaitAuth: (): Promise<GithubStatus> => ipcRenderer.invoke("github:awaitAuth"),
-  githubCancelAuth: (): Promise<boolean> => ipcRenderer.invoke("github:cancelAuth"),
-  githubDisconnect: (): Promise<GithubStatus> => ipcRenderer.invoke("github:disconnect"),
-  githubListRepos: (): Promise<GithubRepo[]> => ipcRenderer.invoke("github:listRepos"),
-  githubCreateRepo: (name: string, isPrivate: boolean): Promise<GithubRepo> =>
-    ipcRenderer.invoke("github:createRepo", name, isPrivate),
-  getSyncConfig: (): Promise<SyncConfigFile> => ipcRenderer.invoke("sync:getConfig"),
-  linkSync: (folderName: string, repoFullName: string, branch: string): Promise<SyncConfigFile> =>
-    ipcRenderer.invoke("sync:link", folderName, repoFullName, branch),
-  unlinkSync: (folderName: string): Promise<SyncConfigFile> => ipcRenderer.invoke("sync:unlink", folderName),
-  syncNow: (folderName: string, pullOnly = false): Promise<SyncResult> =>
-    ipcRenderer.invoke("sync:now", folderName, pullOnly),
-  syncFetchAll: (): Promise<{ name: string; result: SyncResult }[]> => ipcRenderer.invoke("sync:fetchAll"),
   readNote: (absPath: string): Promise<Note> =>
     ipcRenderer.invoke("notesFolder:readNote", absPath),
   readRaw: (absPath: string): Promise<string> =>
@@ -153,6 +134,9 @@ const api = {
   createTask: (text: string, deadline: string | null, status: TaskStatus): Promise<string> =>
     ipcRenderer.invoke("tasks:create", text, deadline, status),
   listPlugins: (): Promise<PluginManifest[]> => ipcRenderer.invoke("plugin:list"),
+  listAllPlugins: (): Promise<PluginListEntry[]> => ipcRenderer.invoke("plugin:listAll"),
+  setPluginEnabled: (pluginId: string, enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke("plugin:setEnabled", pluginId, enabled),
   getPluginPermissions: (): Promise<PluginPermissionsFile> =>
     ipcRenderer.invoke("plugin:getPermissions"),
   revokePluginPermission: (pluginId: string, permission: PluginPermission): Promise<boolean> =>
@@ -166,6 +150,8 @@ const api = {
     ipcRenderer.invoke("plugin:notes:write", relativePath, body),
   pluginRequestPermission: (pluginId: string, pluginName: string, permission: PluginPermission): Promise<boolean> =>
     ipcRenderer.invoke("plugin:requestPermission", pluginId, pluginName, permission),
+  pluginInvoke: (pluginId: string, method: string, args: unknown[]): Promise<unknown> =>
+    ipcRenderer.invoke("plugin:invoke", pluginId, method, args),
   pluginOpenExternal: (pluginId: string, url: string): Promise<boolean> =>
     ipcRenderer.invoke("plugin:openExternal", pluginId, url),
   onFileChanged: (cb: (event: FileChangeEvent) => void): (() => void) => {

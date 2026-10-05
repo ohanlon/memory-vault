@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   AppSettings,
   EditorFontFamily,
+  PluginListEntry,
   PluginManifest,
   PluginPermissionsFile,
   TabFolderDisplay,
@@ -11,7 +12,7 @@ import { EDITOR_FONT_OPTIONS, MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE } from 
 import { CODE_LANGUAGES } from "@shared/codeLanguages";
 import { formatDateWithPattern, isValidDateFormat } from "@shared/dateFormat";
 import { CustomThemesModal } from "./CustomThemesModal";
-import { GitHubConnect } from "./GitHubConnect";
+import { loadThirdPartyPlugins } from "../plugins/loader";
 
 interface Props {
   settings: AppSettings;
@@ -34,15 +35,22 @@ const THEME_OPTIONS: { value: ThemeSetting; label: string }[] = [
 ];
 
 function PluginsSection() {
-  const [plugins, setPlugins] = useState<PluginManifest[]>([]);
+  const [entries, setEntries] = useState<PluginListEntry[]>([]);
   const [permissions, setPermissions] = useState<PluginPermissionsFile>({});
+  const plugins = entries.map((e) => e.manifest);
 
   const reload = () => {
-    window.memoryStack.listPlugins().then(setPlugins);
+    window.memoryStack.listAllPlugins().then(setEntries);
     window.memoryStack.getPluginPermissions().then(setPermissions);
   };
 
   useEffect(reload, []);
+
+  const setEnabled = async (pluginId: string, enabled: boolean) => {
+    await window.memoryStack.setPluginEnabled(pluginId, enabled);
+    await loadThirdPartyPlugins(); // re-register so ribbon icons/views appear or vanish now
+    reload();
+  };
 
   const revoke = async (pluginId: string, permission: PluginManifest["permissions"][number]) => {
     await window.memoryStack.revokePluginPermission(pluginId, permission);
@@ -53,15 +61,19 @@ function PluginsSection() {
     <>
       <h3>Plugins</h3>
       {plugins.length === 0 ? (
-        <p className="settings-empty">No plugins found in this notes folder's .cairn/plugins folder.</p>
+        <p className="settings-empty">No plugins installed.</p>
       ) : (
         <ul className="settings-plugin-list">
           {plugins.map((plugin) => {
             const granted = permissions[plugin.id]?.granted ?? [];
+            const enabled = entries.find((e) => e.manifest.id === plugin.id)?.enabled ?? false;
             return (
               <li key={plugin.id} className="settings-plugin-item">
                 <div className="settings-plugin-name">
                   {plugin.name} <span className="settings-plugin-version">v{plugin.version}</span>
+                  <button type="button" onClick={() => setEnabled(plugin.id, !enabled)}>
+                    {enabled ? "Disable" : "Enable"}
+                  </button>
                 </div>
                 {plugin.permissions.length === 0 ? (
                   <p className="settings-plugin-permissions">No gated permissions declared.</p>
@@ -334,9 +346,6 @@ export function SettingsView({ settings, onChange, canManageProperties, onManage
             Manage properties…
           </button>
         </div>
-
-        <h3>GitHub sync</h3>
-        <GitHubConnect />
 
         <PluginsSection />
       </section>

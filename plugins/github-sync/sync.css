@@ -1,0 +1,211 @@
+/* The view runs in its own origin, so it can't read the host's theme variables;
+   it follows the OS colour scheme instead. */
+:root {
+  --bg: #1e1f22;
+  --fg: #d7d9dd;
+  --muted: #8b8f98;
+  --border: #3a3c41;
+  --accent: #4f8cff;
+  --accent-fg: #fff;
+  --warn-bg: #3a2f12;
+  --warn-border: #c9971c;
+  --err: #f0706a;
+  --ok: #5cb85c;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f9;
+    --fg: #23262b;
+    --muted: #666b75;
+    --border: #d3d6db;
+    --warn-bg: #fff6dc;
+    --warn-border: #d9a41c;
+    --err: #c0392b;
+    --ok: #2e7d32;
+    color-scheme: light;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.4 system-ui, sans-serif;
+}
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.ops {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.repo {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+textarea,
+input[type="text"],
+select {
+  width: 100%;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 6px;
+  font: inherit;
+}
+textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+.row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row > .grow {
+  flex: 1;
+}
+button.link {
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  font-size: 12px;
+}
+.status {
+  font-size: 12px;
+}
+.status.error,
+.status.conflict {
+  color: var(--err);
+}
+.status.ok {
+  color: var(--ok);
+}
+.callout {
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.callout h2 {
+  margin: 0;
+  font-size: 13px;
+}
+.panel {
+  margin: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.code {
+  font: 600 18px ui-monospace, monospace;
+  letter-spacing: 2px;
+  text-align: center;
+  padding: 6px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  user-select: all;
+}
+.files-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+.files {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.files li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+}
+.files li:hover {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+.files label {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.files .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.badge {
+  flex: none;
+  width: 16px;
+  text-align: center;
+  font: 600 11px ui-monospace, monospace;
+}
+.badge.added {
+  color: var(--ok);
+}
+.badge.modified {
+  color: var(--accent);
+}
+.badge.deleted {
+  color: var(--err);
+}
+.empty {
+  padding: 16px 10px;
+  color: var(--muted);
+  text-align: center;
+}

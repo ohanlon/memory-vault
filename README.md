@@ -62,15 +62,22 @@ empty one to start fresh) — that becomes a notes folder.
 See [docs/reference.md](docs/reference.md) for exact link syntax, the graph
 model, and how notes folders are stored on disk.
 
-## GitHub sync
+## Plugins and GitHub sync
 
-Right-click a notes folder on the home screen and choose **Sync to GitHub...**
-to link it to a repository (create a new one, private by default, or pick an
-existing one). Sign in once under Settings > GitHub sync; Cairn uses GitHub's
-device flow and stores the token encrypted via the OS keychain
-(`safeStorage`). **Sync now** commits local changes, pulls fast-forward
-changes from GitHub, and pushes. If both sides have diverged, nothing is
-overwritten and the conflict is reported. Sync is manual for now.
+Plugins are installed globally (`<userData>/plugins/<id>/manifest.json`) and
+switched on or off under Settings > Plugins. Cairn ships one, **GitHub Sync**
+(`plugins/github-sync/`), installed but **disabled** by default.
+
+Enable it and a sync icon appears in the left-most bar. Clicking it swaps the
+sidebar for a view of the files that changed in the open notes folder: tick
+the ones to sync, optionally write a commit message, and choose **Sync
+selected** (commit and push just those files) or **Fetch latest** (pull). A
+folder that isn't linked to a repository is highlighted and offers to create
+a new repository (private by default) or use an existing one. Sign-in uses
+GitHub's device flow; the token is stored encrypted via the OS keychain
+(`safeStorage`) and never reaches the plugin. If GitHub and your folder have
+diverged, or GitHub changed a file you've also edited, nothing is overwritten
+and the conflict is reported. Sync is manual.
 
 Before this works in a build, register a GitHub OAuth App (device flow
 enabled) and set its client ID in `shared/githubConfig.ts`.
