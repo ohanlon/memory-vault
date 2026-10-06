@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import CodeMirror from "@uiw/react-codemirror";
+import CodeMirror, { ExternalChange } from "@uiw/react-codemirror";
+import { Transaction } from "@codemirror/state";
+import { isolateHistory } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { EditorView } from "@codemirror/view";
@@ -17,6 +19,8 @@ import { onboardingHints } from "../editor/onboardingHints";
 import { editorSearchKeymap, searchExtension } from "../editor/editorSearch";
 import { formatShortcutsKeymap } from "../editor/formatShortcuts";
 import { registerPendingSave, unregisterPendingSave } from "../editor/pendingSave";
+import { undoGroups } from "../editor/undoGroups";
+import { saveUndoState, takeUndoState, UNDO_STATE_FIELDS } from "../editor/undoStore";
 import { shortcutLabel } from "../platform";
 import {
   BlockIcon,
@@ -101,6 +105,10 @@ export function EditorPane({
   const viewRef = useRef<EditorView | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
+  // State twin of loadedPath: the editor is only mounted once the body for the
+  // current note has been read, so each note's CodeMirror starts from its own
+  // document (and its own undo stack — see undoStore.ts), never the previous note's.
+  const [readyPath, setReadyPath] = useState<string | null>(null);
   const contentRef = useRef(content);
   contentRef.current = content;
   // The mtime and content we last knew to match what's on disk (set on load
@@ -153,6 +161,7 @@ export function EditorPane({
     setConflict(false);
     if (!note) {
       setContent("");
+      setReadyPath(null);
       loadedPath.current = null;
       knownMtimeRef.current = null;
       return;
@@ -162,6 +171,7 @@ export function EditorPane({
       .then((body) => {
         if (!cancelled) {
           setContent(body);
+          setReadyPath(note.path);
           loadedPath.current = note.path;
           knownMtimeRef.current = note.mtimeMs;
           lastSyncedContentRef.current = body;
@@ -222,7 +232,14 @@ export function EditorPane({
       onSaved(path, contentRef.current);
     };
     registerPendingSave(path, flush);
-    return () => unregisterPendingSave(path, flush);
+    return () => {
+      unregisterPendingSave(path, flush);
+      // Switching notes (or closing the editor) must not leave the debounced
+      // save pending: the next note's typing would clear the shared timer and
+      // drop this note's last edits, and the undo state parked for this note
+      // is only reusable if it matches what ended up on disk.
+      void flush();
+    };
   }, [note?.path]);
 
   function handleChange(value: string) {
@@ -259,6 +276,16 @@ export function EditorPane({
     if (!note) return;
     const mtimeMs = await window.memoryStack.restoreNoteVersion(note.path, timestamp);
     const body = await window.memoryStack.readNoteBody(note.path);
+    // Applied as a single isolated, undoable step so Ctrl+Z can take the user
+    // back to what they had before restoring. (Silent external reloads are
+    // deliberately not undoable — see undoGroups.ts.)
+    const view = viewMode === "edit" ? viewRef.current : null;
+    if (view) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: body },
+        annotations: [ExternalChange.of(true), Transaction.addToHistory.of(true), isolateHistory.of("full")],
+      });
+    }
     setContent(body);
     knownMtimeRef.current = mtimeMs;
     lastSyncedContentRef.current = body;
@@ -324,6 +351,7 @@ export function EditorPane({
       editorSearchKeymap(),
       listIndentKeymap(),
       formatShortcutsKeymap(),
+      undoGroups(),
       fontTheme,
     ],
     [
@@ -341,6 +369,17 @@ export function EditorPane({
       enabledCmLanguages,
     ]
   );
+
+  // Re-read whenever the editor is (re)mounted for a note — first load, or
+  // returning from preview — so it resumes that note's own undo stack. Stale
+  // stacks (document no longer matches) are discarded by takeUndoState.
+  const editorReady = note !== null && readyPath === note.path && !previewMode;
+  const undoInitialState = useMemo(() => {
+    if (!editorReady || !note) return undefined;
+    const json = takeUndoState(note.path, contentRef.current);
+    return json ? { json, fields: UNDO_STATE_FIELDS } : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorReady, note?.path]);
 
   if (!note) {
     return <div className="editor-empty">Select or create a note to start editing.</div>;
@@ -416,24 +455,45 @@ export function EditorPane({
           onOpenExternal={onOpenExternal}
           enabledCodeLanguages={settings.enabledCodeLanguages}
         />
-      ) : (
+      ) : editorReady ? (
         <CodeMirror
+          key={note.path}
           value={content}
           height="100%"
           extensions={extensions}
           onChange={handleChange}
+          onUpdate={(update) => saveUndoState(note.path, update.state)}
+          initialState={undoInitialState}
           onCreateEditor={(view) => {
             viewRef.current = view;
           }}
           theme={theme}
-          basicSetup={{ lineNumbers: settings.showLineNumbers, autocompletion: false }}
+          basicSetup={{
+            lineNumbers: settings.showLineNumbers,
+            autocompletion: false,
+            history: false,
+            historyKeymap: false,
+          }}
         />
-      )}
+      ) : null}
       {contextMenuRequest && (
         <ContextMenu
           x={contextMenuRequest.x}
           y={contextMenuRequest.y}
           items={[
+            {
+              label: "Undo",
+              shortcut: shortcutLabel("Z"),
+              disabled: !contextMenuRequest.canUndo,
+              onClick: contextMenuRequest.undo,
+            },
+            {
+              label: "Redo",
+              shortcut: shortcutLabel("Y"),
+              disabled: !contextMenuRequest.canRedo,
+              onClick: contextMenuRequest.redo,
+            },
+            { separator: true as const },
             {
               label: "Find",
               shortcut: shortcutLabel("F"),

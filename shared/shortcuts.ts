@@ -12,6 +12,8 @@ export interface ShortcutEntry {
 // FileTree.tsx, App.tsx, TabBar.tsx) — this registry doesn't wire up
 // behavior, it just documents it for the help panel.
 export const SHORTCUTS: ShortcutEntry[] = [
+  { id: "undo", label: "Undo", keys: "Mod-Z", context: "Editor" },
+  { id: "redo", label: "Redo", keys: "Mod-Shift-Z / Mod-Y", context: "Editor" },
   { id: "bold", label: "Bold", keys: "Mod-B", context: "Editor" },
   { id: "italic", label: "Italic", keys: "Mod-I", context: "Editor" },
   { id: "underline", label: "Underline", keys: "Mod-U", context: "Editor" },

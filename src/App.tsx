@@ -21,6 +21,7 @@ import { loadThirdPartyPlugins } from "./plugins/loader";
 import { setActiveFolderName } from "./plugins/activeFolderStore";
 import { clearFocusedView, focusView, getFocusedView, subscribeFocusedView } from "./plugins/focusedViewStore";
 import { flushPendingSave } from "./editor/pendingSave";
+import { pruneUndoStates, renameUndoState } from "./editor/undoStore";
 import type { RibbonItemContribution } from "./plugins/types";
 import {
   addTab as addTabPath,
@@ -338,6 +339,11 @@ export default function App() {
         .filter((t): t is TabItem => t !== null),
     [openPaths, notes, templateNotesByPath, settings.tabFolderDisplay]
   );
+
+  // A note's undo history lives only while its tab is open.
+  useEffect(() => {
+    pruneUndoStates(new Set(activePath ? [...openPaths, activePath] : openPaths));
+  }, [openPaths, activePath]);
 
   // Drop tabs (and clear the active tab) for notes that no longer exist —
   // e.g. deleted or renamed externally, outside the app's own delete/rename flows.
@@ -684,7 +690,9 @@ export default function App() {
   async function handleMoveNoteToFolder(note: Note, folderPath: string) {
     if (!notesFolderRoot) return;
     const destDir = `${notesFolderRoot}/${folderPath}`;
+    await flushPendingSave(note.path);
     const newPath = await window.memoryStack.moveNote(note.path, destDir);
+    renameUndoState(note.path, newPath);
     setOpenPaths((paths) => renameTab(paths, note.path, newPath));
     if (activePath === note.path) setActivePath(newPath);
     await refresh({ showReindexing: true });
@@ -728,6 +736,7 @@ export default function App() {
       window.alert(err instanceof Error ? err.message : String(err));
       return;
     }
+    renameUndoState(note.path, newPath);
     setOpenPaths((paths) => renameTab(paths, note.path, newPath));
     // Update activePath before refreshing notes — otherwise the "drop tabs
     // for notes that no longer exist" effect (keyed on the notes list) sees

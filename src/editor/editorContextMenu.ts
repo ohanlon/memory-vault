@@ -1,4 +1,5 @@
 import { EditorView } from "@codemirror/view";
+import { redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
 import type { Note } from "@shared/types";
 import {
   EXTERNAL_SCHEME_RE,
@@ -48,6 +49,11 @@ export interface EditorContextMenuRequest {
   hasSelection: boolean;
   /** False when the clipboard has no text — Paste would have nothing to insert. */
   canPaste: boolean;
+  /** False when this note has nothing left to undo/redo (its own history only — see undoStore.ts). */
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
   /** True only when the clipboard carries HTML — there's nothing to convert otherwise. */
   canPasteFormatted: boolean;
   openFind: () => void;
@@ -451,6 +457,16 @@ export function editorContextMenu(
           y: event.clientY,
           hasSelection: from !== to,
           canPaste,
+          canUndo: undoDepth(view.state) > 0,
+          canRedo: redoDepth(view.state) > 0,
+          undo: () => {
+            undo(view);
+            view.focus();
+          },
+          redo: () => {
+            redo(view);
+            view.focus();
+          },
           canPasteFormatted: !!clipboardHtml,
           openFind: () => openSearchPanelForFind(view),
           openFindReplace: () => openSearchPanelForReplace(view),
