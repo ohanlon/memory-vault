@@ -1,0 +1,3 @@
+npx vite build
+cd csharp
+dotnet run --project src/Cairn.Host
