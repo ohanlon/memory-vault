@@ -55,7 +55,7 @@ npx vite-node -c vitest.config.ts csharp/scripts/generate-shared-data.ts
 | CLI (`electron/cli.ts`) and MCP server | Not started. |
 | PDF export (`export:savePdf`) | Returns an error; HTML/Markdown export work. |
 | Voice-note transcription | Returns an error. |
-| Window chrome | Native title bar instead of the custom hidden title bar + overlay buttons; no custom system menu. |
+| Window chrome | Drawn by the page on Windows/Linux (drag, resize grips, min/max/close, look-alike system menu). macOS keeps its native frame and traffic lights. Set `CAIRN_NATIVE_CHROME=1` to force the OS frame. Resize/drag are untested on Linux. |
 | Plugin network gating | CSP is applied via `<meta>`; Electron's per-request `webRequest` check is not. |
 | Packaging/installers | Only `dotnet publish`. |
 

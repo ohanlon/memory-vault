@@ -24,13 +24,13 @@ internal sealed class SchemeHandlers
 
     private readonly HostLog _log;
 
-    public SchemeHandlers(string rendererDir, IpcRouter router, CairnPaths paths, HostLog log)
+    public SchemeHandlers(string rendererDir, IpcRouter router, CairnPaths paths, HostLog log, bool chromeless)
     {
         _log = log;
         _rendererDir = Path.GetFullPath(rendererDir);
         _router = router;
         _paths = paths;
-        _bridgeTag = $"<script>{LoadEmbedded("bridge.js")}</script>";
+        _bridgeTag = $"<script>window.__cairnHost={{chromeless:{(chromeless ? "true" : "false")}}};</script><script>{LoadEmbedded("bridge.js")}</script>";
     }
 
     private static string LoadEmbedded(string name)

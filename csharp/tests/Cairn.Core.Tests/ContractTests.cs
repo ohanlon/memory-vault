@@ -40,6 +40,7 @@ public class ContractTests
         public Task<bool> ConfirmPluginPermissionAsync(string p, string m, string d) => Task.FromResult(false);
         public void SetTitleBarOverlay(string c, string s) { }
         public Task ShowSystemMenuAsync(double x, double y) => Task.CompletedTask;
+        public Task<bool> WindowActionAsync(string action) => Task.FromResult(false);
     }
 
     [Fact]

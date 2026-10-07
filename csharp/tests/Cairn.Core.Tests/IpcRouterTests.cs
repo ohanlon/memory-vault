@@ -20,6 +20,7 @@ internal sealed class FakePlatform : IPlatformServices
     public Task<bool> ConfirmPluginPermissionAsync(string pluginName, string permission, string detail) => Task.FromResult(AllowPermission);
     public void SetTitleBarOverlay(string color, string symbolColor) { }
     public Task ShowSystemMenuAsync(double x, double y) => Task.CompletedTask;
+    public Task<bool> WindowActionAsync(string action) => Task.FromResult(false);
 }
 
 public sealed class IpcRouterTests : IDisposable

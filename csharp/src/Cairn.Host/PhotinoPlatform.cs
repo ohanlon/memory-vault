@@ -82,8 +82,40 @@ internal sealed class PhotinoPlatform : IPlatformServices
         return result == PhotinoDialogResult.Yes;
     }
 
-    // The window keeps its native frame, so there is no overlay to recolor and no custom system menu to show.
+    // The window controls are drawn by the page itself (bridge.js), which also recolors them and shows its own
+    // system menu, so neither needs the native window.
     public void SetTitleBarOverlay(string color, string symbolColor) { }
 
     public Task ShowSystemMenuAsync(double x, double y) => Task.CompletedTask;
+
+    public Task<bool> WindowActionAsync(string action)
+    {
+        var window = _window();
+        var maximized = PhotinoApplication.Current.Dispatcher.Invoke(() =>
+        {
+            switch (action)
+            {
+                case "minimize":
+                    window.WindowState = PhotinoWindowState.Minimized;
+                    break;
+                case "toggleMaximize":
+                    window.WindowState = window.WindowState == PhotinoWindowState.Maximized
+                        ? PhotinoWindowState.Normal
+                        : PhotinoWindowState.Maximized;
+                    break;
+                case "close":
+                    window.Close();
+                    break;
+                case "drag":
+                    window.BeginWindowDrag();
+                    break;
+                case var a when a.StartsWith("resize:", StringComparison.Ordinal)
+                    && Enum.TryParse<PhotinoWindowEdge>(a["resize:".Length..], out var edge):
+                    window.BeginWindowResize(edge);
+                    break;
+            }
+            return window.WindowState == PhotinoWindowState.Maximized;
+        });
+        return Task.FromResult(maximized);
+    }
 }

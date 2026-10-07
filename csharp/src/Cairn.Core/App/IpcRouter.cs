@@ -488,6 +488,9 @@ public sealed class IpcRouter : IDisposable
             return JsonValue.Create(true);
         });
 
+        // Not part of the Electron API: the C# host draws its own window controls and routes them here.
+        On("host:window", async args => JsonValue.Create(await _platform.WindowActionAsync(Str(args, 0))));
+
         On("window:showSystemMenu", async args =>
         {
             Js.IsNumber(Arg(args, 0), out var x);

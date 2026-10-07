@@ -35,7 +35,11 @@ internal static class Program
         _router = new IpcRouter(paths, platform, PushEvent);
         _router.Initialize();
 
-        var assets = new SchemeHandlers(rendererDir, _router, paths, _log);
+        // The renderer draws its own title bar, so the OS frame is dropped where the page can stand in for it:
+        // Windows and Linux (Electron's titleBarOverlay does the same). macOS keeps its native traffic lights.
+        var chromeless = (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
+            && Environment.GetEnvironmentVariable("CAIRN_NATIVE_CHROME") != "1";
+        var assets = new SchemeHandlers(rendererDir, _router, paths, _log, chromeless);
 
         var iconPath = Path.Combine(rendererDir, "icon.png");
         var window = new PhotinoWindow()
@@ -47,11 +51,14 @@ internal static class Program
             .Center()
             .SetDevToolsEnabled(Environment.GetEnvironmentVariable("CAIRN_DEVTOOLS") == "1")
             .SetContextMenuEnabled(true)
+            .SetChromeless(chromeless)
             .SetUserDataFolder(Path.Combine(userData, "webview"))
             .RegisterCustomSchemeHandler(AppScheme, assets.HandleApp)
             .RegisterCustomSchemeHandler(Cairn.Core.Storage.Attachments.Scheme, assets.HandleAttachment)
             .RegisterCustomSchemeHandler(SchemeHandlers.PluginScheme, assets.HandlePlugin)
-            .RegisterWebMessageReceivedHandler((_, e) => OnWebMessage(e.Message));
+            .RegisterWebMessageReceivedHandler((_, e) => OnWebMessage(e.Message))
+            .RegisterStateChangedHandler((_, e) =>
+                PushEvent("host:windowState", new JsonObject { ["maximized"] = e.NewState == PhotinoWindowState.Maximized }));
 
         // Lets a test harness attach over the Chrome DevTools protocol (Windows WebView2 / Chromium).
         if (Environment.GetEnvironmentVariable("CAIRN_REMOTE_DEBUG_PORT") is { Length: > 0 } port)

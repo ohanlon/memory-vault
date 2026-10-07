@@ -32,6 +32,12 @@ public interface IPlatformServices
     /// <summary>Pops up the minimize/maximize/close menu at window coordinates.</summary>
     Task ShowSystemMenuAsync(double x, double y);
 
+    /// <summary>
+    /// A window-chrome action from the page-drawn title bar: "minimize", "toggleMaximize", "close", "drag",
+    /// "resize:&lt;Edge&gt;" or "state". Returns whether the window is maximized afterwards.
+    /// </summary>
+    Task<bool> WindowActionAsync(string action);
+
     /// <summary>Directory holding the plugins that ship inside the app.</summary>
     string BundledPluginsDir { get; }
 }
