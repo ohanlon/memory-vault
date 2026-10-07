@@ -1,0 +1,3721 @@
+{
+  "notes": [
+    {
+      "name": "plain",
+      "raw": "# Title\n\nJust a body with a [[Link]] and a #tag.\n",
+      "relativePath": "plain.md",
+      "parsed": {
+        "path": "/root/plain.md",
+        "relativePath": "plain.md",
+        "title": "plain",
+        "frontmatter": {},
+        "tags": [
+          "tag"
+        ],
+        "links": [
+          {
+            "target": "Link"
+          }
+        ],
+        "content": "# Title\n\nJust a body with a [[Link]] and a #tag.\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "empty",
+      "raw": "",
+      "relativePath": "empty.md",
+      "parsed": {
+        "path": "/root/empty.md",
+        "relativePath": "empty.md",
+        "title": "empty",
+        "frontmatter": {},
+        "tags": [],
+        "links": [],
+        "content": "",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "no-trailing-newline",
+      "raw": "hello",
+      "relativePath": "no-trailing-newline.md",
+      "parsed": {
+        "path": "/root/no-trailing-newline.md",
+        "relativePath": "no-trailing-newline.md",
+        "title": "no-trailing-newline",
+        "frontmatter": {},
+        "tags": [],
+        "links": [],
+        "content": "hello",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-basic",
+      "raw": "---\ntitle: Hello\ntags: [a, b]\n---\nBody [[Other Note|alias]] and [[Third#Header]]\n",
+      "relativePath": "frontmatter-basic.md",
+      "parsed": {
+        "path": "/root/frontmatter-basic.md",
+        "relativePath": "frontmatter-basic.md",
+        "title": "frontmatter-basic",
+        "frontmatter": {
+          "title": "Hello",
+          "tags": [
+            "a",
+            "b"
+          ]
+        },
+        "tags": [
+          "a",
+          "b"
+        ],
+        "links": [
+          {
+            "target": "Other Note",
+            "alias": "alias"
+          },
+          {
+            "target": "Third",
+            "header": "Header"
+          }
+        ],
+        "content": "Body [[Other Note|alias]] and [[Third#Header]]\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-tags-string",
+      "raw": "---\ntags: one, two ,three\n---\nbody #inline-tag #nested/tag\n",
+      "relativePath": "frontmatter-tags-string.md",
+      "parsed": {
+        "path": "/root/frontmatter-tags-string.md",
+        "relativePath": "frontmatter-tags-string.md",
+        "title": "frontmatter-tags-string",
+        "frontmatter": {
+          "tags": "one, two ,three"
+        },
+        "tags": [
+          "one",
+          "two",
+          "three",
+          "inline-tag",
+          "nested/tag"
+        ],
+        "links": [],
+        "content": "body #inline-tag #nested/tag\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-scalars",
+      "raw": "---\nn: 12\nf: 1.5\nneg: -3\nhex: 0x1F\noct: 0755\nbin: 0b101\nsci: 1e3\nsexa: 1:30\nunder: 1_000\nt: true\nT: True\nno: no\nyes: yes\nnul: null\ntilde: ~\nempty:\nstr: 'quoted'\ndq: \"dq\\n\"\ninf: .inf\nnan: .nan\n---\nx\n",
+      "relativePath": "frontmatter-scalars.md",
+      "parsed": {
+        "path": "/root/frontmatter-scalars.md",
+        "relativePath": "frontmatter-scalars.md",
+        "title": "frontmatter-scalars",
+        "frontmatter": {
+          "n": 12,
+          "f": 1.5,
+          "neg": -3,
+          "hex": 31,
+          "oct": 493,
+          "bin": 5,
+          "sci": 1000,
+          "sexa": 90,
+          "under": 1000,
+          "t": true,
+          "T": true,
+          "no": "no",
+          "yes": "yes",
+          "nul": null,
+          "tilde": null,
+          "empty": null,
+          "str": "quoted",
+          "dq": "dq\n",
+          "inf": null,
+          "nan": null
+        },
+        "tags": [],
+        "links": [],
+        "content": "x\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-dates",
+      "raw": "---\nd: 2026-01-02\ndt: 2026-01-02T03:04:05Z\ndt2: 2026-01-02 03:04:05.5 +01:30\nstrdate: '2026-01-02'\n---\nx\n",
+      "relativePath": "frontmatter-dates.md",
+      "parsed": {
+        "path": "/root/frontmatter-dates.md",
+        "relativePath": "frontmatter-dates.md",
+        "title": "frontmatter-dates",
+        "frontmatter": {
+          "d": "2026-01-02T00:00:00.000Z",
+          "dt": "2026-01-02T03:04:05.000Z",
+          "dt2": "2026-01-02T01:34:05.500Z",
+          "strdate": "2026-01-02"
+        },
+        "tags": [],
+        "links": [],
+        "content": "x\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-nested",
+      "raw": "---\nobj:\n  a: 1\n  b:\n    - x\n    - y: 2\nlist:\n  - one\n  - two\nflow: {a: 1, b: [1, 2]}\n---\nx\n",
+      "relativePath": "frontmatter-nested.md",
+      "parsed": {
+        "path": "/root/frontmatter-nested.md",
+        "relativePath": "frontmatter-nested.md",
+        "title": "frontmatter-nested",
+        "frontmatter": {
+          "obj": {
+            "a": 1,
+            "b": [
+              "x",
+              {
+                "y": 2
+              }
+            ]
+          },
+          "list": [
+            "one",
+            "two"
+          ],
+          "flow": {
+            "a": 1,
+            "b": [
+              1,
+              2
+            ]
+          }
+        },
+        "tags": [],
+        "links": [],
+        "content": "x\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-multiline",
+      "raw": "---\nlit: |\n  line1\n  line2\nfold: >\n  folded text\n  more\n---\nx\n",
+      "relativePath": "frontmatter-multiline.md",
+      "parsed": {
+        "path": "/root/frontmatter-multiline.md",
+        "relativePath": "frontmatter-multiline.md",
+        "title": "frontmatter-multiline",
+        "frontmatter": {
+          "lit": "line1\nline2\n",
+          "fold": "folded text more\n"
+        },
+        "tags": [],
+        "links": [],
+        "content": "x\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-comment-only",
+      "raw": "---\n# just a comment\n---\nbody\n",
+      "relativePath": "frontmatter-comment-only.md",
+      "parsed": {
+        "path": "/root/frontmatter-comment-only.md",
+        "relativePath": "frontmatter-comment-only.md",
+        "title": "frontmatter-comment-only",
+        "frontmatter": {},
+        "tags": [],
+        "links": [],
+        "content": "body\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-empty-block",
+      "raw": "---\n---\nbody\n",
+      "relativePath": "frontmatter-empty-block.md",
+      "parsed": {
+        "path": "/root/frontmatter-empty-block.md",
+        "relativePath": "frontmatter-empty-block.md",
+        "title": "frontmatter-empty-block",
+        "frontmatter": {},
+        "tags": [],
+        "links": [],
+        "content": "body\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "frontmatter-no-close",
+      "raw": "---\ntitle: x\nbody without close\n",
+      "relativePath": "frontmatter-no-close.md",
+      "parsed": null,
+      "error": true
+    },
+    {
+      "name": "frontmatter-crlf",
+      "raw": "---\r\ntitle: x\r\n---\r\nbody line\r\nsecond\r\n",
+      "relativePath": "frontmatter-crlf.md",
+      "parsed": {
+        "path": "/root/frontmatter-crlf.md",
+        "relativePath": "frontmatter-crlf.md",
+        "title": "frontmatter-crlf",
+        "frontmatter": {
+          "title": "x"
+        },
+        "tags": [],
+        "links": [],
+        "content": "body line\r\nsecond\r\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "four-dashes",
+      "raw": "----\nnot frontmatter\n----\n",
+      "relativePath": "four-dashes.md",
+      "parsed": {
+        "path": "/root/four-dashes.md",
+        "relativePath": "four-dashes.md",
+        "title": "four-dashes",
+        "frontmatter": {},
+        "tags": [],
+        "links": [],
+        "content": "----\nnot frontmatter\n----\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "bom",
+      "raw": "﻿---\ntitle: bom\n---\nbody\n",
+      "relativePath": "bom.md",
+      "parsed": {
+        "path": "/root/bom.md",
+        "relativePath": "bom.md",
+        "title": "bom",
+        "frontmatter": {
+          "title": "bom"
+        },
+        "tags": [],
+        "links": [],
+        "content": "body\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "yaml-lang",
+      "raw": "---yaml\ntitle: lang\n---\nbody\n",
+      "relativePath": "yaml-lang.md",
+      "parsed": {
+        "path": "/root/yaml-lang.md",
+        "relativePath": "yaml-lang.md",
+        "title": "yaml-lang",
+        "frontmatter": {
+          "title": "lang"
+        },
+        "tags": [],
+        "links": [],
+        "content": "body\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "json-lang",
+      "raw": "---json\n{\"title\": \"j\"}\n---\nbody\n",
+      "relativePath": "json-lang.md",
+      "parsed": {
+        "path": "/root/json-lang.md",
+        "relativePath": "json-lang.md",
+        "title": "json-lang",
+        "frontmatter": {
+          "title": "j"
+        },
+        "tags": [],
+        "links": [],
+        "content": "body\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "anchors-merge",
+      "raw": "---\nbase: &b {x: 1, y: 2}\nderived:\n  <<: *b\n  y: 3\n---\nx\n",
+      "relativePath": "anchors-merge.md",
+      "parsed": {
+        "path": "/root/anchors-merge.md",
+        "relativePath": "anchors-merge.md",
+        "title": "anchors-merge",
+        "frontmatter": {
+          "base": {
+            "x": 1,
+            "y": 2
+          },
+          "derived": {
+            "x": 1,
+            "y": 3
+          }
+        },
+        "tags": [],
+        "links": [],
+        "content": "x\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "code-masking",
+      "raw": "Real [[Real Link]] and #realtag.\n\n```\n[[Fake Link]] #faketag\n```\n\nInline `[[Fake2]]` and `#fake3`.\n\n~~~\n[[Fake4]]\n~~~\n",
+      "relativePath": "code-masking.md",
+      "parsed": {
+        "path": "/root/code-masking.md",
+        "relativePath": "code-masking.md",
+        "title": "code-masking",
+        "frontmatter": {},
+        "tags": [
+          "realtag"
+        ],
+        "links": [
+          {
+            "target": "Real Link"
+          }
+        ],
+        "content": "Real [[Real Link]] and #realtag.\n\n```\n[[Fake Link]] #faketag\n```\n\nInline `[[Fake2]]` and `#fake3`.\n\n~~~\n[[Fake4]]\n~~~\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "markdown-links",
+      "raw": "[a](Note One.md) [b](Note%20Two.md#Sec) [c](https://example.com/x) [d](mailto:a@b.c) [e](javascript:alert(1)) [f](#local) [g](<Spaced Note.md>) [h](Titled.md \"A title\") [i](notmd.txt) ![img](pic.png) [j](Same.md)\n",
+      "relativePath": "markdown-links.md",
+      "parsed": {
+        "path": "/root/markdown-links.md",
+        "relativePath": "markdown-links.md",
+        "title": "markdown-links",
+        "frontmatter": {},
+        "tags": [],
+        "links": [
+          {
+            "target": "Note One",
+            "alias": "a"
+          },
+          {
+            "target": "Note Two",
+            "header": "Sec",
+            "alias": "b"
+          },
+          {
+            "target": "https://example.com/x",
+            "alias": "c",
+            "external": true
+          },
+          {
+            "target": "mailto:a@b.c",
+            "alias": "d",
+            "external": true
+          },
+          {
+            "target": "Spaced Note",
+            "alias": "g"
+          },
+          {
+            "target": "Titled",
+            "alias": "h"
+          },
+          {
+            "target": "Same",
+            "alias": "j"
+          }
+        ],
+        "content": "[a](Note One.md) [b](Note%20Two.md#Sec) [c](https://example.com/x) [d](mailto:a@b.c) [e](javascript:alert(1)) [f](#local) [g](<Spaced Note.md>) [h](Titled.md \"A title\") [i](notmd.txt) ![img](pic.png) [j](Same.md)\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "tags-edge",
+      "raw": "issue#123 #123 # Heading ## Two #ok_tag-1 #a/b/c (#paren) a#b [[Note#Header]] [t](N.md#frag)\n",
+      "relativePath": "tags-edge.md",
+      "parsed": {
+        "path": "/root/tags-edge.md",
+        "relativePath": "tags-edge.md",
+        "title": "tags-edge",
+        "frontmatter": {},
+        "tags": [
+          "ok_tag-1",
+          "a/b/c",
+          "paren"
+        ],
+        "links": [
+          {
+            "target": "Note",
+            "header": "Header"
+          },
+          {
+            "target": "N",
+            "header": "frag",
+            "alias": "t"
+          }
+        ],
+        "content": "issue#123 #123 # Heading ## Two #ok_tag-1 #a/b/c (#paren) a#b [[Note#Header]] [t](N.md#frag)\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "unicode",
+      "raw": "---\ntitle: Héllo — wörld ◇\n---\nBody with ünïcode #tág and emoji 😀 [[Üniçode]]\n",
+      "relativePath": "unicode.md",
+      "parsed": {
+        "path": "/root/unicode.md",
+        "relativePath": "unicode.md",
+        "title": "unicode",
+        "frontmatter": {
+          "title": "Héllo — wörld ◇"
+        },
+        "tags": [
+          "t"
+        ],
+        "links": [
+          {
+            "target": "Üniçode"
+          }
+        ],
+        "content": "Body with ünïcode #tág and emoji 😀 [[Üniçode]]\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "tags-array-mixed",
+      "raw": "---\ntags:\n  - a\n  - 1\n  - true\n  - b\n---\nx #a #c\n",
+      "relativePath": "tags-array-mixed.md",
+      "parsed": {
+        "path": "/root/tags-array-mixed.md",
+        "relativePath": "tags-array-mixed.md",
+        "title": "tags-array-mixed",
+        "frontmatter": {
+          "tags": [
+            "a",
+            1,
+            true,
+            "b"
+          ]
+        },
+        "tags": [
+          "a",
+          "b",
+          "c"
+        ],
+        "links": [],
+        "content": "x #a #c\n",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    },
+    {
+      "name": "windows-path-title",
+      "raw": "x",
+      "relativePath": "sub\\dir\\Deep Title.md",
+      "parsed": {
+        "path": "/root/sub\\dir\\Deep Title.md",
+        "relativePath": "sub\\dir\\Deep Title.md",
+        "title": "Deep Title",
+        "frontmatter": {},
+        "tags": [],
+        "links": [],
+        "content": "x",
+        "mtimeMs": 1700000000123.5
+      },
+      "error": false
+    }
+  ],
+  "stringified": [
+    {
+      "name": "empty-data",
+      "content": "body\n",
+      "data": {},
+      "output": "body\n"
+    },
+    {
+      "name": "simple",
+      "content": "body\n",
+      "data": {
+        "title": "Hello",
+        "n": 3
+      },
+      "output": "---\ntitle: Hello\n'n': 3\n---\nbody\n"
+    },
+    {
+      "name": "needs-quotes",
+      "content": "x",
+      "data": {
+        "a": "true",
+        "b": "123",
+        "c": "null",
+        "d": "a: b",
+        "e": "- x",
+        "f": "#c",
+        "g": "",
+        "h": "yes",
+        "i": "2026-01-01",
+        "j": "it's",
+        "k": " lead",
+        "l": "trail ",
+        "m": "@at",
+        "n": "1.5",
+        "o": "~"
+      },
+      "output": "---\na: 'true'\nb: '123'\nc: 'null'\nd: 'a: b'\ne: '- x'\nf: '#c'\ng: ''\nh: 'yes'\ni: '2026-01-01'\nj: it's\nk: ' lead'\nl: 'trail '\nm: '@at'\n'n': '1.5'\no: '~'\n---\nx\n"
+    },
+    {
+      "name": "lists",
+      "content": "x\n",
+      "data": {
+        "tags": [
+          "a",
+          "b c",
+          "d: e"
+        ],
+        "nested": [
+          [
+            1,
+            2
+          ],
+          {
+            "k": "v"
+          }
+        ],
+        "empty": [],
+        "emptyObj": {}
+      },
+      "output": "---\ntags:\n  - a\n  - b c\n  - 'd: e'\nnested:\n  - - 1\n    - 2\n  - k: v\nempty: []\nemptyObj: {}\n---\nx\n"
+    },
+    {
+      "name": "nested-map",
+      "content": "x\n",
+      "data": {
+        "a": {
+          "b": {
+            "c": [
+              1,
+              {
+                "d": "e"
+              }
+            ]
+          }
+        }
+      },
+      "output": "---\na:\n  b:\n    c:\n      - 1\n      - d: e\n---\nx\n"
+    },
+    {
+      "name": "numbers",
+      "content": "x\n",
+      "data": {
+        "i": 5,
+        "f": 1.25,
+        "neg": -2,
+        "big": 12345678901,
+        "small": 1e-7,
+        "large": 1e+21,
+        "zero": 0,
+        "exp": 1.5e+300
+      },
+      "output": "---\ni: 5\nf: 1.25\nneg: -2\nbig: 12345678901\nsmall: 1.e-7\nlarge: 1e+21\nzero: 0\nexp: 1.5e+300\n---\nx\n"
+    },
+    {
+      "name": "bools-null",
+      "content": "x\n",
+      "data": {
+        "t": true,
+        "f": false,
+        "n": null
+      },
+      "output": "---\nt: true\nf: false\n'n': null\n---\nx\n"
+    },
+    {
+      "name": "multiline-string",
+      "content": "x\n",
+      "data": {
+        "lit": "line1\nline2\n",
+        "lit2": "a\nb",
+        "keep": "a\n\n"
+      },
+      "output": "---\nlit: |\n  line1\n  line2\nlit2: |-\n  a\n  b\nkeep: |+\n  a\n---\nx\n"
+    },
+    {
+      "name": "long-string",
+      "content": "x\n",
+      "data": {
+        "long": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+        "long2": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "output": "---\nlong: >-\n  word word word word word word word word word word word word word word word\n  word word word word word word word word word word word word word word word\n  word word word word word word word word word word\nlong2: >-\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n---\nx\n"
+    },
+    {
+      "name": "unicode",
+      "content": "x\n",
+      "data": {
+        "u": "héllo ◇ 😀",
+        "ctrl": "tab\there",
+        "nl": "bell\u0007"
+      },
+      "output": "---\nu: \"héllo ◇ \\U0001F600\"\nctrl: \"tab\\there\"\nnl: \"bell\\a\"\n---\nx\n"
+    },
+    {
+      "name": "key-quoting",
+      "content": "x\n",
+      "data": {
+        "123": 2,
+        "needs: colon": 1,
+        "true": 3,
+        "has space": 4,
+        "": 5
+      },
+      "output": "---\n'123': 2\n'needs: colon': 1\n'true': 3\nhas space: 4\n'': 5\n---\nx\n"
+    },
+    {
+      "name": "content-has-frontmatter",
+      "content": "---\nold: 1\nkeep: me\n---\nbody\n",
+      "data": {
+        "old": 2,
+        "added": true
+      },
+      "output": "---\nold: 2\nkeep: me\nadded: true\n---\nbody\n"
+    },
+    {
+      "name": "empty-content",
+      "content": "",
+      "data": {
+        "a": 1
+      },
+      "output": "---\na: 1\n---\n\n"
+    },
+    {
+      "name": "no-trailing-newline",
+      "content": "body",
+      "data": {
+        "a": 1
+      },
+      "output": "---\na: 1\n---\nbody\n"
+    },
+    {
+      "name": "date-iso-string",
+      "content": "x\n",
+      "data": {
+        "d": "2026-01-01T00:00:00.000Z"
+      },
+      "output": "---\nd: '2026-01-01T00:00:00.000Z'\n---\nx\n"
+    }
+  ],
+  "roundTrips": [
+    {
+      "name": "date-preserved",
+      "raw": "---\ncreated: 2026-01-02\nname: x\n---\nold body\n",
+      "body": "new body\n",
+      "output": "---\ncreated: 2026-01-02T00:00:00.000Z\nname: x\n---\nnew body\n"
+    },
+    {
+      "name": "quoted-date-string",
+      "raw": "---\ncreated: '2026-01-02'\n---\nold\n",
+      "body": "new\n",
+      "output": "---\ncreated: '2026-01-02'\n---\nnew\n"
+    },
+    {
+      "name": "list-style",
+      "raw": "---\ntags:\n- a\n- b\n---\nold\n",
+      "body": "new\n",
+      "output": "---\ntags:\n  - a\n  - b\n---\nnew\n"
+    },
+    {
+      "name": "comments-dropped",
+      "raw": "---\n# note\ntitle: x # trailing\n---\nold\n",
+      "body": "new\n",
+      "output": "---\ntitle: x\n---\nnew\n"
+    },
+    {
+      "name": "no-frontmatter",
+      "raw": "just body\n",
+      "body": "new body\n",
+      "output": "new body\n"
+    },
+    {
+      "name": "key-order",
+      "raw": "---\nz: 1\na: 2\nm: 3\n---\nold\n",
+      "body": "new\n",
+      "output": "---\nz: 1\na: 2\nm: 3\n---\nnew\n"
+    }
+  ],
+  "graph": {
+    "input": [
+      {
+        "path": "/r/A.md",
+        "relativePath": "A.md",
+        "raw": "---\ntags: [shared]\n---\nLinks to [[B]] and [[b]] and [[C]] and [[Missing]] [x](https://x.test) [y](https://x.test) #solo\n"
+      },
+      {
+        "path": "/r/B.md",
+        "relativePath": "B.md",
+        "raw": "Back to [[A]] [self](B.md) #shared\n"
+      },
+      {
+        "path": "/r/C.md",
+        "relativePath": "C.md",
+        "raw": "[[A]] [[a|alias]] [[A#h]] [m](mailto:z@z.z)\n"
+      }
+    ],
+    "output": {
+      "nodes": [
+        {
+          "id": "A",
+          "path": "/r/A.md",
+          "tags": [
+            "shared",
+            "solo"
+          ]
+        },
+        {
+          "id": "B",
+          "path": "/r/B.md",
+          "tags": [
+            "shared"
+          ]
+        },
+        {
+          "id": "C",
+          "path": "/r/C.md",
+          "tags": []
+        },
+        {
+          "id": "https://x.test",
+          "path": "https://x.test",
+          "tags": [],
+          "external": true
+        },
+        {
+          "id": "mailto:z@z.z",
+          "path": "mailto:z@z.z",
+          "tags": [],
+          "external": true
+        },
+        {
+          "id": "#shared",
+          "path": "#shared",
+          "tags": [],
+          "isTag": true
+        },
+        {
+          "id": "#solo",
+          "path": "#solo",
+          "tags": [],
+          "isTag": true
+        }
+      ],
+      "edges": [
+        {
+          "source": "A",
+          "target": "B",
+          "kind": "wikilink"
+        },
+        {
+          "source": "A",
+          "target": "C",
+          "kind": "wikilink"
+        },
+        {
+          "source": "A",
+          "target": "https://x.test",
+          "kind": "external-link"
+        },
+        {
+          "source": "B",
+          "target": "A",
+          "kind": "wikilink"
+        },
+        {
+          "source": "C",
+          "target": "A",
+          "kind": "wikilink"
+        },
+        {
+          "source": "C",
+          "target": "mailto:z@z.z",
+          "kind": "external-link"
+        },
+        {
+          "source": "A",
+          "target": "#shared",
+          "kind": "tag",
+          "tag": "shared"
+        },
+        {
+          "source": "A",
+          "target": "#solo",
+          "kind": "tag",
+          "tag": "solo"
+        },
+        {
+          "source": "B",
+          "target": "#shared",
+          "kind": "tag",
+          "tag": "shared"
+        }
+      ]
+    }
+  },
+  "exportRewrites": [
+    {
+      "content": "See [[Target]] and [[Missing|shown]] and [t](Target.md#x) and [u](Unknown.md) and `[[code]]` and [e](https://e.test)\n",
+      "wikilinks": "See [Target](#target-slug) and shown and [t](Target.md#x) and [u](Unknown.md) and `[[code]]` and [e](https://e.test)\n",
+      "markdown": "See [[Target]] and [[Missing|shown]] and [t](#target-slug) and [u](Unknown.md) and `[[code]]` and [e](https://e.test)\n"
+    }
+  ],
+  "imageEmbeds": [
+    {
+      "content": "![a](x.png) ![b](<sp ace.png>) ![c](d.png \"t\") `![no](code.png)` ![e](https://x/y.png)",
+      "hrefs": [
+        "x.png",
+        "sp ace.png",
+        "d.png",
+        "https://x/y.png"
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "input": {
+        "__undefined": true
+      },
+      "output": {
+        "tabFolderDisplay": "hover",
+        "theme": "dark",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": false,
+        "editorFontFamily": "system-ui",
+        "editorFontSize": 14,
+        "enabledCodeLanguages": [
+          "csharp",
+          "applescript",
+          "bash",
+          "c",
+          "cpp",
+          "java",
+          "javascript",
+          "typescript",
+          "xml",
+          "css",
+          "gherkin",
+          "json",
+          "kotlin",
+          "markdown"
+        ],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": false,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [],
+        "activeCustomThemeId": null
+      }
+    },
+    {
+      "input": {},
+      "output": {
+        "tabFolderDisplay": "hover",
+        "theme": "dark",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": false,
+        "editorFontFamily": "system-ui",
+        "editorFontSize": 14,
+        "enabledCodeLanguages": [
+          "csharp",
+          "applescript",
+          "bash",
+          "c",
+          "cpp",
+          "java",
+          "javascript",
+          "typescript",
+          "xml",
+          "css",
+          "gherkin",
+          "json",
+          "kotlin",
+          "markdown"
+        ],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": false,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [],
+        "activeCustomThemeId": null
+      }
+    },
+    {
+      "input": null,
+      "output": {
+        "tabFolderDisplay": "hover",
+        "theme": "dark",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": false,
+        "editorFontFamily": "system-ui",
+        "editorFontSize": 14,
+        "enabledCodeLanguages": [
+          "csharp",
+          "applescript",
+          "bash",
+          "c",
+          "cpp",
+          "java",
+          "javascript",
+          "typescript",
+          "xml",
+          "css",
+          "gherkin",
+          "json",
+          "kotlin",
+          "markdown"
+        ],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": false,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [],
+        "activeCustomThemeId": null
+      }
+    },
+    {
+      "input": "junk",
+      "output": {
+        "tabFolderDisplay": "hover",
+        "theme": "dark",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": false,
+        "editorFontFamily": "system-ui",
+        "editorFontSize": 14,
+        "enabledCodeLanguages": [
+          "csharp",
+          "applescript",
+          "bash",
+          "c",
+          "cpp",
+          "java",
+          "javascript",
+          "typescript",
+          "xml",
+          "css",
+          "gherkin",
+          "json",
+          "kotlin",
+          "markdown"
+        ],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": false,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [],
+        "activeCustomThemeId": null
+      }
+    },
+    {
+      "input": {
+        "theme": "light",
+        "editorFontSize": 99,
+        "tabFolderDisplay": "always",
+        "dateFormat": "bad*",
+        "enabledCodeLanguages": [
+          "python",
+          "nope",
+          "python"
+        ]
+      },
+      "output": {
+        "tabFolderDisplay": "always",
+        "theme": "light",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": false,
+        "editorFontFamily": "system-ui",
+        "editorFontSize": 28,
+        "enabledCodeLanguages": [
+          "python"
+        ],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": false,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [],
+        "activeCustomThemeId": null
+      }
+    },
+    {
+      "input": {
+        "editorFontSize": 12.6,
+        "showLineNumbers": true,
+        "editorFontFamily": "roboto",
+        "activeCustomThemeId": "abc",
+        "hasSeenTagHint": true
+      },
+      "output": {
+        "tabFolderDisplay": "hover",
+        "theme": "dark",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": true,
+        "editorFontFamily": "roboto",
+        "editorFontSize": 13,
+        "enabledCodeLanguages": [
+          "csharp",
+          "applescript",
+          "bash",
+          "c",
+          "cpp",
+          "java",
+          "javascript",
+          "typescript",
+          "xml",
+          "css",
+          "gherkin",
+          "json",
+          "kotlin",
+          "markdown"
+        ],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": true,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [],
+        "activeCustomThemeId": "abc"
+      }
+    },
+    {
+      "input": {
+        "customThemes": [
+          {
+            "id": "t1",
+            "name": "Mine",
+            "baseMode": "light",
+            "colors": {
+              "bg-base": "#123456",
+              "text-primary": "nope"
+            }
+          },
+          {
+            "id": "",
+            "name": " ",
+            "baseMode": "dark",
+            "colors": null
+          },
+          {
+            "baseMode": "purple"
+          },
+          42
+        ]
+      },
+      "output": {
+        "tabFolderDisplay": "hover",
+        "theme": "dark",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": false,
+        "editorFontFamily": "system-ui",
+        "editorFontSize": 14,
+        "enabledCodeLanguages": [
+          "csharp",
+          "applescript",
+          "bash",
+          "c",
+          "cpp",
+          "java",
+          "javascript",
+          "typescript",
+          "xml",
+          "css",
+          "gherkin",
+          "json",
+          "kotlin",
+          "markdown"
+        ],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": false,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [
+          {
+            "id": "t1",
+            "name": "Mine",
+            "baseMode": "light",
+            "colors": {
+              "bg-base": "#123456",
+              "bg-recessed": "#eef0f3",
+              "bg-sidebar": "#f7f8fa",
+              "bg-tabbar": "#eef0f3",
+              "bg-surface": "#f1f2f5",
+              "bg-control": "#eceef2",
+              "bg-control-hover": "#dfe2e8",
+              "bg-selected": "#dbe7fb",
+              "bg-tag": "#f1e9fb",
+              "bg-wikilink": "#e3edfb",
+              "bg-wikilink-orphan": "#fbe4e4",
+              "bg-highlight": "#fff3a3",
+              "scrollbar-thumb": "#c7cad1",
+              "scrollbar-thumb-hover": "#b3b7c1",
+              "border-divider": "#e1e3e8",
+              "border-control": "#8b909c",
+              "text-primary": "#1f2328",
+              "text-secondary": "#57606a",
+              "text-tertiary": "#4d525c",
+              "text-muted": "#6e7781",
+              "text-faint": "#7d8590",
+              "text-faintest": "#7d8590",
+              "text-quote": "#57606a",
+              "text-label": "#57606a",
+              "text-onbutton": "#24292f",
+              "text-strong": "#14171a",
+              "text-disabled": "#b6bac2",
+              "accent-blue": "#2b6cb0",
+              "accent-purple": "#7a4fc2",
+              "accent-green": "#2f8552",
+              "accent-red": "#c53030",
+              "accent-red-soft": "#ae2e24",
+              "accent-violet": "#6a63c9",
+              "shadow-menu": "rgba(20, 20, 30, 0.15)",
+              "overlay-bg": "rgba(15, 15, 20, 0.35)"
+            }
+          },
+          {
+            "id": "<uuid>",
+            "name": "Untitled theme",
+            "baseMode": "dark",
+            "colors": {
+              "bg-base": "#1e1f24",
+              "bg-recessed": "#1a1b20",
+              "bg-sidebar": "#23242b",
+              "bg-tabbar": "#202127",
+              "bg-surface": "#2a2c38",
+              "bg-control": "#35374a",
+              "bg-control-hover": "#454868",
+              "bg-selected": "#3a3d55",
+              "bg-tag": "#3a2d4a",
+              "bg-wikilink": "#22304a",
+              "bg-wikilink-orphan": "#3a2323",
+              "bg-highlight": "#6b5a1f",
+              "scrollbar-thumb": "#3a3d55",
+              "scrollbar-thumb-hover": "#4a4c68",
+              "border-divider": "#33343d",
+              "border-control": "#4a4c63",
+              "text-primary": "#e6e6e6",
+              "text-secondary": "#999",
+              "text-tertiary": "#ccc",
+              "text-muted": "#888",
+              "text-faint": "#777",
+              "text-faintest": "#666",
+              "text-quote": "#aaa",
+              "text-label": "#b6b6c0",
+              "text-onbutton": "#ddd",
+              "text-strong": "#fff",
+              "text-disabled": "#4a4c56",
+              "accent-blue": "#6c9bd1",
+              "accent-purple": "#a97bd1",
+              "accent-green": "#5a9b6e",
+              "accent-red": "#e07a7a",
+              "accent-red-soft": "#d17b7b",
+              "accent-violet": "#7a7dc9",
+              "shadow-menu": "rgba(0, 0, 0, 0.4)",
+              "overlay-bg": "rgba(0, 0, 0, 0.5)"
+            }
+          }
+        ],
+        "activeCustomThemeId": null
+      }
+    },
+    {
+      "input": {
+        "enabledCodeLanguages": []
+      },
+      "output": {
+        "tabFolderDisplay": "hover",
+        "theme": "dark",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": false,
+        "editorFontFamily": "system-ui",
+        "editorFontSize": 14,
+        "enabledCodeLanguages": [],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": false,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [],
+        "activeCustomThemeId": null
+      }
+    },
+    {
+      "input": {
+        "enabledCodeLanguages": "x"
+      },
+      "output": {
+        "tabFolderDisplay": "hover",
+        "theme": "dark",
+        "addHeadingToNewNotes": true,
+        "showLineNumbers": false,
+        "editorFontFamily": "system-ui",
+        "editorFontSize": 14,
+        "enabledCodeLanguages": [
+          "csharp",
+          "applescript",
+          "bash",
+          "c",
+          "cpp",
+          "java",
+          "javascript",
+          "typescript",
+          "xml",
+          "css",
+          "gherkin",
+          "json",
+          "kotlin",
+          "markdown"
+        ],
+        "hasSeenWikilinkHint": false,
+        "hasSeenTagHint": false,
+        "hasSeenGraphHint": false,
+        "dateFormat": "YYYY-MM-DD",
+        "timeFormat": "HH:mm",
+        "datetimeFormat": "YYYY-MM-DD HH:mm",
+        "customThemes": [],
+        "activeCustomThemeId": null
+      }
+    }
+  ],
+  "layout": [
+    {
+      "input": {
+        "__undefined": true
+      },
+      "output": {
+        "sidebarWidth": 260,
+        "rightPanelWidth": 340
+      }
+    },
+    {
+      "input": {},
+      "output": {
+        "sidebarWidth": 260,
+        "rightPanelWidth": 340
+      }
+    },
+    {
+      "input": {
+        "sidebarWidth": 10,
+        "rightPanelWidth": 9999
+      },
+      "output": {
+        "sidebarWidth": 180,
+        "rightPanelWidth": 560
+      }
+    },
+    {
+      "input": {
+        "sidebarWidth": "x",
+        "rightPanelWidth": 300.5
+      },
+      "output": {
+        "sidebarWidth": 260,
+        "rightPanelWidth": 300.5
+      }
+    },
+    {
+      "input": null,
+      "output": {
+        "sidebarWidth": 260,
+        "rightPanelWidth": 340
+      }
+    }
+  ],
+  "workspace": [
+    {
+      "input": {
+        "__undefined": true
+      },
+      "output": {
+        "openTabs": [],
+        "activeTab": null
+      }
+    },
+    {
+      "input": {
+        "openTabs": [
+          "a.md",
+          "@graph",
+          {
+            "root": "/r",
+            "relativePath": "b.md"
+          },
+          5,
+          null
+        ],
+        "activeTab": "c.md"
+      },
+      "output": {
+        "openTabs": [
+          {
+            "root": "/fallback",
+            "relativePath": "a.md"
+          },
+          "@graph",
+          {
+            "root": "/r",
+            "relativePath": "b.md"
+          }
+        ],
+        "activeTab": {
+          "root": "/fallback",
+          "relativePath": "c.md"
+        }
+      }
+    },
+    {
+      "input": {
+        "openTabs": "nope",
+        "activeTab": {
+          "root": "/x",
+          "relativePath": "y.md"
+        }
+      },
+      "output": {
+        "openTabs": [],
+        "activeTab": {
+          "root": "/x",
+          "relativePath": "y.md"
+        }
+      }
+    },
+    {
+      "input": {
+        "openTabs": [],
+        "activeTab": "@tasks"
+      },
+      "output": {
+        "openTabs": [],
+        "activeTab": "@tasks"
+      }
+    },
+    {
+      "input": {
+        "activeTab": 7
+      },
+      "output": {
+        "openTabs": [],
+        "activeTab": null
+      }
+    }
+  ],
+  "avatars": [
+    {
+      "name": "Work",
+      "index": 4
+    },
+    {
+      "name": "Personal",
+      "index": 7
+    },
+    {
+      "name": "",
+      "index": 5
+    },
+    {
+      "name": "a",
+      "index": 10
+    },
+    {
+      "name": "Ünïcode ◇",
+      "index": 0
+    },
+    {
+      "name": "A very long name with many characters 1234567890",
+      "index": 11
+    }
+  ],
+  "dateFormats": {
+    "cases": [
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "YYYY-MM-DD",
+        "output": "2026-01-02"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "YY/M/D",
+        "output": "26/1/2"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "MMMM D, YYYY",
+        "output": "January 2, 2026"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "ddd MMM DD",
+        "output": "Fri Jan 02"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "dddd",
+        "output": "Friday"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "HH:mm:ss",
+        "output": "03:04:05"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "h:mm A",
+        "output": "3:04 AM"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "hh:mm a",
+        "output": "03:04 am"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "[Daily] YYYY-MM-DD",
+        "output": "Daily 2026-01-02"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "YYYY-MM-DD HH:mm",
+        "output": "2026-01-02 03:04"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "Ddd",
+        "output": "2dd"
+      },
+      {
+        "parts": [
+          2026,
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pattern": "",
+        "output": ""
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "YYYY-MM-DD",
+        "output": "2026-12-31"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "YY/M/D",
+        "output": "26/12/31"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "MMMM D, YYYY",
+        "output": "December 31, 2026"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "ddd MMM DD",
+        "output": "Thu Dec 31"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "dddd",
+        "output": "Thursday"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "HH:mm:ss",
+        "output": "23:59:59"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "h:mm A",
+        "output": "11:59 PM"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "hh:mm a",
+        "output": "11:59 pm"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "[Daily] YYYY-MM-DD",
+        "output": "Daily 2026-12-31"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "YYYY-MM-DD HH:mm",
+        "output": "2026-12-31 23:59"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "Ddd",
+        "output": "31dd"
+      },
+      {
+        "parts": [
+          2026,
+          11,
+          31,
+          23,
+          59,
+          59
+        ],
+        "pattern": "",
+        "output": ""
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "YYYY-MM-DD",
+        "output": "2026-06-07"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "YY/M/D",
+        "output": "26/6/7"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "MMMM D, YYYY",
+        "output": "June 7, 2026"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "ddd MMM DD",
+        "output": "Sun Jun 07"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "dddd",
+        "output": "Sunday"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "HH:mm:ss",
+        "output": "12:00:00"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "h:mm A",
+        "output": "12:00 PM"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "hh:mm a",
+        "output": "12:00 pm"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "[Daily] YYYY-MM-DD",
+        "output": "Daily 2026-06-07"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "YYYY-MM-DD HH:mm",
+        "output": "2026-06-07 12:00"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "Ddd",
+        "output": "7dd"
+      },
+      {
+        "parts": [
+          2026,
+          5,
+          7,
+          12,
+          0,
+          0
+        ],
+        "pattern": "",
+        "output": ""
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "YYYY-MM-DD",
+        "output": "1999-03-09"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "YY/M/D",
+        "output": "99/3/9"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "MMMM D, YYYY",
+        "output": "March 9, 1999"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "ddd MMM DD",
+        "output": "Tue Mar 09"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "dddd",
+        "output": "Tuesday"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "HH:mm:ss",
+        "output": "00:05:00"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "h:mm A",
+        "output": "12:05 AM"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "hh:mm a",
+        "output": "12:05 am"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "[Daily] YYYY-MM-DD",
+        "output": "Daily 1999-03-09"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "YYYY-MM-DD HH:mm",
+        "output": "1999-03-09 00:05"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "Ddd",
+        "output": "9dd"
+      },
+      {
+        "parts": [
+          1999,
+          2,
+          9,
+          0,
+          5,
+          0
+        ],
+        "pattern": "",
+        "output": ""
+      }
+    ],
+    "validity": [
+      {
+        "pattern": "YYYY",
+        "valid": true
+      },
+      {
+        "pattern": "",
+        "valid": false
+      },
+      {
+        "pattern": "  ",
+        "valid": false
+      },
+      {
+        "pattern": "a*b",
+        "valid": false
+      },
+      {
+        "pattern": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "valid": false
+      },
+      {
+        "pattern": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "valid": true
+      },
+      {
+        "pattern": "a/b:c",
+        "valid": true
+      },
+      {
+        "pattern": "q\u0001",
+        "valid": false
+      }
+    ]
+  },
+  "titles": [
+    {
+      "title": "",
+      "reason": "Name cannot be empty"
+    },
+    {
+      "title": "ok",
+      "reason": null
+    },
+    {
+      "title": "a/b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "a\\b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "a:b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "a*b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "a?b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "a\"b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "a<b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "a>b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "a|b",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "tab\there",
+      "reason": "Name cannot contain any of: \\ / : * ? \" < > |"
+    },
+    {
+      "title": "fine title",
+      "reason": null
+    }
+  ],
+  "noteTemplates": [
+    {
+      "id": "blank",
+      "addHeading": true,
+      "output": "---\ntags: []\n---\n# My Title\n"
+    },
+    {
+      "id": "blank",
+      "addHeading": false,
+      "output": "---\ntags: []\n---\n"
+    },
+    {
+      "id": "meeting",
+      "addHeading": true,
+      "output": "---\ntags: [meeting]\n---\n# My Title\n\n## Attendees\n\n\n## Agenda\n\n\n## Notes\n\n\n## Action Items\n\n"
+    },
+    {
+      "id": "meeting",
+      "addHeading": false,
+      "output": "---\ntags: [meeting]\n---\n## Attendees\n\n\n## Agenda\n\n\n## Notes\n\n\n## Action Items\n\n"
+    },
+    {
+      "id": "journal",
+      "addHeading": true,
+      "output": "---\ntags: [journal]\n---\n# My Title\n\n## Today\n\n\n## Notes\n\n"
+    },
+    {
+      "id": "journal",
+      "addHeading": false,
+      "output": "---\ntags: [journal]\n---\n## Today\n\n\n## Notes\n\n"
+    },
+    {
+      "id": "nope",
+      "addHeading": true,
+      "output": "---\ntags: []\n---\n# My Title\n"
+    },
+    {
+      "id": "nope",
+      "addHeading": false,
+      "output": "---\ntags: []\n---\n"
+    },
+    {
+      "id": null,
+      "addHeading": true,
+      "output": "---\ntags: []\n---\n# My Title\n"
+    },
+    {
+      "id": null,
+      "addHeading": false,
+      "output": "---\ntags: []\n---\n"
+    }
+  ],
+  "staticData": {
+    "starterNotes": [
+      {
+        "fileName": "Welcome.md",
+        "content": "---\ntags: [example]\n---\n# Welcome to Cairn\n\nThis is a folder of plain markdown files — nothing here is stored in a\ndatabase, so you can edit these notes in Cairn or in any other text editor\nand both will stay in sync.\n\nTwo ideas make this more than a folder of files:\n\n- Type `[[` to link to another note, e.g. [[Example Note]]. Links work\n  both ways — open Example Note and you'll see this note listed as a\n  backlink.\n- Add a `#tag` anywhere in a note (like the `#example` tag on this one)\n  to group it with every other note carrying that tag, without linking to\n  them individually.\n\nOpen the graph view (◇ in the left rail) to see how it all connects.\n\nDelete these notes whenever you're ready — they're just here to show the\nshape of things.\n"
+      },
+      {
+        "fileName": "Example Note.md",
+        "content": "---\ntags: [example]\n---\n# Example Note\n\nLinked back to [[Welcome]] — click the link, or check its Links panel, to\nsee this note listed as a backlink.\n\nThis note also shares the `#example` tag with Welcome, which is why\nthey're connected in the graph even without linking directly.\n"
+      }
+    ],
+    "codeLanguageIds": [
+      "properties",
+      "1c",
+      "actionscript",
+      "ada",
+      "angelscript",
+      "accesslog",
+      "apache",
+      "applescript",
+      "arcade",
+      "arduino",
+      "armasm",
+      "asciidoc",
+      "aspectj",
+      "abnf",
+      "autohotkey",
+      "autoit",
+      "avrasm",
+      "awk",
+      "bnf",
+      "bash",
+      "basic",
+      "dos",
+      "c",
+      "cal",
+      "csharp",
+      "cpp",
+      "cos",
+      "capnproto",
+      "ceylon",
+      "clean",
+      "clojure",
+      "clojure-repl",
+      "cmake",
+      "coffeescript",
+      "coq",
+      "crmsh",
+      "crystal",
+      "csp",
+      "css",
+      "d",
+      "dart",
+      "delphi",
+      "dts",
+      "diff",
+      "django",
+      "dns",
+      "dockerfile",
+      "dsconfig",
+      "dust",
+      "elixir",
+      "elm",
+      "erb",
+      "erlang",
+      "erlang-repl",
+      "excel",
+      "ebnf",
+      "fsharp",
+      "fix",
+      "flix",
+      "fortran",
+      "freedesktop",
+      "gcode",
+      "gams",
+      "gauss",
+      "gherkin",
+      "glsl",
+      "gml",
+      "go",
+      "golo",
+      "gradle",
+      "graphql",
+      "groovy",
+      "haml",
+      "handlebars",
+      "haskell",
+      "haxe",
+      "hsp",
+      "xml",
+      "http",
+      "hy",
+      "inform7",
+      "x86asm",
+      "irpf90",
+      "isbl",
+      "java",
+      "javascript",
+      "jboss-cli",
+      "json",
+      "julia",
+      "julia-repl",
+      "kotlin",
+      "lasso",
+      "latex",
+      "ldif",
+      "leaf",
+      "less",
+      "lisp",
+      "livecodeserver",
+      "livescript",
+      "llvm",
+      "lsl",
+      "lua",
+      "makefile",
+      "markdown",
+      "mathematica",
+      "matlab",
+      "maxima",
+      "mel",
+      "mercury",
+      "routeros",
+      "mipsasm",
+      "mizar",
+      "mojolicious",
+      "monkey",
+      "moonscript",
+      "n1ql",
+      "nestedtext",
+      "nginx",
+      "nim",
+      "nix",
+      "node-repl",
+      "nsis",
+      "objectivec",
+      "ocaml",
+      "openscad",
+      "ruleslanguage",
+      "oxygene",
+      "pf",
+      "parser3",
+      "perl",
+      "php",
+      "php-template",
+      "plaintext",
+      "pony",
+      "pgsql",
+      "powershell",
+      "processing",
+      "prolog",
+      "protobuf",
+      "puppet",
+      "purebasic",
+      "python",
+      "profile",
+      "python-repl",
+      "q",
+      "qml",
+      "r",
+      "reasonml",
+      "rib",
+      "rsl",
+      "roboconf",
+      "ruby",
+      "rust",
+      "sas",
+      "scala",
+      "scheme",
+      "scilab",
+      "scss",
+      "shell",
+      "smali",
+      "smalltalk",
+      "sml",
+      "sqf",
+      "sql",
+      "stan",
+      "stata",
+      "step21",
+      "stylus",
+      "subunit",
+      "swift",
+      "taggerscript",
+      "tcl",
+      "tap",
+      "thrift",
+      "ini",
+      "tp",
+      "twig",
+      "typescript",
+      "vala",
+      "vbscript",
+      "vbscript-html",
+      "verilog",
+      "vhdl",
+      "vim",
+      "vbnet",
+      "wasm",
+      "wren",
+      "axapta",
+      "xl",
+      "xquery",
+      "yaml",
+      "zephir"
+    ],
+    "defaultEnabledCodeLanguages": [
+      "csharp",
+      "applescript",
+      "bash",
+      "c",
+      "cpp",
+      "java",
+      "javascript",
+      "typescript",
+      "xml",
+      "css",
+      "gherkin",
+      "json",
+      "kotlin",
+      "markdown"
+    ],
+    "themeColorVarNames": [
+      "bg-base",
+      "bg-recessed",
+      "bg-sidebar",
+      "bg-tabbar",
+      "bg-surface",
+      "bg-control",
+      "bg-control-hover",
+      "bg-selected",
+      "bg-tag",
+      "bg-wikilink",
+      "bg-wikilink-orphan",
+      "bg-highlight",
+      "scrollbar-thumb",
+      "scrollbar-thumb-hover",
+      "border-divider",
+      "border-control",
+      "text-primary",
+      "text-secondary",
+      "text-tertiary",
+      "text-muted",
+      "text-faint",
+      "text-faintest",
+      "text-quote",
+      "text-label",
+      "text-onbutton",
+      "text-strong",
+      "text-disabled",
+      "accent-blue",
+      "accent-purple",
+      "accent-green",
+      "accent-red",
+      "accent-red-soft",
+      "accent-violet",
+      "shadow-menu",
+      "overlay-bg"
+    ],
+    "darkColors": {
+      "bg-base": "#1e1f24",
+      "bg-recessed": "#1a1b20",
+      "bg-sidebar": "#23242b",
+      "bg-tabbar": "#202127",
+      "bg-surface": "#2a2c38",
+      "bg-control": "#35374a",
+      "bg-control-hover": "#454868",
+      "bg-selected": "#3a3d55",
+      "bg-tag": "#3a2d4a",
+      "bg-wikilink": "#22304a",
+      "bg-wikilink-orphan": "#3a2323",
+      "bg-highlight": "#6b5a1f",
+      "scrollbar-thumb": "#3a3d55",
+      "scrollbar-thumb-hover": "#4a4c68",
+      "border-divider": "#33343d",
+      "border-control": "#4a4c63",
+      "text-primary": "#e6e6e6",
+      "text-secondary": "#999",
+      "text-tertiary": "#ccc",
+      "text-muted": "#888",
+      "text-faint": "#777",
+      "text-faintest": "#666",
+      "text-quote": "#aaa",
+      "text-label": "#b6b6c0",
+      "text-onbutton": "#ddd",
+      "text-strong": "#fff",
+      "text-disabled": "#4a4c56",
+      "accent-blue": "#6c9bd1",
+      "accent-purple": "#a97bd1",
+      "accent-green": "#5a9b6e",
+      "accent-red": "#e07a7a",
+      "accent-red-soft": "#d17b7b",
+      "accent-violet": "#7a7dc9",
+      "shadow-menu": "rgba(0, 0, 0, 0.4)",
+      "overlay-bg": "rgba(0, 0, 0, 0.5)"
+    },
+    "lightColors": {
+      "bg-base": "#ffffff",
+      "bg-recessed": "#eef0f3",
+      "bg-sidebar": "#f7f8fa",
+      "bg-tabbar": "#eef0f3",
+      "bg-surface": "#f1f2f5",
+      "bg-control": "#eceef2",
+      "bg-control-hover": "#dfe2e8",
+      "bg-selected": "#dbe7fb",
+      "bg-tag": "#f1e9fb",
+      "bg-wikilink": "#e3edfb",
+      "bg-wikilink-orphan": "#fbe4e4",
+      "bg-highlight": "#fff3a3",
+      "scrollbar-thumb": "#c7cad1",
+      "scrollbar-thumb-hover": "#b3b7c1",
+      "border-divider": "#e1e3e8",
+      "border-control": "#8b909c",
+      "text-primary": "#1f2328",
+      "text-secondary": "#57606a",
+      "text-tertiary": "#4d525c",
+      "text-muted": "#6e7781",
+      "text-faint": "#7d8590",
+      "text-faintest": "#7d8590",
+      "text-quote": "#57606a",
+      "text-label": "#57606a",
+      "text-onbutton": "#24292f",
+      "text-strong": "#14171a",
+      "text-disabled": "#b6bac2",
+      "accent-blue": "#2b6cb0",
+      "accent-purple": "#7a4fc2",
+      "accent-green": "#2f8552",
+      "accent-red": "#c53030",
+      "accent-red-soft": "#ae2e24",
+      "accent-violet": "#6a63c9",
+      "shadow-menu": "rgba(20, 20, 30, 0.15)",
+      "overlay-bg": "rgba(15, 15, 20, 0.35)"
+    },
+    "noteTemplateIds": [
+      "blank",
+      "meeting",
+      "journal"
+    ]
+  },
+  "renders": [
+    {
+      "template": "Hello {{name}}!\n",
+      "values": {
+        "name": "World"
+      },
+      "output": "Hello World!\n"
+    },
+    {
+      "template": "{{a}} {{{a}}} {{&a}}",
+      "values": {
+        "a": "<b>&\"x\"</b>"
+      },
+      "output": "<b>&\"x\"</b> <b>&\"x\"</b> <b>&\"x\"</b>"
+    },
+    {
+      "template": "{{#show}}shown {{x}}{{/show}}{{^show}}hidden{{/show}}",
+      "values": {
+        "show": "yes",
+        "x": "1"
+      },
+      "output": "shown 1"
+    },
+    {
+      "template": "{{#show}}shown{{/show}}{{^show}}hidden{{/show}}",
+      "values": {
+        "show": ""
+      },
+      "output": "hidden"
+    },
+    {
+      "template": "{{#show}}shown{{/show}}{{^show}}hidden{{/show}}",
+      "values": {},
+      "output": "hidden"
+    },
+    {
+      "template": "line1\n{{#s}}\nstandalone section\n{{/s}}\nline2\n",
+      "values": {
+        "s": "1"
+      },
+      "output": "line1\nstandalone section\nline2\n"
+    },
+    {
+      "template": "a\n  {{! a comment }}\nb\n",
+      "values": {},
+      "output": "a\nb\n"
+    },
+    {
+      "template": "{{missing}}|{{title}}|",
+      "values": {
+        "title": "T"
+      },
+      "output": "|T|"
+    },
+    {
+      "template": "{{> partial}}x",
+      "values": {},
+      "output": "x"
+    },
+    {
+      "template": "---\ntitle: {{title}}\ncreated: {{date}}\n---\n# {{title}}\n{{who}}\n",
+      "values": {
+        "title": "My Note",
+        "who": "Me"
+      },
+      "output": "---\ntitle: My Note\ncreated: \n---\n# My Note\nMe\n"
+    },
+    {
+      "template": "{{ spaced }}",
+      "values": {
+        "spaced": "ok"
+      },
+      "output": "ok"
+    },
+    {
+      "template": "{{a.b}}",
+      "values": {
+        "a.b": "dotted"
+      },
+      "output": ""
+    }
+  ],
+  "schemaDumps": [
+    {
+      "properties": [
+        {
+          "name": "Rating",
+          "type": "number",
+          "rules": {
+            "min": 1,
+            "max": 5,
+            "integerOnly": true
+          }
+        },
+        {
+          "name": "Tags",
+          "type": "list"
+        }
+      ],
+      "output": "properties:\n  - name: Rating\n    type: number\n    rules:\n      min: 1\n      max: 5\n      integerOnly: true\n  - name: Tags\n    type: list\n"
+    },
+    {
+      "properties": [
+        {
+          "name": "With: colon",
+          "type": "text",
+          "rules": {
+            "pattern": "^a+$",
+            "maxLength": 10
+          }
+        },
+        {
+          "name": "true",
+          "type": "text"
+        },
+        {
+          "name": "yes",
+          "type": "checkbox"
+        }
+      ],
+      "output": "properties:\n  - name: 'With: colon'\n    type: text\n    rules:\n      pattern: ^a+$\n      maxLength: 10\n  - name: 'true'\n    type: text\n  - name: 'yes'\n    type: checkbox\n"
+    },
+    {
+      "properties": [
+        {
+          "name": "Due",
+          "type": "date"
+        },
+        {
+          "name": "When",
+          "type": "datetime"
+        },
+        {
+          "name": "2026-01-01",
+          "type": "text"
+        },
+        {
+          "name": "42",
+          "type": "text"
+        }
+      ],
+      "output": "properties:\n  - name: Due\n    type: date\n  - name: When\n    type: datetime\n  - name: '2026-01-01'\n    type: text\n  - name: '42'\n    type: text\n"
+    },
+    {
+      "properties": [
+        {
+          "name": "Ünïcode ◇",
+          "type": "text",
+          "rules": {
+            "pattern": "\\d+\\s*#?"
+          }
+        },
+        {
+          "name": "it's",
+          "type": "text"
+        },
+        {
+          "name": " lead",
+          "type": "text"
+        }
+      ],
+      "output": "properties:\n  - name: Ünïcode ◇\n    type: text\n    rules:\n      pattern: \\d+\\s*#?\n  - name: it's\n    type: text\n  - name: ' lead'\n    type: text\n"
+    },
+    {
+      "properties": [],
+      "output": "properties: []\n"
+    }
+  ],
+  "dateVars": [
+    {
+      "template": "{{date}} {{time}} {{datetime}}",
+      "parts": [
+        2026,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "defaults": {
+        "date": "YYYY-MM-DD",
+        "time": "HH:mm",
+        "datetime": "YYYY-MM-DD HH:mm"
+      },
+      "output": "2026-05-06 07:08 2026-05-06 07:08"
+    },
+    {
+      "template": "{{ date : MMMM D, YYYY }}",
+      "parts": [
+        2026,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "defaults": {
+        "date": "YYYY-MM-DD",
+        "time": "HH:mm",
+        "datetime": "YYYY-MM-DD HH:mm"
+      },
+      "output": "May 6, 2026"
+    },
+    {
+      "template": "{{date:[Today is] dddd}}",
+      "parts": [
+        2026,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "defaults": {
+        "date": "YYYY-MM-DD",
+        "time": "HH:mm",
+        "datetime": "YYYY-MM-DD HH:mm"
+      },
+      "output": "Today is Wednesday"
+    },
+    {
+      "template": "{{datetime:YY/M/D h:mm a}}",
+      "parts": [
+        2026,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "defaults": {
+        "date": "YYYY-MM-DD",
+        "time": "HH:mm",
+        "datetime": "YYYY-MM-DD HH:mm"
+      },
+      "output": "26/5/6 7:08 am"
+    },
+    {
+      "template": "{{date}}{{date}}",
+      "parts": [
+        2026,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "defaults": {
+        "date": "YYYY-MM-DD",
+        "time": "HH:mm",
+        "datetime": "YYYY-MM-DD HH:mm"
+      },
+      "output": "2026-05-062026-05-06"
+    },
+    {
+      "template": "{{dates}} {{date: }}",
+      "parts": [
+        2026,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "defaults": {
+        "date": "YYYY-MM-DD",
+        "time": "HH:mm",
+        "datetime": "YYYY-MM-DD HH:mm"
+      },
+      "output": "{{dates}} 2026-05-06"
+    },
+    {
+      "template": "{{time:}}",
+      "parts": [
+        2026,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "defaults": {
+        "date": "YYYY-MM-DD",
+        "time": "HH:mm",
+        "datetime": "YYYY-MM-DD HH:mm"
+      },
+      "output": "{{time:}}"
+    }
+  ],
+  "search": {
+    "contents": "Hello World\nhello world, héllo\nfoo.bar foo-bar foobar\n\ntab\there Foo\nnumber 123 and 45\nend",
+    "searches": [
+      {
+        "options": {
+          "query": "hello",
+          "mode": "plain",
+          "wholeWord": false
+        },
+        "matches": [
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 0,
+            "end": 5
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 0,
+            "end": 5
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "hello",
+          "mode": "plain",
+          "wholeWord": false,
+          "caseSensitive": true
+        },
+        "matches": [
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 0,
+            "end": 5
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "foo",
+          "mode": "plain",
+          "wholeWord": true
+        },
+        "matches": [
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 8,
+            "end": 11
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 9,
+            "end": 12
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "foo.bar",
+          "mode": "plain",
+          "wholeWord": false
+        },
+        "matches": [
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 0,
+            "end": 7
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "h.llo",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "matches": [
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 0,
+            "end": 5
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 0,
+            "end": 5
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 13,
+            "end": 18
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "\\d+",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "matches": [
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 7,
+            "end": 10
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 15,
+            "end": 17
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "^\\w+",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "matches": [
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 0,
+            "end": 5
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 0,
+            "end": 5
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 0,
+            "end": 6
+          },
+          {
+            "line": 7,
+            "lineText": "end",
+            "start": 0,
+            "end": 3
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "(",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "matches": []
+      },
+      {
+        "options": {
+          "query": "",
+          "mode": "plain",
+          "wholeWord": false
+        },
+        "matches": []
+      },
+      {
+        "options": {
+          "query": "o*",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "matches": [
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 0,
+            "end": 0
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 1,
+            "end": 1
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 2,
+            "end": 2
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 3,
+            "end": 3
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 4,
+            "end": 5
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 5,
+            "end": 5
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 6,
+            "end": 6
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 7,
+            "end": 8
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 8,
+            "end": 8
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 9,
+            "end": 9
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 10,
+            "end": 10
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 11,
+            "end": 11
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 0,
+            "end": 0
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 1,
+            "end": 1
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 2,
+            "end": 2
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 3,
+            "end": 3
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 4,
+            "end": 5
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 5,
+            "end": 5
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 6,
+            "end": 6
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 7,
+            "end": 8
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 8,
+            "end": 8
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 9,
+            "end": 9
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 10,
+            "end": 10
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 11,
+            "end": 11
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 12,
+            "end": 12
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 13,
+            "end": 13
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 14,
+            "end": 14
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 15,
+            "end": 15
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 16,
+            "end": 16
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 17,
+            "end": 18
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 18,
+            "end": 18
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 0,
+            "end": 0
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 1,
+            "end": 3
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 3,
+            "end": 3
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 4,
+            "end": 4
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 5,
+            "end": 5
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 6,
+            "end": 6
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 7,
+            "end": 7
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 8,
+            "end": 8
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 9,
+            "end": 11
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 11,
+            "end": 11
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 12,
+            "end": 12
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 13,
+            "end": 13
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 14,
+            "end": 14
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 15,
+            "end": 15
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 16,
+            "end": 16
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 17,
+            "end": 19
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 19,
+            "end": 19
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 20,
+            "end": 20
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 21,
+            "end": 21
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 22,
+            "end": 22
+          },
+          {
+            "line": 4,
+            "lineText": "",
+            "start": 0,
+            "end": 0
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 0,
+            "end": 0
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 1,
+            "end": 1
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 2,
+            "end": 2
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 3,
+            "end": 3
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 4,
+            "end": 4
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 5,
+            "end": 5
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 6,
+            "end": 6
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 7,
+            "end": 7
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 8,
+            "end": 8
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 9,
+            "end": 9
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 10,
+            "end": 12
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 12,
+            "end": 12
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 0,
+            "end": 0
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 1,
+            "end": 1
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 2,
+            "end": 2
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 3,
+            "end": 3
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 4,
+            "end": 4
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 5,
+            "end": 5
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 6,
+            "end": 6
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 7,
+            "end": 7
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 8,
+            "end": 8
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 9,
+            "end": 9
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 10,
+            "end": 10
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 11,
+            "end": 11
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 12,
+            "end": 12
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 13,
+            "end": 13
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 14,
+            "end": 14
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 15,
+            "end": 15
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 16,
+            "end": 16
+          },
+          {
+            "line": 6,
+            "lineText": "number 123 and 45",
+            "start": 17,
+            "end": 17
+          },
+          {
+            "line": 7,
+            "lineText": "end",
+            "start": 0,
+            "end": 0
+          },
+          {
+            "line": 7,
+            "lineText": "end",
+            "start": 1,
+            "end": 1
+          },
+          {
+            "line": 7,
+            "lineText": "end",
+            "start": 2,
+            "end": 2
+          },
+          {
+            "line": 7,
+            "lineText": "end",
+            "start": 3,
+            "end": 3
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "(?<first>fo+)",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "matches": [
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 8,
+            "end": 11
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 16,
+            "end": 19
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 9,
+            "end": 12
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "\\bfoo\\b",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "matches": [
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 0,
+            "end": 3
+          },
+          {
+            "line": 3,
+            "lineText": "foo.bar foo-bar foobar",
+            "start": 8,
+            "end": 11
+          },
+          {
+            "line": 5,
+            "lineText": "tab\there Foo",
+            "start": 9,
+            "end": 12
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "é",
+          "mode": "plain",
+          "wholeWord": true
+        },
+        "matches": [
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 14,
+            "end": 15
+          }
+        ]
+      },
+      {
+        "options": {
+          "query": "l+",
+          "mode": "regex",
+          "wholeWord": false,
+          "caseSensitive": true
+        },
+        "matches": [
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 2,
+            "end": 4
+          },
+          {
+            "line": 1,
+            "lineText": "Hello World",
+            "start": 9,
+            "end": 10
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 2,
+            "end": 4
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 9,
+            "end": 10
+          },
+          {
+            "line": 2,
+            "lineText": "hello world, héllo",
+            "start": 15,
+            "end": 17
+          }
+        ]
+      }
+    ],
+    "replacements": [
+      {
+        "options": {
+          "query": "hello",
+          "mode": "plain",
+          "wholeWord": false
+        },
+        "replace": "X$1",
+        "result": {
+          "content": "X$1 World\nX$1 world, héllo\nfoo.bar foo-bar foobar\n\ntab\there Foo\nnumber 123 and 45\nend",
+          "count": 2
+        }
+      },
+      {
+        "options": {
+          "query": "(h)(e)llo",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "replace": "[$2$1|$&|$$|$3|$12]",
+        "result": {
+          "content": "[eH|Hello|$|$3|H2] World\n[eh|hello|$|$3|h2] world, héllo\nfoo.bar foo-bar foobar\n\ntab\there Foo\nnumber 123 and 45\nend",
+          "count": 2
+        }
+      },
+      {
+        "options": {
+          "query": "\\d+",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "replace": "<$&>",
+        "result": {
+          "content": "Hello World\nhello world, héllo\nfoo.bar foo-bar foobar\n\ntab\there Foo\nnumber <123> and <45>\nend",
+          "count": 2
+        }
+      },
+      {
+        "options": {
+          "query": "foo",
+          "mode": "plain",
+          "wholeWord": true
+        },
+        "replace": "",
+        "result": {
+          "content": "Hello World\nhello world, héllo\n.bar -bar foobar\n\ntab\there \nnumber 123 and 45\nend",
+          "count": 3
+        }
+      },
+      {
+        "options": {
+          "query": "(",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "replace": "z",
+        "result": {
+          "content": "Hello World\nhello world, héllo\nfoo.bar foo-bar foobar\n\ntab\there Foo\nnumber 123 and 45\nend",
+          "count": 0
+        }
+      },
+      {
+        "options": {
+          "query": "(o)(o)?",
+          "mode": "regex",
+          "wholeWord": false
+        },
+        "replace": "[$2]",
+        "result": {
+          "content": "Hell[] W[]rld\nhell[] w[]rld, héll[]\nf[o].bar f[o]-bar f[o]bar\n\ntab\there F[o]\nnumber 123 and 45\nend",
+          "count": 9
+        }
+      }
+    ]
+  }
+}

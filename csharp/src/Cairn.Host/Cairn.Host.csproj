@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>Cairn</AssemblyName>
+    <RootNamespace>Cairn.Host</RootNamespace>
+    <ApplicationIcon Condition="Exists('$(MSBuildThisFileDirectory)Assets\icon.ico')">Assets\icon.ico</ApplicationIcon>
+
+    <!-- The repository root, where the React renderer (dist/) and the bundled plugins/ live. -->
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\'))</RepoRoot>
+    <RendererDist>$(RepoRoot)dist\</RendererDist>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- PhotinoX: the maintained Photino fork. Upstream Photino.NET's custom-scheme handlers don't fire on Windows. -->
+    <PackageReference Include="PhotinoX" Version="5.3.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Core\Cairn.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Web\bridge.js" LogicalName="bridge.js" />
+  </ItemGroup>
+
+  <!--
+    The window hosts the same React/CodeMirror renderer the Electron build ships: `vite build` writes it to
+    <repo>/dist, and it is copied next to the executable as wwwroot/. Build it first with
+    `npx vite build` from the repository root (done automatically below when dist/ is missing; pass
+    -p:SkipRendererBuild=true to opt out).
+  -->
+  <Target Name="BuildRenderer" BeforeTargets="BeforeBuild" Condition="!Exists('$(RendererDist)index.html') And '$(SkipRendererBuild)' != 'true'">
+    <Message Importance="high" Text="dist/index.html not found - building the renderer with vite..." />
+    <Exec Command="npx vite build" WorkingDirectory="$(RepoRoot)" />
+  </Target>
+
+  <Target Name="IncludeRenderer" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <RendererFiles Include="$(RendererDist)**\*" />
+      <BundledPluginFiles Include="$(RepoRoot)plugins\**\*" />
+      <None Include="@(RendererFiles)" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+      <None Include="@(BundledPluginFiles)" Link="plugins\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>
