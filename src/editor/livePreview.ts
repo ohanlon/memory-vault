@@ -83,6 +83,12 @@ class PillWidget extends WidgetType {
 }
 
 const HIDE = Decoration.replace({});
+const MARKER = Decoration.mark({ class: "cm-md-marker" });
+
+/** Hides each [from, to] span, or dims it when the cursor has revealed the raw markup. */
+function markerDecos(revealed: boolean, ...spans: [number, number][]): Range<Decoration>[] {
+  return spans.map(([from, to]) => (revealed ? MARKER : HIDE).range(from, to));
+}
 
 class MathBlockWidget extends WidgetType {
   constructor(private readonly latex: string) {
@@ -151,12 +157,10 @@ function processLine(
     markConsumed(0, markerLen);
     const level = headingMatch[1].length;
     const cursorOnLine = cursorOverlaps(state, lineFrom, lineTo);
-    if (!cursorOnLine) {
-      items.push(HIDE.range(lineFrom, lineFrom + markerLen));
-      const idMatch = HEADING_ID_RE.exec(lineText);
-      if (idMatch) {
-        items.push(HIDE.range(lineFrom + idMatch.index!, lineTo));
-      }
+    items.push(...markerDecos(cursorOnLine, [lineFrom, lineFrom + markerLen]));
+    const idMatch = HEADING_ID_RE.exec(lineText);
+    if (idMatch) {
+      items.push(...markerDecos(cursorOnLine, [lineFrom + idMatch.index!, lineTo]));
     }
     items.push(Decoration.mark({ class: `cm-heading cm-heading-${level}` }).range(lineFrom, lineTo));
   }
@@ -169,9 +173,7 @@ function processLine(
   if (blockIdMatch) {
     const s = blockIdMatch.index!;
     markConsumed(s, lineText.length);
-    if (!cursorOverlaps(state, lineFrom, lineTo)) {
-      items.push(HIDE.range(lineFrom + s, lineTo));
-    }
+    items.push(...markerDecos(cursorOverlaps(state, lineFrom, lineTo), [lineFrom + s, lineTo]));
   }
 
   // Inline code
@@ -181,10 +183,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
-    if (!cursorHere) {
-      items.push(HIDE.range(lineFrom + s, lineFrom + s + 1));
-      items.push(HIDE.range(lineFrom + e - 1, lineFrom + e));
-    }
+    items.push(...markerDecos(cursorHere, [lineFrom + s, lineFrom + s + 1], [lineFrom + e - 1, lineFrom + e]));
     items.push(Decoration.mark({ class: "cm-inline-code" }).range(lineFrom + s + 1, lineFrom + e - 1));
   }
 
@@ -244,10 +243,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
-    if (!cursorHere) {
-      items.push(HIDE.range(lineFrom + s, lineFrom + s + 2));
-      items.push(HIDE.range(lineFrom + e - 2, lineFrom + e));
-    }
+    items.push(...markerDecos(cursorHere, [lineFrom + s, lineFrom + s + 2], [lineFrom + e - 2, lineFrom + e]));
     items.push(Decoration.mark({ class: "cm-bold" }).range(lineFrom + s + 2, lineFrom + e - 2));
   }
 
@@ -258,10 +254,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
-    if (!cursorHere) {
-      items.push(HIDE.range(lineFrom + s, lineFrom + s + 1));
-      items.push(HIDE.range(lineFrom + e - 1, lineFrom + e));
-    }
+    items.push(...markerDecos(cursorHere, [lineFrom + s, lineFrom + s + 1], [lineFrom + e - 1, lineFrom + e]));
     items.push(Decoration.mark({ class: "cm-italic" }).range(lineFrom + s + 1, lineFrom + e - 1));
   }
 
@@ -272,10 +265,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
-    if (!cursorHere) {
-      items.push(HIDE.range(lineFrom + s, lineFrom + s + 3));
-      items.push(HIDE.range(lineFrom + e - 4, lineFrom + e));
-    }
+    items.push(...markerDecos(cursorHere, [lineFrom + s, lineFrom + s + 3], [lineFrom + e - 4, lineFrom + e]));
     items.push(Decoration.mark({ class: "cm-underline" }).range(lineFrom + s + 3, lineFrom + e - 4));
   }
 
@@ -286,10 +276,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
-    if (!cursorHere) {
-      items.push(HIDE.range(lineFrom + s, lineFrom + s + 2));
-      items.push(HIDE.range(lineFrom + e - 2, lineFrom + e));
-    }
+    items.push(...markerDecos(cursorHere, [lineFrom + s, lineFrom + s + 2], [lineFrom + e - 2, lineFrom + e]));
     items.push(Decoration.mark({ class: "cm-highlight" }).range(lineFrom + s + 2, lineFrom + e - 2));
   }
 
@@ -300,10 +287,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
-    if (!cursorHere) {
-      items.push(HIDE.range(lineFrom + s, lineFrom + s + 2));
-      items.push(HIDE.range(lineFrom + e - 2, lineFrom + e));
-    }
+    items.push(...markerDecos(cursorHere, [lineFrom + s, lineFrom + s + 2], [lineFrom + e - 2, lineFrom + e]));
     items.push(Decoration.mark({ class: "cm-strikethrough" }).range(lineFrom + s + 2, lineFrom + e - 2));
   }
 
@@ -314,10 +298,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
-    if (!cursorHere) {
-      items.push(HIDE.range(lineFrom + s, lineFrom + s + 1));
-      items.push(HIDE.range(lineFrom + e - 1, lineFrom + e));
-    }
+    items.push(...markerDecos(cursorHere, [lineFrom + s, lineFrom + s + 1], [lineFrom + e - 1, lineFrom + e]));
     items.push(Decoration.mark({ class: "cm-subscript" }).range(lineFrom + s + 1, lineFrom + e - 1));
   }
 
@@ -328,10 +309,7 @@ function processLine(
     if (!isFree(s, e)) continue;
     markConsumed(s, e);
     const cursorHere = cursorOverlaps(state, lineFrom + s, lineFrom + e);
-    if (!cursorHere) {
-      items.push(HIDE.range(lineFrom + s, lineFrom + s + 1));
-      items.push(HIDE.range(lineFrom + e - 1, lineFrom + e));
-    }
+    items.push(...markerDecos(cursorHere, [lineFrom + s, lineFrom + s + 1], [lineFrom + e - 1, lineFrom + e]));
     items.push(Decoration.mark({ class: "cm-superscript" }).range(lineFrom + s + 1, lineFrom + e - 1));
   }
 

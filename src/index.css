@@ -2421,3 +2421,9 @@ body {
   margin: 4px 6px;
   background: var(--border-divider);
 }
+
+/* Raw markdown markup revealed under the cursor (e.g. "# ", "**"), dimmed so it reads as scaffolding. */
+.cm-md-marker {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
