@@ -1,0 +1,3 @@
+<Project>
+  <!-- Shadows ../../Directory.Build.props: MAUI sets its own multi-target TargetFrameworks. -->
+</Project>
