@@ -468,6 +468,29 @@ body {
   min-height: 0;
 }
 
+/* Compact (phone-width) layout: the sidebar and right panel float over the
+   editor as drawers instead of taking grid columns, so the editor keeps the
+   full width. Open/closed is the same collapsed state the desktop toggles use. */
+.app-layout.compact .sidebar,
+.app-layout.compact .right-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 20;
+  width: min(320px, calc(100% - 48px - 40px));
+  box-shadow: 0 0 24px var(--shadow-menu, rgba(0, 0, 0, 0.4));
+}
+
+.app-layout.compact .sidebar {
+  left: 48px; /* clear of the activity bar */
+}
+
+.app-layout.compact .right-panel {
+  right: 0;
+  background: var(--bg-sidebar);
+  border-left: 1px solid var(--border-divider);
+}
+
 .resize-handle {
   position: absolute;
   top: 0;

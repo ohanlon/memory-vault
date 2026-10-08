@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useNotesFolders } from "./notesFolder/useNotesFolders";
+import { isCompactViewport, useCompactViewport } from "./useCompactViewport";
 import { StatusBar } from "./components/StatusBar";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
@@ -136,8 +137,15 @@ export default function App() {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [notesFolderContextMenu, setNotesFolderContextMenu] = useState<NotesFolderContextMenuState | null>(null);
   const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const compact = useCompactViewport();
+  // On a narrow viewport the side panels are overlay drawers, so they start closed.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isCompactViewport);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(isCompactViewport);
+  useEffect(() => {
+    if (!compact) return;
+    setSidebarCollapsed(true);
+    setRightPanelCollapsed(true);
+  }, [compact]);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_LAYOUT_PREFS.sidebarWidth);
   const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_LAYOUT_PREFS.rightPanelWidth);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -1039,13 +1047,13 @@ export default function App() {
         />
       )}
       <div
-        className="app-layout"
+        className={compact ? "app-layout compact" : "app-layout"}
         style={{
           gridTemplateColumns: [
             `${ACTIVITY_BAR_WIDTH}px`,
-            !sidebarCollapsed && isRegionPresent("left-sidebar") ? `${sidebarWidth}px` : null,
+            !compact && !sidebarCollapsed && isRegionPresent("left-sidebar") ? `${sidebarWidth}px` : null,
             "1fr",
-            !rightPanelCollapsed && isRegionPresent("right-sidebar") ? `${rightPanelWidth}px` : null,
+            !compact && !rightPanelCollapsed && isRegionPresent("right-sidebar") ? `${rightPanelWidth}px` : null,
           ]
             .filter(Boolean)
             .join(" "),
@@ -1085,6 +1093,7 @@ export default function App() {
               onSelect: (n: Note) => {
                 setSelectedFolderPath(null);
                 openTab(n.path);
+                if (compact) setSidebarCollapsed(true);
               },
               onDelete: (n: Note) => pluginRegistry.runCommand("stack.deleteNote", n),
               onRename: (n: Note) => pluginRegistry.runCommand("stack.rename", n),
@@ -1106,7 +1115,7 @@ export default function App() {
           />
         )}
 
-        {isRegionPresent("left-sidebar") && !sidebarCollapsed && (
+        {!compact && isRegionPresent("left-sidebar") && !sidebarCollapsed && (
           <ResizeHandle
             style={{ left: ACTIVITY_BAR_WIDTH + sidebarWidth }}
             onResize={resizeSidebar}
@@ -1160,7 +1169,7 @@ export default function App() {
           </main>
         )}
 
-        {isRegionPresent("right-sidebar") && !rightPanelCollapsed && (
+        {!compact && isRegionPresent("right-sidebar") && !rightPanelCollapsed && (
           <ResizeHandle
             style={{ right: rightPanelWidth }}
             onResize={resizeRightPanel}
