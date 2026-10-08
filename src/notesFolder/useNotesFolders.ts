@@ -116,6 +116,15 @@ export function useNotesFolders() {
     [openNotesFolder, addNotesFolderToRegistry]
   );
 
+  const createNotesFolder = useCallback(
+    async (name: string) => {
+      const notesFolders = await window.memoryStack.createNotesFolder(name); // throws on empty/duplicate name
+      setState((s) => ({ ...s, notesFolders }));
+      await openNotesFolder(notesFolders[notesFolders.length - 1]);
+    },
+    [openNotesFolder]
+  );
+
   const removeNotesFolder = useCallback(async (name: string) => {
     const notesFolders = await window.memoryStack.removeNotesFolder(name); // also revokes CLI/MCP access server-side
     setState((s) => ({
@@ -229,6 +238,7 @@ export function useNotesFolders() {
     ...state,
     openNotesFolderByEntry,
     addNotesFolder,
+    createNotesFolder,
     addNotesFolderToRegistry,
     removeNotesFolder,
     renameNotesFolder,

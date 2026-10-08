@@ -30,6 +30,8 @@ export interface MemoryStackAPI {
   onReconcileStatus(cb: (event: NotesFolderReconcileStatusEvent) => void): () => void;
   listNotesFolders(): Promise<NotesFolderEntry[]>;
   addNotesFolder(name: string, root: string): Promise<NotesFolderEntry[]>;
+  /** Creates an app-managed folder at a location the app chooses; the caller supplies only a name. */
+  createNotesFolder(name: string): Promise<NotesFolderEntry[]>;
   removeNotesFolder(name: string): Promise<NotesFolderEntry[]>;
   renameNotesFolder(oldName: string, newName: string): Promise<NotesFolderEntry[]>;
   listCliAccess(): Promise<string[]>;

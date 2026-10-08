@@ -42,6 +42,8 @@ const api = {
   listNotesFolders: (): Promise<NotesFolderEntry[]> => ipcRenderer.invoke("notesFolders:list"),
   addNotesFolder: (name: string, root: string): Promise<NotesFolderEntry[]> =>
     ipcRenderer.invoke("notesFolders:add", name, root),
+  createNotesFolder: (name: string): Promise<NotesFolderEntry[]> =>
+    ipcRenderer.invoke("notesFolders:create", name),
   removeNotesFolder: (name: string): Promise<NotesFolderEntry[]> =>
     ipcRenderer.invoke("notesFolders:remove", name),
   renameNotesFolder: (oldName: string, newName: string): Promise<NotesFolderEntry[]> =>

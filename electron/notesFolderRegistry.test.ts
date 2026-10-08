@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { addNotesFolder, findByNameCI, readNotesFoldersFile, removeNotesFolder, renameNotesFolder, writeNotesFoldersFile } from "./notesFolderRegistry";
+import { addManagedNotesFolder, addNotesFolder, findByNameCI, readNotesFoldersFile, removeNotesFolder, renameNotesFolder, writeNotesFoldersFile } from "./notesFolderRegistry";
 import { NOTES_FOLDER_AVATAR_COUNT, defaultAvatarIndexForName } from "../shared/avatars";
 import type { NotesFolderEntry } from "../shared/types";
 
@@ -44,6 +44,46 @@ describe("addNotesFolder", () => {
     const existing: NotesFolderEntry[] = [{ name: "Work", root: "/notes/work" }];
     addNotesFolder(existing, "Personal", "/notes/personal");
     expect(existing).toHaveLength(1);
+  });
+});
+
+describe("addManagedNotesFolder", () => {
+  const notesRoot = path.join(os.tmpdir(), `cairn-managed-${process.pid}`);
+
+  afterEach(() => {
+    fs.rmSync(notesRoot, { recursive: true, force: true });
+  });
+
+  it("places the folder under the notes root using a sanitized directory name", () => {
+    const [entry] = addManagedNotesFolder([], "  My/Work  ", notesRoot);
+    expect(entry.name).toBe("My/Work");
+    expect(entry.dir).toBe("My-Work");
+    expect(entry.root).toBe(path.join(notesRoot, "My-Work"));
+  });
+
+  it("rejects empty and duplicate names", () => {
+    expect(() => addManagedNotesFolder([], "  ", notesRoot)).toThrow();
+    const existing = addManagedNotesFolder([], "Work", notesRoot);
+    expect(() => addManagedNotesFolder(existing, "work", notesRoot)).toThrow(/already exists/);
+  });
+
+  it("picks a fresh directory when one is already used or exists on disk", () => {
+    fs.mkdirSync(path.join(notesRoot, "Work"), { recursive: true });
+    const [entry] = addManagedNotesFolder([], "Work", notesRoot);
+    expect(entry.dir).toBe("Work-2");
+  });
+
+  it("does not reuse the directory of a renamed folder", () => {
+    const renamed = renameNotesFolder(addManagedNotesFolder([], "Work", notesRoot), "Work", "Job");
+    expect(addManagedNotesFolder(renamed, "Work", notesRoot)[1].dir).toBe("Work-2");
+  });
+
+  it("persists only dir, and resolves root against the notes root on read", () => {
+    const file = path.join(notesRoot, "folders.json");
+    writeNotesFoldersFile(file, addManagedNotesFolder([], "Work", notesRoot));
+    expect(JSON.parse(fs.readFileSync(file, "utf-8"))[0]).not.toHaveProperty("root");
+    const moved = path.join(os.tmpdir(), "elsewhere");
+    expect(readNotesFoldersFile(file, moved)[0].root).toBe(path.join(moved, "Work"));
   });
 });
 

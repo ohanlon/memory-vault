@@ -67,6 +67,7 @@ function deleteConfirmMessage(note: Note): string {
 }
 
 type DialogState =
+  | { kind: "create-notes-folder" }
   | { kind: "name-notes-folder"; root: string }
   | { kind: "rename-notes-folder"; notesFolder: NotesFolderEntry }
   | { kind: "manage-properties"; root: string }
@@ -93,6 +94,7 @@ export default function App() {
     cliAccessFolders,
     openNotesFolderByEntry,
     addNotesFolder,
+    createNotesFolder,
     removeNotesFolder,
     renameNotesFolder,
     setCliAccess,
@@ -525,6 +527,13 @@ export default function App() {
     if (root) setDialog({ kind: "name-notes-folder", root });
   }
 
+  async function handleCreateNotesFolderSubmit(name: string) {
+    await createNotesFolder(name); // rejection surfaces inline in the dialog; it stays open to retry
+    setDialog(null);
+    setOpenPaths([]);
+    setActivePath(null);
+  }
+
   async function handleNameNotesFolderSubmit(name: string) {
     if (dialog?.kind !== "name-notes-folder") return;
     await addNotesFolder(name, dialog.root); // rejection surfaces inline in the dialog; it stays open to retry
@@ -841,6 +850,7 @@ export default function App() {
   // render (cheap — a few Map.set calls) so handlers always close over
   // current state instead of going stale.
   useEffect(() => {
+    pluginRegistry.registerCommand("notesFolder.create", () => setDialog({ kind: "create-notes-folder" }));
     pluginRegistry.registerCommand("notesFolder.add", () => handlePickFolder());
     pluginRegistry.registerCommand("stack.newNote", () => handleNewNoteClick());
     pluginRegistry.registerCommand("stack.newFolder", () => handleNewFolderClick());
@@ -918,7 +928,7 @@ export default function App() {
         <div className="empty-state">
           <h1>Cairn</h1>
           {notesFolders.length === 0 ? (
-            <p>Add a folder of markdown notes to get started.</p>
+            <p>Create a notes folder, or link an existing folder of markdown notes, to get started.</p>
           ) : (
             <div className="notes-folder-sections">
               <section className="notes-folder-section">
@@ -975,6 +985,15 @@ export default function App() {
           )}
           {error && <p className="error">{error}</p>}
 
+          {dialog?.kind === "create-notes-folder" && (
+            <PromptModal
+              title="Name your new notes folder"
+              initialValue=""
+              confirmLabel="Create"
+              onSubmit={handleCreateNotesFolderSubmit}
+              onCancel={() => setDialog(null)}
+            />
+          )}
           {dialog?.kind === "name-notes-folder" && (
             <PromptModal
               title="Name this notes folder"

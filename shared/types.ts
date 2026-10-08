@@ -78,8 +78,14 @@ export interface AvatarRef {
 export interface NotesFolderEntry {
   /** Display name, as typed by the user. Uniqueness is enforced case-insensitively. */
   name: string;
-  /** Absolute path to the notes folder's root. */
+  /**
+   * Absolute path to the notes folder's root. For a managed folder (`dir` set)
+   * this is derived from the platform's notes root when the registry is read,
+   * and never persisted.
+   */
   root: string;
+  /** Set for app-managed folders: the directory name under the platform's notes root. Absent for linked external folders. */
+  dir?: string;
   /** Absent on entries created before avatars existed — see EntryAvatar.tsx for the fallback. */
   avatar?: AvatarRef;
 }

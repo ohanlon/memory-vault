@@ -23,7 +23,10 @@ function homeMenus(): { id: string; label: string; items: ContextMenuEntry[] }[]
     {
       id: "file",
       label: "File",
-      items: [{ label: "Add Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") }],
+      items: [
+        { label: "New Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.create") },
+        { label: "Link Existing Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") },
+      ],
     },
   ];
 }
@@ -34,7 +37,8 @@ function notesFolderMenus(hasActiveNote: boolean): { id: string; label: string; 
       id: "file",
       label: "File",
       items: [
-        { label: "Add Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") },
+        { label: "New Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.create") },
+        { label: "Link Existing Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") },
         { label: "Switch Notes Folder…", onClick: () => pluginRegistry.runCommand("stack.switchStack") },
         { separator: true },
         { label: "New Note", onClick: () => pluginRegistry.runCommand("stack.newNote") },

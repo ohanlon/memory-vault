@@ -18,7 +18,9 @@ import { runReplaceAll, runSearch } from "./search";
 import { convertToTemplate, listAllFileTemplates } from "./templates";
 import { expandBuiltInDateVars, renderTemplate } from "../shared/templateRender";
 import {
+  addManagedNotesFolder,
   addNotesFolder,
+  defaultNotesRoot,
   readNotesFoldersFile,
   removeNotesFolder,
   renameNotesFolder,
@@ -306,6 +308,15 @@ ipcMain.handle("notesFolders:list", async () => {
 ipcMain.handle("notesFolders:add", async (_event, name: string, root: string) => {
   const notesFolders = readNotesFoldersFile(notesFoldersFilePath());
   const updated = addNotesFolder(notesFolders, name, root); // throws on empty/duplicate name
+  writeNotesFoldersFile(notesFoldersFilePath(), updated);
+  return updated;
+});
+
+// Tier 1: the app decides where the folder lives; the user only supplies a name.
+ipcMain.handle("notesFolders:create", async (_event, name: string) => {
+  const notesRoot = defaultNotesRoot();
+  const updated = addManagedNotesFolder(readNotesFoldersFile(notesFoldersFilePath()), name, notesRoot); // throws on empty/duplicate name
+  fs.mkdirSync(updated[updated.length - 1].root, { recursive: true });
   writeNotesFoldersFile(notesFoldersFilePath(), updated);
   return updated;
 });
