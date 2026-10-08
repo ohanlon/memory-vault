@@ -41,7 +41,9 @@ internal static class Program
             && Environment.GetEnvironmentVariable("CAIRN_NATIVE_CHROME") != "1";
         var assets = new SchemeHandlers(rendererDir, _router, paths, _log, chromeless);
 
-        var iconPath = Path.Combine(rendererDir, "icon.png");
+        var iconPath = OperatingSystem.IsWindows()
+            ? Path.Combine(AppContext.BaseDirectory, "icon.ico")
+            : Path.Combine(rendererDir, "icon.png");
         var window = new PhotinoWindow()
             .SetTitle("Cairn")
             .SetUseOsDefaultSize(false)

@@ -4,11 +4,11 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>Cairn</AssemblyName>
     <RootNamespace>Cairn.Host</RootNamespace>
-    <ApplicationIcon Condition="Exists('$(MSBuildThisFileDirectory)Assets\icon.ico')">Assets\icon.ico</ApplicationIcon>
 
     <!-- The repository root, where the React renderer (dist/) and the bundled plugins/ live. -->
     <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\'))</RepoRoot>
     <RendererDist>$(RepoRoot)dist\</RendererDist>
+    <ApplicationIcon>$(RepoRoot)build\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Web\bridge.js" LogicalName="bridge.js" />
+    <!-- Win32 window icons must be .ico; the window loads this copy at startup. -->
+    <None Include="$(RepoRoot)build\icon.ico" Link="icon.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!--
