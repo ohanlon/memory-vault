@@ -71,6 +71,8 @@ public sealed class IpcRouter : IDisposable
             throw new InvalidOperationException("The open notes folder does not contain this path");
     }
 
+    private List<JsonObject> ReadNotesFolders() => NotesFolderRegistry.Read(_paths.NotesFolders, _paths.NotesRoot);
+
     private IEnumerable<Note> SessionNotes => _session?.Notes ?? new List<Note>();
 
     private static string Str(JsonArray args, int i) =>
@@ -205,7 +207,7 @@ public sealed class IpcRouter : IDisposable
         var newFile = _paths.NotesFolders;
         if (File.Exists(oldFile) && !File.Exists(newFile)) File.Move(oldFile, newFile);
 
-        foreach (var folder in NotesFolderRegistry.Read(newFile))
+        foreach (var folder in ReadNotesFolders())
         {
             var root = NotesFolderRegistry.RootOf(folder);
             var oldDir = Path.Combine(root, ".stack");
@@ -253,11 +255,20 @@ public sealed class IpcRouter : IDisposable
         On("notesFolder:pick", async _ => (await _platform.PickFolderAsync()) is { } picked ? Val(picked) : null);
 
         // --- notes folder registry
-        OnSync("notesFolders:list", _ => ToArray(NotesFolderRegistry.Read(_paths.NotesFolders)));
+        OnSync("notesFolders:list", _ => ToArray(ReadNotesFolders()));
 
         OnSync("notesFolders:add", args =>
         {
-            var updated = NotesFolderRegistry.Add(NotesFolderRegistry.Read(_paths.NotesFolders), Str(args, 0), Str(args, 1));
+            var updated = NotesFolderRegistry.Add(ReadNotesFolders(), Str(args, 0), Str(args, 1));
+            NotesFolderRegistry.Write(_paths.NotesFolders, updated);
+            return ToArray(updated);
+        });
+
+        // Tier 1: the app decides where the folder lives; the caller only supplies a name.
+        OnSync("notesFolders:create", args =>
+        {
+            var updated = NotesFolderRegistry.AddManaged(ReadNotesFolders(), Str(args, 0), _paths.NotesRoot);
+            Directory.CreateDirectory(NotesFolderRegistry.RootOf(updated[^1]));
             NotesFolderRegistry.Write(_paths.NotesFolders, updated);
             return ToArray(updated);
         });
@@ -265,7 +276,7 @@ public sealed class IpcRouter : IDisposable
         OnSync("notesFolders:remove", args =>
         {
             var name = Str(args, 0);
-            var updated = NotesFolderRegistry.Remove(NotesFolderRegistry.Read(_paths.NotesFolders), name);
+            var updated = NotesFolderRegistry.Remove(ReadNotesFolders(), name);
             NotesFolderRegistry.Write(_paths.NotesFolders, updated);
             // Otherwise a later folder re-registered under the same name would silently inherit its access/link.
             CliAccess.Write(_paths.CliAccess, CliAccess.Deny(CliAccess.Read(_paths.CliAccess), name));
@@ -277,7 +288,7 @@ public sealed class IpcRouter : IDisposable
         {
             var oldName = Str(args, 0);
             var newName = Str(args, 1);
-            var updated = NotesFolderRegistry.Rename(NotesFolderRegistry.Read(_paths.NotesFolders), oldName, newName);
+            var updated = NotesFolderRegistry.Rename(ReadNotesFolders(), oldName, newName);
             NotesFolderRegistry.Write(_paths.NotesFolders, updated);
             CliAccess.Write(_paths.CliAccess, CliAccess.Rename(CliAccess.Read(_paths.CliAccess), oldName, newName));
             SyncConfig.Write(_paths.SyncConfig, SyncConfig.Rename(SyncConfig.Read(_paths.SyncConfig), oldName, newName));
@@ -555,7 +566,7 @@ public sealed class IpcRouter : IDisposable
         });
 
         // --- templates
-        OnSync("templates:list", _ => Json(Templates.ListAll(NotesFolderRegistry.Read(_paths.NotesFolders))));
+        OnSync("templates:list", _ => Json(Templates.ListAll(ReadNotesFolders())));
 
         OnSync("templates:convert", args => Val(Templates.ConvertToTemplate(Str(args, 0), Str(args, 1))));
 

@@ -97,9 +97,15 @@ public static class UserDataDir
 /// <summary>The files under the user data directory, named exactly as in electron/main.ts.</summary>
 public sealed class CairnPaths
 {
-    public CairnPaths(string userDataDir) => UserData = userDataDir;
+    public CairnPaths(string userDataDir, string? notesRoot = null)
+    {
+        UserData = userDataDir;
+        NotesRoot = notesRoot ?? NotesFolderRegistry.DefaultNotesRoot();
+    }
 
     public string UserData { get; }
+    /// <summary>Where app-managed notes folders live; a mobile host supplies its sandbox's documents directory here.</summary>
+    public string NotesRoot { get; }
     public string NotesFolders => Path.Combine(UserData, "notesFolders.json");
     public string CliAccess => Path.Combine(UserData, "cli-access.json");
     public string GithubToken => Path.Combine(UserData, "github-auth.bin");

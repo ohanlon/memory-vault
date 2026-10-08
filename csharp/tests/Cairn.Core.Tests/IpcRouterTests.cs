@@ -38,7 +38,7 @@ public sealed class IpcRouterTests : IDisposable
         _root = Path.Combine(_tmp, "vault");
         Directory.CreateDirectory(_userData);
         Directory.CreateDirectory(_root);
-        _router = new IpcRouter(new CairnPaths(_userData), _platform, (c, p) => { lock (_events) _events.Add((c, p)); });
+        _router = new IpcRouter(new CairnPaths(_userData, Path.Combine(_tmp, "notes")), _platform, (c, p) => { lock (_events) _events.Add((c, p)); });
     }
 
     public void Dispose()
@@ -208,6 +208,27 @@ public sealed class IpcRouterTests : IDisposable
         var created = (await Call("notesFolder:seedStarterContent"))!.AsArray();
         Assert.Equal(new[] { Path.Combine(_root, "Example Note.md") }, created.Select(c => (string)c!));
         Assert.Equal("mine", File.ReadAllText(Path.Combine(_root, "Welcome.md")));
+    }
+
+    [Fact]
+    public async Task CreateMakesAManagedFolderUnderTheNotesRoot()
+    {
+        var list = (await Call("notesFolders:create", "My/Work"))!.AsArray();
+        var expected = Path.Combine(_tmp, "notes", "My-Work");
+        Assert.Equal("My/Work", (string)list[0]!["name"]!);
+        Assert.Equal(expected, (string)list[0]!["root"]!);
+        Assert.True(Directory.Exists(expected));
+
+        // Persisted by directory name only, so the registry isn't pinned to this machine's paths.
+        var onDisk = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(_userData, "notesFolders.json")))!.AsArray();
+        Assert.Equal("My-Work", (string)onDisk[0]!["dir"]!);
+        Assert.Null(onDisk[0]!["root"]);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Call("notesFolders:create", "my/work"));
+        // A renamed folder keeps its directory, and a new folder with the old name gets a fresh one.
+        await Call("notesFolders:rename", "My/Work", "Job");
+        var again = (await Call("notesFolders:create", "My/Work"))!.AsArray();
+        Assert.Equal(Path.Combine(_tmp, "notes", "My-Work-2"), (string)again[1]!["root"]!);
     }
 
     [Fact]

@@ -15,6 +15,7 @@
     reloadNotesFolder: "notesFolder:reload",
     listNotesFolders: "notesFolders:list",
     addNotesFolder: "notesFolders:add",
+    createNotesFolder: "notesFolders:create",
     removeNotesFolder: "notesFolders:remove",
     renameNotesFolder: "notesFolders:rename",
     listCliAccess: "cliAccess:list",

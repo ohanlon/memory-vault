@@ -6,18 +6,32 @@ namespace Cairn.Core.Storage;
 /// <summary>Port of electron/notesFolderRegistry.ts: the named list of notes folders, kept in notesFolders.json.</summary>
 public static class NotesFolderRegistry
 {
-    public static List<JsonObject> Read(string filePath)
+    public static string DefaultNotesRoot() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "Cairn");
+
+    /// <summary>Reads the registry; a managed entry (has "dir") gets its "root" derived from <paramref name="notesRoot"/>.</summary>
+    public static List<JsonObject> Read(string filePath, string? notesRoot = null)
     {
         if (Files.TryReadJson(filePath) is not JsonArray arr) return new List<JsonObject>();
-        return arr.OfType<JsonObject>()
-            .Where(o => Js.IsString(Js.Get(o, "name"), out _) && Js.IsString(Js.Get(o, "root"), out _))
+        var entries = arr.OfType<JsonObject>()
+            .Where(o => Js.IsString(Js.Get(o, "name"), out _)
+                && (Js.IsString(Js.Get(o, "root"), out _) || Js.IsString(Js.Get(o, "dir"), out _)))
             .ToList();
+        foreach (var o in entries)
+            if (Js.IsString(Js.Get(o, "dir"), out var dir)) o["root"] = Path.Combine(notesRoot ?? DefaultNotesRoot(), dir);
+        return entries;
     }
 
     public static void Write(string filePath, IEnumerable<JsonObject> notesFolders)
     {
         var arr = new JsonArray();
-        foreach (var f in notesFolders) arr.Add(f.DeepClone());
+        foreach (var f in notesFolders)
+        {
+            var copy = (JsonObject)f.DeepClone();
+            // A managed folder's root is derived from "dir" on read; persisting it would pin the registry to this machine.
+            if (copy.ContainsKey("dir")) copy.Remove("root");
+            arr.Add(copy);
+        }
         Files.WriteJsonIndented(filePath, arr);
     }
 
@@ -44,6 +58,23 @@ public static class NotesFolderRegistry
                 ["index"] = Avatars.DefaultIndexForName(trimmed, Avatars.NotesFolderAvatarCount),
             },
         };
+        return notesFolders.Select(f => (JsonObject)f.DeepClone()).Append(entry).ToList();
+    }
+
+    /// <summary>Registers an app-managed folder at <c>notesRoot/dir</c>; the directory name is fixed at creation so a rename never moves files.</summary>
+    public static List<JsonObject> AddManaged(IReadOnlyList<JsonObject> notesFolders, string name, string notesRoot)
+    {
+        var trimmed = name.Trim();
+        if (trimmed.Length == 0) throw new InvalidOperationException("Notes folder name cannot be empty");
+        if (FindByNameCI(notesFolders, trimmed) is not null)
+            throw new InvalidOperationException($"A notes folder named \"{trimmed}\" already exists");
+
+        var dir = FolderDirName.Unique(FolderDirName.Sanitize(trimmed), candidate =>
+            notesFolders.Any(f => Js.IsString(Js.Get(f, "dir"), out var d) && string.Equals(d, candidate, StringComparison.OrdinalIgnoreCase))
+            || Directory.Exists(Path.Combine(notesRoot, candidate)) || File.Exists(Path.Combine(notesRoot, candidate)));
+
+        var entry = Add(notesFolders, trimmed, Path.Combine(notesRoot, dir))[^1];
+        entry["dir"] = dir;
         return notesFolders.Select(f => (JsonObject)f.DeepClone()).Append(entry).ToList();
     }
 
