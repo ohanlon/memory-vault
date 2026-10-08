@@ -44,6 +44,29 @@
 		<ProjectReference Include="..\Cairn.Core\Cairn.Core.csproj" />
 	</ItemGroup>
 
+	<PropertyGroup>
+		<!-- The repository root, where the React renderer build (dist/) lives. -->
+		<RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\'))</RepoRoot>
+		<RendererDist>$(RepoRoot)dist\</RendererDist>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Same bridge the desktop host injects; MainPage adds a shim mapping window.external onto HybridWebView. -->
+		<EmbeddedResource Include="..\Cairn.Host\Web\bridge.js" LogicalName="bridge.js" />
+	</ItemGroup>
+
+	<!-- Builds the renderer when dist/ is missing, as the desktop host does (opt out with -p:SkipRendererBuild=true). -->
+	<Target Name="BuildRenderer" BeforeTargets="BeforeBuild" Condition="!Exists('$(RendererDist)index.html') And '$(SkipRendererBuild)' != 'true'">
+		<Message Importance="high" Text="dist/index.html not found - building the renderer with vite..." />
+		<Exec Command="npx vite build" WorkingDirectory="$(RepoRoot)" />
+	</Target>
+
+	<!-- Packages the renderer as the HybridWebView root (wwwroot/). Declared statically: assets added from a target
+	     come too late for MAUI. Run `npx vite build` first (the target above only helps on a second build). -->
+	<ItemGroup>
+		<MauiAsset Include="$(RendererDist)**\*" LogicalName="wwwroot/%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />

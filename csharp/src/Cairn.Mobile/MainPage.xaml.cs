@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Text;
 using System.Text.Json.Nodes;
 using Cairn.Core;
 using Cairn.Core.App;
@@ -16,6 +18,7 @@ public partial class MainPage : ContentPage
 	public MainPage()
 	{
 		InitializeComponent();
+		WebView.WebResourceRequested += OnWebResourceRequested;
 
 		// The app sandbox is the only place a mobile app can write, so managed folders live under it.
 		var paths = new CairnPaths(
@@ -23,6 +26,58 @@ public partial class MainPage : ContentPage
 			Path.Combine(FileSystem.AppDataDirectory, "notes"));
 		_router = new IpcRouter(paths, new MobilePlatform(), PushEvent);
 		_router.Initialize();
+	}
+
+	// The desktop bridge talks to window.external (Photino's channel); on mobile that is a thin shim over HybridWebView.
+	private const string TransportShim =
+		"<script src=\"_framework/hybridwebview.js\"></script>" +
+		"<script>window.__cairnHost={chromeless:false};" +
+		"window.external={sendMessage:function(m){window.HybridWebView.SendRawMessage(m);}," +
+		"receiveMessage:function(cb){window.addEventListener('HybridWebViewMessageReceived',function(e){cb(e.detail.message);});}};</script>";
+
+	private static readonly Lazy<string> BridgeTag = new(() =>
+	{
+		using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("bridge.js")
+			?? throw new InvalidOperationException("Embedded resource bridge.js is missing");
+		using var reader = new StreamReader(stream, Encoding.UTF8);
+		return TransportShim + "<script>" + reader.ReadToEnd() + "</script>";
+	});
+
+	// Raised for every request the page makes. The app origin is HybridWebView's own (assets are served for us), but
+	// index.html needs the bridge injected and the renderer's two custom schemes need answering from the notes folder
+	// and the plugins; without a response here, HybridWebView would answer them with index.html.
+	private void OnWebResourceRequested(object? sender, WebViewWebResourceRequestedEventArgs e)
+	{
+		switch (e.Uri.Scheme)
+		{
+			case "cairn-attachment":
+				Respond(e, CustomSchemes.Attachment(_router, e.Uri));
+				break;
+			case CustomSchemes.PluginScheme:
+				Respond(e, CustomSchemes.Plugin(_router, e.Uri));
+				break;
+			default:
+				if (e.Uri.AbsolutePath is "/" or "/index.html") Respond(e, IndexWithBridge());
+				break;
+		}
+	}
+
+	private static void Respond(WebViewWebResourceRequestedEventArgs e, CustomSchemes.Resource? resource)
+	{
+		if (resource is { } r) e.SetResponse(200, "OK", r.ContentType, r.Body);
+		else e.SetResponse(404, "Not Found", "text/plain", new MemoryStream());
+		e.Handled = true;
+	}
+
+	// The bridge has to exist before the renderer's own module script runs, so index.html is rewritten on the way out.
+	private static CustomSchemes.Resource IndexWithBridge()
+	{
+		using var asset = FileSystem.OpenAppPackageFileAsync("wwwroot/index.html").GetAwaiter().GetResult();
+		using var reader = new StreamReader(asset, Encoding.UTF8);
+		var html = reader.ReadToEnd();
+		var head = html.IndexOf("<head>", StringComparison.OrdinalIgnoreCase);
+		html = head >= 0 ? html.Insert(head + "<head>".Length, BridgeTag.Value) : BridgeTag.Value + html;
+		return new CustomSchemes.Resource(new MemoryStream(Encoding.UTF8.GetBytes(html)), "text/html");
 	}
 
 	private void OnRawMessage(object? sender, HybridWebViewRawMessageReceivedEventArgs e) =>
