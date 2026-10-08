@@ -1,3 +1,1 @@
-npx vite build
-cd csharp
-dotnet run --project src/Cairn.Host
+npx vite build && cd csharp && dotnet run --project src/Cairn.Host

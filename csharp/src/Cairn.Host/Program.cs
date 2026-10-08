@@ -58,7 +58,12 @@ internal static class Program
             .RegisterCustomSchemeHandler(SchemeHandlers.PluginScheme, assets.HandlePlugin)
             .RegisterWebMessageReceivedHandler((_, e) => OnWebMessage(e.Message))
             .RegisterStateChangedHandler((_, e) =>
-                PushEvent("host:windowState", new JsonObject { ["maximized"] = e.NewState == PhotinoWindowState.Maximized }));
+            {
+                if (chromeless) platform.OnNativeStateChanged(e.NewState);
+                else PushEvent("host:windowState", new JsonObject { ["maximized"] = e.NewState == PhotinoWindowState.Maximized });
+            });
+        platform.Chromeless = chromeless;
+        platform.MaximizedChanged = maximized => PushEvent("host:windowState", new JsonObject { ["maximized"] = maximized });
 
         // Lets a test harness attach over the Chrome DevTools protocol (Windows WebView2 / Chromium).
         if (Environment.GetEnvironmentVariable("CAIRN_REMOTE_DEBUG_PORT") is { Length: > 0 } port)

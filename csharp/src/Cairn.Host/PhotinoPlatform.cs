@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Drawing;
 using Cairn.Core.App;
 using Cairn.Core.Storage;
 using Photino.NET;
@@ -88,6 +89,60 @@ internal sealed class PhotinoPlatform : IPlatformServices
 
     public Task ShowSystemMenuAsync(double x, double y) => Task.CompletedTask;
 
+    /// <summary>Raised when the window enters or leaves the maximized state (so the page can swap its icon).</summary>
+    public Action<bool>? MaximizedChanged { get; set; }
+
+    // A frameless Win32 window maximizes over the whole monitor, taskbar included. When the page draws the
+    // chrome, "maximized" is therefore implemented by hand: fill the monitor's work area and remember the
+    // bounds to go back to.
+    private Rectangle? _restoreBounds;
+    public bool Chromeless { get; set; }
+
+    private bool IsMaximized(PhotinoWindow window) =>
+        _restoreBounds is not null || window.WindowState == PhotinoWindowState.Maximized;
+
+    private void Maximize(PhotinoWindow window)
+    {
+        if (!Chromeless)
+        {
+            window.WindowState = PhotinoWindowState.Maximized;
+            return;
+        }
+        var bounds = new Rectangle(window.Location, window.Size);
+        var center = new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
+        var monitors = window.Monitors;
+        var target = monitors.Count == 0
+            ? window.MainMonitor
+            : monitors.FirstOrDefault(m => m.MonitorArea.Contains(center), window.MainMonitor);
+        _restoreBounds = bounds;
+        window.Location = target.WorkArea.Location;
+        window.Size = target.WorkArea.Size;
+    }
+
+    private void Restore(PhotinoWindow window)
+    {
+        if (_restoreBounds is { } bounds)
+        {
+            _restoreBounds = null;
+            window.Size = bounds.Size;
+            window.Location = bounds.Location;
+        }
+        else
+        {
+            window.WindowState = PhotinoWindowState.Normal;
+        }
+    }
+
+    /// <summary>Turns a native maximize (Win+Up, a snap gesture) into the work-area-sized one.</summary>
+    public void OnNativeStateChanged(PhotinoWindowState newState)
+    {
+        if (!Chromeless || newState != PhotinoWindowState.Maximized) return;
+        var window = _window();
+        window.WindowState = PhotinoWindowState.Normal;
+        Maximize(window);
+        MaximizedChanged?.Invoke(true);
+    }
+
     public Task<bool> WindowActionAsync(string action)
     {
         var window = _window();
@@ -99,14 +154,15 @@ internal sealed class PhotinoPlatform : IPlatformServices
                     window.WindowState = PhotinoWindowState.Minimized;
                     break;
                 case "toggleMaximize":
-                    window.WindowState = window.WindowState == PhotinoWindowState.Maximized
-                        ? PhotinoWindowState.Normal
-                        : PhotinoWindowState.Maximized;
+                    if (IsMaximized(window)) Restore(window);
+                    else Maximize(window);
                     break;
                 case "close":
                     window.Close();
                     break;
                 case "drag":
+                    // Dragging a maximized window pulls it back to its normal size first, as Windows does.
+                    if (_restoreBounds is not null) Restore(window);
                     window.BeginWindowDrag();
                     break;
                 case var a when a.StartsWith("resize:", StringComparison.Ordinal)
@@ -114,8 +170,9 @@ internal sealed class PhotinoPlatform : IPlatformServices
                     window.BeginWindowResize(edge);
                     break;
             }
-            return window.WindowState == PhotinoWindowState.Maximized;
+            return IsMaximized(window);
         });
+        if (action is "toggleMaximize" or "drag") MaximizedChanged?.Invoke(maximized);
         return Task.FromResult(maximized);
     }
 }
