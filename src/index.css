@@ -2477,3 +2477,92 @@ body {
   color: var(--text-muted);
   opacity: 0.7;
 }
+
+/* Touch targets: at phone width every tappable control gets at least ~40-44px,
+   the minimum Android and iOS recommend. Kept in one block, after the desktop
+   rules it overrides. */
+@media (max-width: 768px) {
+  .titlebar-drag {
+    flex-basis: 44px;
+  }
+
+  .titlebar-app-menu-btn {
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .titlebar-sidebar-btn {
+    padding: 0 14px;
+  }
+
+  .titlebar-app-icon-btn {
+    padding: 0 8px;
+  }
+
+  .titlebar-tasks-badge {
+    padding: 8px 12px;
+  }
+
+  .activity-bar {
+    gap: 4px;
+    padding: 8px 4px;
+  }
+
+  .activity-bar-btn {
+    width: 40px;
+    height: 44px;
+  }
+
+  .tab {
+    padding: 12px 8px 12px 14px;
+  }
+
+  .tab-close {
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 18px;
+  }
+
+  .tab-scroll-btn {
+    width: 36px;
+  }
+
+  .editor-title-row {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .editor-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .properties-toggle-btn,
+  .preview-toggle-btn,
+  .view-mode-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .file-tree-item {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    font-size: 14px;
+  }
+
+  .file-tree-group-header {
+    min-height: 44px;
+  }
+
+  .region-tab-btn {
+    padding: 14px 4px;
+    font-size: 14px;
+  }
+
+  .context-menu-item {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+}
