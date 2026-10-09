@@ -1,4 +1,5 @@
 using Cairn.Core.App;
+using Cairn.Core.Sync;
 
 namespace Cairn.Mobile;
 
@@ -20,8 +21,16 @@ internal sealed class MobilePlatform(string bundledPluginsDir) : IPlatformServic
 	public Task<bool> SavePdfFromHtmlAsync(string defaultName, string htmlContent) =>
 		throw new NotSupportedException("PDF export is not available on mobile yet.");
 
-	public Task<bool> ConfirmPluginPermissionAsync(string pluginName, string permission, string detail) =>
-		Task.FromResult(false);
+	public async Task<bool> ConfirmPluginPermissionAsync(string pluginName, string permission, string detail)
+	{
+		var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+		if (page is null) return false;
+		return await MainThread.InvokeOnMainThreadAsync(() => page.DisplayAlertAsync(
+			"Plugin permission request",
+			$"\"{pluginName}\" wants to use \"{permission}\"\n\n{detail}",
+			"Allow",
+			"Deny"));
+	}
 
 	public void SetTitleBarOverlay(string color, string symbolColor) { }
 
@@ -30,4 +39,6 @@ internal sealed class MobilePlatform(string bundledPluginsDir) : IPlatformServic
 	public Task<bool> WindowActionAsync(string action) => Task.FromResult(false);
 
 	public string BundledPluginsDir { get; } = bundledPluginsDir;
+
+	public ISecretStore Secrets { get; } = new MauiSecretStore();
 }

@@ -3,6 +3,7 @@ using Cairn.Core;
 using Cairn.Core.App;
 using Cairn.Core.Plugins;
 using Cairn.Core.Storage;
+using Cairn.Core.Sync;
 using Photino.NET;
 
 namespace Cairn.Host;
@@ -31,7 +32,10 @@ internal static class Program
         }
 
         var paths = new CairnPaths(userData);
-        var platform = new PhotinoPlatform(() => _window!, Path.Combine(AppContext.BaseDirectory, "plugins"), _log);
+        ISecretStore secrets = OperatingSystem.IsWindows()
+            ? new DpapiSecretStore(Path.Combine(userData, "secrets"))
+            : new UnavailableSecretStore(); // no OS-backed store wired for macOS/Linux yet: sign-in is refused, not stored in plaintext
+        var platform = new PhotinoPlatform(() => _window!, Path.Combine(AppContext.BaseDirectory, "plugins"), secrets, _log);
         _router = new IpcRouter(paths, platform, PushEvent);
         _router.Initialize();
 

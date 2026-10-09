@@ -1,3 +1,5 @@
+using Cairn.Core.Sync;
+
 namespace Cairn.Core.App;
 
 public sealed record SaveDialogFilter(string Name, string[] Extensions);
@@ -40,4 +42,7 @@ public interface IPlatformServices
 
     /// <summary>Directory holding the plugins that ship inside the app.</summary>
     string BundledPluginsDir { get; }
+
+    /// <summary>OS-backed storage for the GitHub token (DPAPI, Android Keystore, ...).</summary>
+    ISecretStore Secrets { get; }
 }

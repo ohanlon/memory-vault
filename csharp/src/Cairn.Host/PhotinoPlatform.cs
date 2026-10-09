@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing;
 using Cairn.Core.App;
+using Cairn.Core.Sync;
 using Cairn.Core.Storage;
 using Photino.NET;
 
@@ -12,14 +13,17 @@ internal sealed class PhotinoPlatform : IPlatformServices
     private readonly Func<PhotinoWindow> _window;
     private readonly HostLog _log;
 
-    public PhotinoPlatform(Func<PhotinoWindow> window, string bundledPluginsDir, HostLog log)
+    public PhotinoPlatform(Func<PhotinoWindow> window, string bundledPluginsDir, ISecretStore secrets, HostLog log)
     {
         _window = window;
         BundledPluginsDir = bundledPluginsDir;
+        Secrets = secrets;
         _log = log;
     }
 
     public string BundledPluginsDir { get; }
+
+    public ISecretStore Secrets { get; }
 
     // Native dialogs belong to the UI thread; requests arrive on thread-pool threads.
     private Task<T> OnUiThread<T>(Func<PhotinoWindow, T> action)

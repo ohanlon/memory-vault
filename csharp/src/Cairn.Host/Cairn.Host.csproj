@@ -14,6 +14,7 @@
   <ItemGroup>
     <!-- PhotinoX: the maintained Photino fork. Upstream Photino.NET's custom-scheme handlers don't fire on Windows. -->
     <PackageReference Include="PhotinoX" Version="5.3.5" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

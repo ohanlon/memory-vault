@@ -23,7 +23,7 @@ Requires the .NET 8 SDK (or newer) and Node (only to build the renderer).
 npx vite build                    # from the repo root: writes dist/ (the renderer)
 cd csharp
 dotnet run --project src/Cairn.Host
-dotnet test                       # 147 tests
+dotnet test                       # 247 tests
 ```
 
 `dotnet build` runs `npx vite build` itself when `dist/index.html` is missing. The app shares Electron's user
@@ -83,9 +83,39 @@ Checked on a Pixel 7 emulator (API 35): the renderer loads, notes folders create
 preview, attachments render, the daily note works (templates, YAML), plugin iframes load, a 2 MiB binary and
 YAML dates round-trip through the bridge, and the trimmed Release build behaves the same as Debug.
 
-Not done: GitHub sync (needs the `plugin:invoke` host capabilities and a git implementation), iOS (the asset
-extraction in `BundledAssets` is Android-only, and nothing has been built for it), export, PDF and voice (as on
-desktop, `MobilePlatform` throws), landscape and tablet layouts, and signing/store packaging.
+Not done: iOS (the asset extraction in `BundledAssets` is Android-only, and nothing has been built for it), export,
+PDF and voice (as on desktop, `MobilePlatform` throws), landscape and tablet layouts, and signing/store packaging.
+GitHub sync is wired up on Android (see below) but has only been taken as far as the "Connect GitHub" screen there.
+
+## GitHub sync
+
+The `github-sync` plugin's host half (`plugin:invoke`) lives in `Cairn.Core/Sync` and is shared by the desktop and
+Android hosts. Electron uses isomorphic-git with a real `.git` folder; the C# build has no git implementation that
+runs on Android (LibGit2Sharp ships no Android binaries, and there is no `git` to shell out to), so it talks to
+GitHub's REST API instead:
+
+- `GithubClient` wraps the user, repository and Git Data endpoints; `GithubAuth` is the OAuth device flow.
+- `SyncLocal` hashes files exactly as git does (checked against `git hash-object` in the tests) and keeps a
+  per-folder snapshot of what last matched GitHub in `<folder>/.cairn/sync-state.json`.
+- `GitSyncEngine` does a three-way comparison of snapshot, folder and GitHub. A pull applies only the files GitHub
+  changed and refuses (changing nothing) if the same file changed on both sides; a push is one commit on top of
+  GitHub's head, fast-forward only. Like the Electron version, it never overwrites either side.
+- `GitSyncCapability` has the same method names, results and enabled-plus-`git-sync`-permission gate as
+  `electron/gitSyncCapability.ts`, so the plugin runs unchanged and never sees the token.
+
+Differences from Electron: no `.git` folder is created or read, so history exists only on GitHub, and a folder
+synced from both apps keeps two independent snapshots (both still sync against the same repository). Only regular
+files are synced (no symlinks, submodules or executable bits), `.gitignore` support is a small subset (`*`, `?`,
+`dir/`, anchored paths; no `!` or `**`), and a repository too large for GitHub's recursive tree API is refused. An
+empty repository is handled through the Contents API, since the Git Data API rejects it.
+
+The token is kept by an `ISecretStore`: Windows DPAPI (under `<userData>/secrets`, separate from Electron's, so sign
+in once in each app) and Android's keystore-backed `SecureStorage`. macOS and Linux have no store wired up yet, so
+sign-in is refused rather than writing the token in plaintext. On Android the "Allow GitHub sync" prompt is a native
+dialog.
+
+Verification so far is against `FakeGithub`, an in-memory implementation of the endpoints used (see the tests); it
+encodes my reading of GitHub's documented behavior, so a run against github.com is still the real check.
 
 ## Keeping the port honest
 
@@ -103,7 +133,7 @@ npx vite-node -c vitest.config.ts csharp/scripts/generate-shared-data.ts
 
 | Area | State |
 | --- | --- |
-| GitHub sync plugin host (`plugin:invoke`: OAuth, git) | Returns an error; the `github-sync` plugin can't connect. |
+| GitHub sync on macOS/Linux desktop | Implemented, but there is no OS-backed token store for those platforms yet, so sign-in is refused. |
 | CLI (`electron/cli.ts`) and MCP server | Not started. |
 | PDF export (`export:savePdf`) | Returns an error; HTML/Markdown export work. |
 | Voice-note transcription | Returns an error. |

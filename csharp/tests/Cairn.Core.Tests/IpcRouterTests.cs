@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Cairn.Core.App;
 using Cairn.Core.Storage;
+using Cairn.Core.Sync;
 using Xunit;
 
 namespace Cairn.Core.Tests;
@@ -11,6 +12,7 @@ internal sealed class FakePlatform : IPlatformServices
     public List<string> OpenedUrls { get; } = new();
     public bool AllowPermission { get; set; }
     public string BundledPluginsDir { get; set; } = Path.Combine(Path.GetTempPath(), "cairn-no-such-plugins");
+    public ISecretStore Secrets { get; } = new MemorySecretStore();
 
     public Task<string?> PickFolderAsync() => Task.FromResult(PickedFolder);
     public Task OpenExternalAsync(string url) { OpenedUrls.Add(url); return Task.CompletedTask; }
@@ -372,5 +374,44 @@ public sealed class IpcRouterTests : IDisposable
         var back = (await Call("notesFolder:readPropertySchema", _root))!.AsArray();
         Assert.Equal(2, back.Count);
         Assert.Equal(5, (long)back[0]!["rules"]!["max"]!);
+    }
+
+    [Fact]
+    public async Task PluginInvokeIsGatedOnTheRealPluginFilesAndActsOnTheOpenFolder()
+    {
+        var github = new FakeGithub();
+        github.AddRepo("octo/notes", files: new Dictionary<string, string> { ["from-github.md"] = "hello" });
+        var paths = new CairnPaths(_userData, Path.Combine(_tmp, "notes"));
+        using var router = new IpcRouter(paths, _platform, (_, _) => { }, github);
+
+        async Task<JsonNode?> Invoke(string method, params JsonNode?[] args)
+        {
+            var list = new JsonArray();
+            foreach (var a in args) list.Add(a);
+            return await router.InvokeAsync("plugin:invoke", new JsonArray(JsonValue.Create("github-sync"), JsonValue.Create(method), list));
+        }
+
+        // Switched off, and not yet permitted. (A plugin with no state entry counts as enabled, as in Electron.)
+        PluginState.Write(paths.PluginState, PluginState.SetEnabled(PluginState.Read(paths.PluginState), "github-sync", false));
+        Assert.Equal("This plugin is disabled.", (await Assert.ThrowsAsync<InvalidOperationException>(() => Invoke("auth.status"))).Message);
+
+        PluginState.Write(paths.PluginState, PluginState.SetEnabled(PluginState.Read(paths.PluginState), "github-sync", true));
+        Assert.Contains("git-sync", (await Assert.ThrowsAsync<InvalidOperationException>(() => Invoke("auth.status"))).Message);
+
+        PluginPermissions.Write(paths.PluginPermissions, PluginPermissions.Grant(PluginPermissions.Read(paths.PluginPermissions), "github-sync", "git-sync"));
+        Assert.False((bool)(await Invoke("auth.status"))!["connected"]!);
+
+        // The active folder comes from the registry entry whose root is open.
+        Assert.Null(await Invoke("folder.get"));
+        await router.InvokeAsync("notesFolders:add", new JsonArray(JsonValue.Create("Work"), JsonValue.Create(_root)));
+        await router.InvokeAsync("notesFolder:load", new JsonArray(JsonValue.Create(_root)));
+        Assert.Equal("Work", (string)(await Invoke("folder.get"))!["name"]!);
+
+        await _platform.Secrets.SetAsync(GithubAuth.TokenKey, "gho_secret");
+        await Invoke("link.set", JsonValue.Create("octo/notes"), JsonValue.Create("main"));
+        var result = (await Invoke("sync.pull"))!;
+
+        Assert.True((bool)result["pulled"]!);
+        Assert.Equal("hello", File.ReadAllText(Path.Combine(_root, "from-github.md")));
     }
 }

@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Cairn.Core.App;
+using Cairn.Core.Sync;
 using Cairn.Core.Storage;
 using Xunit;
 
@@ -32,6 +33,7 @@ public class ContractTests
     private sealed class NullPlatform : IPlatformServices
     {
         public string BundledPluginsDir => "";
+        public ISecretStore Secrets { get; } = new UnavailableSecretStore();
         public Task<string?> PickFolderAsync() => Task.FromResult<string?>(null);
         public Task OpenExternalAsync(string url) => Task.CompletedTask;
         public void ShowItemInFolder(string absPath) { }

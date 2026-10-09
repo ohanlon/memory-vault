@@ -5,6 +5,7 @@ using Cairn.Core.Models;
 using Cairn.Core.Plugins;
 using Cairn.Core.Shared;
 using Cairn.Core.Storage;
+using Cairn.Core.Sync;
 
 namespace Cairn.Core.App;
 
@@ -18,6 +19,8 @@ public sealed class IpcRouter : IDisposable
 {
     private readonly CairnPaths _paths;
     private readonly IPlatformServices _platform;
+    private readonly HttpClient _http;
+    private readonly GitSyncCapability _gitSync;
     private readonly Action<string, JsonNode?> _emit;
     private readonly Dictionary<string, Func<JsonArray, Task<JsonNode?>>> _handlers = new(StringComparer.Ordinal);
 
@@ -35,11 +38,23 @@ public sealed class IpcRouter : IDisposable
     private readonly HashSet<string> _cancelledSearchIds = new();
     private readonly object _gate = new();
 
-    public IpcRouter(CairnPaths paths, IPlatformServices platform, Action<string, JsonNode?> emit)
+    /// <param name="githubHandler">Replaces the HTTP stack GitHub sync talks through; tests pass a fake GitHub.</param>
+    public IpcRouter(CairnPaths paths, IPlatformServices platform, Action<string, JsonNode?> emit, HttpMessageHandler? githubHandler = null)
     {
         _paths = paths;
         _platform = platform;
         _emit = emit;
+        _http = githubHandler is null ? new HttpClient() : new HttpClient(githubHandler);
+        _gitSync = new GitSyncCapability(new GitSyncEnv(
+            _http,
+            GithubAuth.ClientId,
+            _paths.SyncConfig,
+            _platform.Secrets,
+            id => PluginState.IsEnabled(PluginState.Read(_paths.PluginState), id),
+            id => PluginPermissions.Has(PluginPermissions.Read(_paths.PluginPermissions), id, "git-sync"),
+            ActiveFolderRef,
+            () => ReadNotesFolders().Select(f => new FolderRef(NotesFolderRegistry.NameOf(f), NotesFolderRegistry.RootOf(f))).ToList(),
+            _platform.OpenExternalAsync));
         RegisterHandlers();
     }
 
@@ -69,6 +84,14 @@ public sealed class IpcRouter : IDisposable
         var rel = Path.GetRelativePath(root, absPath);
         if (rel == "." || rel.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(rel))
             throw new InvalidOperationException("The open notes folder does not contain this path");
+    }
+
+    private FolderRef? ActiveFolderRef()
+    {
+        var root = _activeRoot;
+        if (root is null) return null;
+        var entry = ReadNotesFolders().FirstOrDefault(f => NotesFolderRegistry.RootOf(f) == root);
+        return entry is null ? null : new FolderRef(NotesFolderRegistry.NameOf(entry), root);
     }
 
     private List<JsonObject> ReadNotesFolders() => NotesFolderRegistry.Read(_paths.NotesFolders, _paths.NotesRoot);
@@ -411,8 +434,8 @@ public sealed class IpcRouter : IDisposable
             return JsonValue.Create(true);
         });
 
-        On("plugin:invoke", _ => throw new NotSupportedException(
-            "Plugin host capabilities (such as GitHub sync) are not available in the C# build yet."));
+        On("plugin:invoke", async args =>
+            await _gitSync.DispatchAsync(Str(args, 0), Str(args, 1), args.Count > 2 && args[2] is JsonArray rest ? rest : new JsonArray()));
 
         // --- notes
         On("notesFolder:readNote", async args =>
@@ -765,5 +788,9 @@ public sealed class IpcRouter : IDisposable
     private static List<string> StringList(JsonNode? node) =>
         node is JsonArray arr ? arr.Select(n => Js.IsString(n, out var s) ? s : null).Where(s => s is not null).Select(s => s!).ToList() : new List<string>();
 
-    public void Dispose() => StopSession();
+    public void Dispose()
+    {
+        StopSession();
+        _http.Dispose();
+    }
 }
