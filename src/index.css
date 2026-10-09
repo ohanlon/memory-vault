@@ -204,6 +204,22 @@ body {
   color: var(--text-primary);
 }
 
+.titlebar-sidebar-btn {
+  -webkit-app-region: no-drag;
+  background: none;
+  border: none;
+  padding: 0 10px;
+  height: 100%;
+  font-size: 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.titlebar-sidebar-btn:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
 .titlebar-app-icon-btn {
   -webkit-app-region: no-drag;
   background: none;
@@ -483,6 +499,17 @@ body {
 
 .app-layout.compact .sidebar {
   left: 48px; /* clear of the activity bar */
+}
+
+/* Tapping the dimmed editor beside an open drawer closes it. */
+.compact-drawer-backdrop {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 48px;
+  right: 0;
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .app-layout.compact .right-panel {

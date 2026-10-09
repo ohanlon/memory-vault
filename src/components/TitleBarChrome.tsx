@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 import { pluginRegistry } from "../plugins/registry";
+import { useCompactViewport } from "../useCompactViewport";
 
 interface Props {
   regionId?: string;
@@ -80,10 +81,21 @@ export function TitleBarChrome({
   const notesFolderLabel = activeName ?? root?.split(/[\\/]/).pop();
   const [openMenu, setOpenMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const menus = root == null ? homeMenus() : notesFolderMenus(!!hasActiveNote);
+  const compact = useCompactViewport();
 
   return (
     <div className="titlebar-drag" data-region-id={regionId}>
       <div className="titlebar-left">
+        {compact && root != null && (
+          // The sidebar is an overlay drawer at phone width, so it needs an always-visible way to open it.
+          <button
+            className="titlebar-sidebar-btn"
+            aria-label="Toggle sidebar"
+            onClick={() => pluginRegistry.runCommand("view.toggleSidebar")}
+          >
+            ☰
+          </button>
+        )}
         <button
           className="titlebar-app-icon-btn"
           aria-label="System menu"

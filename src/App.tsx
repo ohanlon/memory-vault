@@ -1074,6 +1074,16 @@ export default function App() {
           />
         )}
 
+        {compact && (!sidebarCollapsed || !rightPanelCollapsed) && (
+          <div
+            className="compact-drawer-backdrop"
+            onClick={() => {
+              setSidebarCollapsed(true);
+              setRightPanelCollapsed(true);
+            }}
+          />
+        )}
+
         {isRegionPresent("left-sidebar") && !sidebarCollapsed && (
           <TabbedRegion
             className="sidebar"
