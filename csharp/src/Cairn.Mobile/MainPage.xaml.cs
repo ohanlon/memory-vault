@@ -31,7 +31,7 @@ public partial class MainPage : ContentPage
 	// The desktop bridge talks to window.external (Photino's channel); on mobile that is a thin shim over HybridWebView.
 	private const string TransportShim =
 		"<script src=\"_framework/hybridwebview.js\"></script>" +
-		"<script>window.__cairnHost={chromeless:false};" +
+		"<script>window.__cairnHost={chromeless:false,canPickFolder:false};" +
 		"window.external={sendMessage:function(m){window.HybridWebView.SendRawMessage(m);}," +
 		"receiveMessage:function(cb){window.addEventListener('HybridWebViewMessageReceived',function(e){cb(e.detail.message);});}};</script>";
 

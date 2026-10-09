@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 import { pluginRegistry } from "../plugins/registry";
 import { useCompactViewport } from "../useCompactViewport";
+import { canPickFolder } from "../hostCapabilities";
 
 interface Props {
   regionId?: string;
@@ -16,6 +17,13 @@ interface Props {
   onOpenTasks?: () => void;
 }
 
+// Linking an existing folder needs a directory picker, which some hosts (mobile) don't have.
+function linkFolderItems(): ContextMenuEntry[] {
+  return canPickFolder()
+    ? [{ label: "Link Existing Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") }]
+    : [];
+}
+
 // No notes folder is open yet (the home/picker screen) - there's no
 // sidebar, editor, or graph to act on, so the only thing that makes sense
 // is opening one, matching the screen's own "+ Add notes folder" button.
@@ -26,7 +34,7 @@ function homeMenus(): { id: string; label: string; items: ContextMenuEntry[] }[]
       label: "File",
       items: [
         { label: "New Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.create") },
-        { label: "Link Existing Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") },
+        ...linkFolderItems(),
       ],
     },
   ];
@@ -39,7 +47,7 @@ function notesFolderMenus(hasActiveNote: boolean): { id: string; label: string; 
       label: "File",
       items: [
         { label: "New Notes Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.create") },
-        { label: "Link Existing Folder…", onClick: () => pluginRegistry.runCommand("notesFolder.add") },
+        ...linkFolderItems(),
         { label: "Switch Notes Folder…", onClick: () => pluginRegistry.runCommand("stack.switchStack") },
         { separator: true },
         { label: "New Note", onClick: () => pluginRegistry.runCommand("stack.newNote") },

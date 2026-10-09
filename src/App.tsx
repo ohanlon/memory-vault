@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useNotesFolders } from "./notesFolder/useNotesFolders";
 import { isCompactViewport, useCompactViewport } from "./useCompactViewport";
+import { canPickFolder } from "./hostCapabilities";
 import { StatusBar } from "./components/StatusBar";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { PropertySchemaModal } from "./components/PropertySchemaModal";
@@ -936,7 +937,11 @@ export default function App() {
         <div className="empty-state">
           <h1>Cairn</h1>
           {notesFolders.length === 0 ? (
-            <p>Create a notes folder, or link an existing folder of markdown notes, to get started.</p>
+            <p>
+              {canPickFolder()
+                ? "Create a notes folder, or link an existing folder of markdown notes, to get started."
+                : "Create a notes folder to get started."}
+            </p>
           ) : (
             <div className="notes-folder-sections">
               <section className="notes-folder-section">
