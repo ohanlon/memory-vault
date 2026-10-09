@@ -65,6 +65,8 @@
 	     come too late for MAUI. Run `npx vite build` first (the target above only helps on a second build). -->
 	<ItemGroup>
 		<MauiAsset Include="$(RendererDist)**\*" LogicalName="wwwroot/%(RecursiveDir)%(Filename)%(Extension)" />
+		<!-- The plugins shipped with the app; MainPage extracts them to disk at startup (BundledAssets). -->
+		<MauiAsset Include="$(RepoRoot)plugins\**\*" LogicalName="bundled-plugins/%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -24,7 +24,9 @@ public partial class MainPage : ContentPage
 		var paths = new CairnPaths(
 			Path.Combine(FileSystem.AppDataDirectory, "userdata"),
 			Path.Combine(FileSystem.AppDataDirectory, "notes"));
-		_router = new IpcRouter(paths, new MobilePlatform(), PushEvent);
+		var bundledPlugins = Path.Combine(FileSystem.AppDataDirectory, "bundled-plugins");
+		BundledAssets.Extract("bundled-plugins", bundledPlugins);
+		_router = new IpcRouter(paths, new MobilePlatform(bundledPlugins), PushEvent);
 		_router.Initialize();
 	}
 

@@ -6,7 +6,7 @@ namespace Cairn.Mobile;
 /// Mobile has no desktop window or free-form directory picker, so most of IPlatformServices is unsupported
 /// or a no-op. Folder creation goes through the managed notes root instead of PickFolderAsync.
 /// </summary>
-internal sealed class MobilePlatform : IPlatformServices
+internal sealed class MobilePlatform(string bundledPluginsDir) : IPlatformServices
 {
 	public Task<string?> PickFolderAsync() => Task.FromResult<string?>(null);
 
@@ -29,5 +29,5 @@ internal sealed class MobilePlatform : IPlatformServices
 
 	public Task<bool> WindowActionAsync(string action) => Task.FromResult(false);
 
-	public string BundledPluginsDir => Path.Combine(AppContext.BaseDirectory, "plugins");
+	public string BundledPluginsDir { get; } = bundledPluginsDir;
 }
