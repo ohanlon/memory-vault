@@ -86,7 +86,8 @@ YAML dates round-trip through the bridge, and the trimmed Release build behaves 
 
 Not done: iOS (the asset extraction in `BundledAssets` is Android-only, and nothing has been built for it), export,
 PDF and voice (as on desktop, `MobilePlatform` throws), landscape and tablet layouts, and signing/store packaging.
-GitHub sync is wired up on Android (see below) but has only been taken as far as the "Connect GitHub" screen there.
+GitHub sync is wired up on Android (see below) but has only been taken as far as the "Connect GitHub" screen there;
+the desktop build's sync has been checked against github.com.
 
 ## GitHub sync
 
@@ -125,8 +126,18 @@ available, sign-in is refused with the reason):
 
 To run the real-keyring test on a machine that has one: `CAIRN_TEST_REAL_KEYRING=1 dotnet test --filter RealKeyring`.
 
-Verification so far is against `FakeGithub`, an in-memory implementation of the endpoints used (see the tests); it
-encodes my reading of GitHub's documented behavior, so a run against github.com is still the real check.
+The automated tests run against `FakeGithub`, an in-memory implementation of the endpoints used, which encodes a reading
+of GitHub's documented behavior. The desktop build has also been run against github.com (a private test repository,
+two simulated devices, device-flow sign-in with the token in DPAPI): first push to an empty repository, a 1.5 MB binary
+and a non-ASCII filename byte-identical both ways, CRLF preserved, `.gitignore` honoured, pull and no-op pull, edits made
+on github.com, conflict refusal that changes nothing, deletions in both directions, and the commit author. Not yet
+exercised against github.com: Android, files near GitHub's 100 MB limit, and repositories too large for the recursive
+tree API. Two behaviors worth knowing: a push is refused while a file GitHub also changed is edited locally, even if you
+select other files (Electron does the same), and the first push to an empty repository showed up as two commits with the
+same message, apparently from the empty-repository bootstrap (not checked, and likely different from Electron).
+
+Sign-in asks for GitHub's `repo` scope (Electron does too), so the token can reach every repository on the account, not
+only the linked one. Revoke it under GitHub's Settings, Applications, Authorized OAuth Apps.
 
 ## Command line and MCP server
 
