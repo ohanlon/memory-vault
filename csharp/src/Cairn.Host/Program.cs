@@ -34,7 +34,7 @@ internal static class Program
         var paths = new CairnPaths(userData);
         ISecretStore secrets = OperatingSystem.IsWindows()
             ? new DpapiSecretStore(Path.Combine(userData, "secrets"))
-            : new UnavailableSecretStore(); // no OS-backed store wired for macOS/Linux yet: sign-in is refused, not stored in plaintext
+            : PlatformSecretStore.Create(); // Keychain on macOS, Secret Service on Linux; never a plaintext fallback
         var platform = new PhotinoPlatform(() => _window!, Path.Combine(AppContext.BaseDirectory, "plugins"), secrets, _log);
         _router = new IpcRouter(paths, platform, PushEvent);
         _router.Initialize();

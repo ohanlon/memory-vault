@@ -23,7 +23,7 @@ Requires the .NET 8 SDK (or newer) and Node (only to build the renderer).
 npx vite build                    # from the repo root: writes dist/ (the renderer)
 cd csharp
 dotnet run --project src/Cairn.Host
-dotnet test                       # 247 tests
+dotnet test                       # 269 tests (1 is skipped: it needs a real keyring)
 ```
 
 `dotnet build` runs `npx vite build` itself when `dist/index.html` is missing. The app shares Electron's user
@@ -109,10 +109,20 @@ files are synced (no symlinks, submodules or executable bits), `.gitignore` supp
 `dir/`, anchored paths; no `!` or `**`), and a repository too large for GitHub's recursive tree API is refused. An
 empty repository is handled through the Contents API, since the Git Data API rejects it.
 
-The token is kept by an `ISecretStore`: Windows DPAPI (under `<userData>/secrets`, separate from Electron's, so sign
-in once in each app) and Android's keystore-backed `SecureStorage`. macOS and Linux have no store wired up yet, so
-sign-in is refused rather than writing the token in plaintext. On Android the "Allow GitHub sync" prompt is a native
-dialog.
+The token is kept by an `ISecretStore`, one per platform, and is never written in plaintext (if no store is
+available, sign-in is refused with the reason):
+
+- **Windows:** DPAPI files under `<userData>/secrets`, separate from Electron's, so sign in once in each app.
+- **Android:** the keystore-backed `SecureStorage`; the "Allow GitHub sync" prompt is a native dialog.
+- **Linux:** the Secret Service (GNOME Keyring, KWallet) through `secret-tool`, which needs the `libsecret-tools`
+  package and a desktop session bus. The secret is sent over stdin, never on a command line. Checked against a real
+  GNOME Keyring (Ubuntu 22.04); `secret-tool`'s exit codes are undocumented, so they were measured, not assumed.
+- **macOS:** the login Keychain through `/usr/bin/security -i`, secret over stdin as base64 and read back after every
+  write (the tool can exit 0 having stored nothing). **Not yet run on a Mac.** One known limit: an item created with the
+  `security` tool can be read back by any process running as the same user without a Keychain prompt, which a native
+  Keychain API with an app-specific access list would not allow.
+
+To run the real-keyring test on a machine that has one: `CAIRN_TEST_REAL_KEYRING=1 dotnet test --filter RealKeyring`.
 
 Verification so far is against `FakeGithub`, an in-memory implementation of the endpoints used (see the tests); it
 encodes my reading of GitHub's documented behavior, so a run against github.com is still the real check.
@@ -133,7 +143,7 @@ npx vite-node -c vitest.config.ts csharp/scripts/generate-shared-data.ts
 
 | Area | State |
 | --- | --- |
-| GitHub sync on macOS/Linux desktop | Implemented, but there is no OS-backed token store for those platforms yet, so sign-in is refused. |
+| Token storage on macOS | Implemented through the `security` tool but never run on a Mac; see "GitHub sync". |
 | CLI (`electron/cli.ts`) and MCP server | Not started. |
 | PDF export (`export:savePdf`) | Returns an error; HTML/Markdown export work. |
 | Voice-note transcription | Returns an error. |

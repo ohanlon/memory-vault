@@ -11,6 +11,10 @@ namespace Cairn.Core.Sync;
 public interface ISecretStore
 {
     bool IsAvailable { get; }
+
+    /// <summary>Why <see cref="IsAvailable"/> is false, in words the user can act on; null when it is available.</summary>
+    string? UnavailableReason => null;
+
     Task<string?> GetAsync(string key);
     Task SetAsync(string key, string value);
     Task DeleteAsync(string key);
@@ -105,7 +109,8 @@ public static class GithubAuth
     public static async Task WriteTokenAsync(ISecretStore store, string token)
     {
         // Refuse rather than fall back to plaintext.
-        if (!store.IsAvailable) throw new InvalidOperationException("Secure storage is not available on this system");
+        if (!store.IsAvailable)
+            throw new InvalidOperationException("Secure storage is not available on this system" + (store.UnavailableReason is { } why ? $": {why}." : ""));
         await store.SetAsync(TokenKey, token);
     }
 
