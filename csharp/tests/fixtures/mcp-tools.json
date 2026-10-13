@@ -1,0 +1,458 @@
+[
+  {
+    "name": "add_folder",
+    "description": "Register a folder as a Cairn notes folder, creating the directory if it doesn't exist.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Filesystem path to the notes folder"
+        },
+        "name": {
+          "description": "Name to register it under; defaults to the folder's basename",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "list_folders",
+    "description": "List every Cairn notes folder that CLI/MCP access has been granted for.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {}
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "get_notes",
+    "description": "List the markdown notes in a notes folder.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string",
+          "description": "Registered notes folder name"
+        },
+        "subfolders": {
+          "description": "Include notes in subfolders (default: top-level only)",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "folder"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "get_note",
+    "description": "Read the contents of a note. The result's mtimeMs can be passed back as ifUnmodifiedSince to update_note/set_note/set_properties/delete_note to avoid clobbering a change made since this read.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string",
+          "description": "Path relative to the notes folder root"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "add_note",
+    "description": "Create a new note with a title. Auto-renames on a title collision instead of overwriting - use set_note if you want to create-or-overwrite a note at an exact path. Pass either content or template, not both.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "subfolder": {
+          "description": "Subfolder to create the note in, created if missing",
+          "type": "string"
+        },
+        "template": {
+          "description": "Name of a custom file template in this notes folder's .templates folder (see get_notes) to render instead of content - {{placeholders}} filled from values, plus {{date}}/{{time}}/{{datetime}}.",
+          "type": "string"
+        },
+        "values": {
+          "description": "Placeholder values for template's {{name}} tags",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "folder",
+        "title"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "set_note",
+    "description": "Create or overwrite a note at an exact path. Use this to maintain a specific memory file you expect to keep writing back to.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string",
+          "description": "Path relative to the notes folder root"
+        },
+        "content": {
+          "type": "string"
+        },
+        "ifUnmodifiedSince": {
+          "description": "An mtimeMs from an earlier get_note/get_properties call on this note. If the note changed since, the write is rejected instead of overwriting it. Ignored when the note doesn't exist yet.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath",
+        "content"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "update_note",
+    "description": "Append text to an existing note - either at the end of the file, or at the end of a specific heading's section.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "heading": {
+          "description": "Insert at the end of this heading's section instead of end-of-file",
+          "type": "string"
+        },
+        "ifUnmodifiedSince": {
+          "description": "An mtimeMs from an earlier get_note/get_properties call on this note. If the note changed since, the write is rejected instead of overwriting it.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath",
+        "content"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "delete_note",
+    "description": "Delete a note.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string",
+          "description": "Path relative to the notes folder root"
+        },
+        "ifUnmodifiedSince": {
+          "description": "An mtimeMs from an earlier get_note/get_properties call. If the note changed since, the delete is rejected.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "search_notes",
+    "description": "Search note contents for a query, returning matching lines grouped by note.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "regex": {
+          "description": "Treat query as a regular expression instead of a plain substring",
+          "type": "boolean"
+        },
+        "caseSensitive": {
+          "type": "boolean"
+        },
+        "wholeWord": {
+          "description": "Only applies in plain (non-regex) mode",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "folder",
+        "query"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "get_backlinks",
+    "description": "List notes that wikilink/markdown-link to a note (excludes notes that only share a tag - use get_tags for that).",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string",
+          "description": "Path relative to the notes folder root"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "get_tags",
+    "description": "List every tag in a notes folder, each with the notes that carry it.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "folder"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "get_properties",
+    "description": "Read a note's frontmatter properties. The result's mtimeMs can be passed back as ifUnmodifiedSince to update_note/set_note/set_properties/delete_note to avoid clobbering a change made since this read.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string",
+          "description": "Path relative to the notes folder root"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "set_properties",
+    "description": "Merge values into a note's frontmatter properties (JSON Merge Patch semantics). Existing properties not mentioned are left untouched; a property set to null is removed.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string",
+          "description": "Path relative to the notes folder root"
+        },
+        "properties": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {},
+          "description": "Properties to set; a value of null removes that key"
+        },
+        "ifUnmodifiedSince": {
+          "description": "An mtimeMs from an earlier get_note/get_properties call on this note. If the note changed since, the write is rejected instead of overwriting it.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath",
+        "properties"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "get_note_history",
+    "description": "List local version snapshots recorded for a note, newest first. Each entry's timestamp can be passed to restore_note_version.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string",
+          "description": "Path relative to the notes folder root"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "restore_note_version",
+    "description": "Overwrite a note with one of its recorded history snapshots (see get_note_history). The note's current content is itself snapshotted first, so this can be undone.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "notePath": {
+          "type": "string",
+          "description": "Path relative to the notes folder root"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "A timestamp from get_note_history"
+        },
+        "ifUnmodifiedSince": {
+          "description": "An mtimeMs from an earlier get_note/get_properties call. If the note changed since, the restore is rejected.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "folder",
+        "notePath",
+        "timestamp"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "get_orphaned_attachments",
+    "description": "List attachments (files under the notes folder's attachments/ folder) that no note currently embeds via ![](path) - candidates for delete_orphaned_attachments.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "folder"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "delete_orphaned_attachments",
+    "description": "Delete every attachment no note currently embeds (recomputed fresh, see get_orphaned_attachments).",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "folder"
+      ]
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  }
+]

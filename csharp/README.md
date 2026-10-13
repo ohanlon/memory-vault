@@ -11,6 +11,7 @@ csharp/
   src/Cairn.Host    Native window (PhotinoX: WebView2 / WKWebView / WebKitGTK) that serves the renderer from
                     app://, injects the window.memoryStack bridge, and implements dialogs/shell.
   src/Cairn.Mobile  .NET MAUI app (Android so far) hosting the same renderer in a HybridWebView. See "Mobile".
+  src/Cairn.Cli     cairn-cli: the command line and the MCP server in one executable. See "Command line and MCP server".
   tests/            xUnit. Golden fixtures are produced by running the original TypeScript.
   scripts/          Generators for tables copied from shared/ (code languages, theme palettes, starter notes).
 ```
@@ -23,7 +24,7 @@ Requires the .NET 8 SDK (or newer) and Node (only to build the renderer).
 npx vite build                    # from the repo root: writes dist/ (the renderer)
 cd csharp
 dotnet run --project src/Cairn.Host
-dotnet test                       # 269 tests (1 is skipped: it needs a real keyring)
+dotnet test                       # 277 tests (1 is skipped: it needs a real keyring)
 ```
 
 `dotnet build` runs `npx vite build` itself when `dist/index.html` is missing. The app shares Electron's user
@@ -127,6 +128,40 @@ To run the real-keyring test on a machine that has one: `CAIRN_TEST_REAL_KEYRING
 Verification so far is against `FakeGithub`, an in-memory implementation of the endpoints used (see the tests); it
 encodes my reading of GitHub's documented behavior, so a run against github.com is still the real check.
 
+## Command line and MCP server
+
+`src/Cairn.Cli` builds `cairn-cli`, the port of `electron/cli.ts`, `cliMain.ts` and `mcpServer.ts`. Electron ships these
+as two things (a Node single-executable CLI and a separate `node` MCP script); here it is one executable with an `mcp`
+mode:
+
+```bash
+dotnet run --project src/Cairn.Cli -- list_folders
+dotnet run --project src/Cairn.Cli -- add_note --folder Work "Idea" --content "some text"
+dotnet run --project src/Cairn.Cli -- mcp          # MCP server over stdio
+dotnet publish src/Cairn.Cli -c Release -r win-x64 --self-contained -p:PublishSingleFile=true   # one ~65 MB file, no .NET needed
+```
+
+The commands, flags, usage messages, JSON output (including key order) and exit codes are the same as the Electron CLI's,
+so the command list and examples in the main README apply unchanged. It reads and writes the same `notesFolders.json`,
+`cli-access.json` and `history/` as the GUI, so a folder must have been granted "Allow CLI/MCP access" in the app first
+(`CAIRN_USER_DATA_DIR` points it at another data folder). Registering a folder with `add_folder` grants it access, as in
+Electron, and only creates linked folders; managed folders are made from the app.
+
+For an MCP client, the server entry is the executable with the argument `mcp`, e.g. in Claude Desktop's config:
+
+```json
+{ "mcpServers": { "cairn": { "command": "C:\\path\\to\\cairn-cli.exe", "args": ["mcp"] } } }
+```
+
+The 17 tools, their descriptions and input schemas are the TypeScript server's (the tests compare them with its own
+`tools/list`). Only the tools capability is implemented, which is all the TypeScript server declares. The logic lives in
+`Cairn.Core/Cli` (`CliOperations`, `CliCommands`, `McpServer`), so another host could call it too.
+
+Differences: `mtimeMs` has 100 ns resolution (see below); `get_tags` sorts with the .NET invariant culture rather than
+ICU's `localeCompare` (the same on every case in the tests, but not guaranteed identical for every script); and the
+tools' argument errors are worded after the SDK's zod messages rather than being byte-identical. The server was also
+checked end to end with the official TypeScript MCP SDK's client.
+
 ## Keeping the port honest
 
 `tests/fixtures/generate.ts` runs the original TypeScript (gray-matter, js-yaml, mustache, `shared/*`) over a set
@@ -135,6 +170,8 @@ of inputs and writes `golden.json`; the C# tests assert identical output. After 
 ```bash
 npx vite-node -c vitest.config.ts csharp/tests/fixtures/generate.ts
 npx vite-node -c vitest.config.ts csharp/scripts/generate-shared-data.ts
+npx vite build                                                            # builds dist-electron/mcpServer.js
+npx vite-node -c vitest.config.ts csharp/tests/fixtures/generate-cli.ts   # cli-scenario.json and mcp-tools.json
 ```
 
 `ContractTests` also fails if `electron/preload.ts` gains an IPC channel the C# router or `bridge.js` lacks.
@@ -144,7 +181,6 @@ npx vite-node -c vitest.config.ts csharp/scripts/generate-shared-data.ts
 | Area | State |
 | --- | --- |
 | Token storage on macOS | Implemented through the `security` tool but never run on a Mac; see "GitHub sync". |
-| CLI (`electron/cli.ts`) and MCP server | Not started. |
 | PDF export (`export:savePdf`) | Returns an error; HTML/Markdown export work. |
 | Voice-note transcription | Returns an error. |
 | Window chrome | Drawn by the page on Windows/Linux (drag, resize grips, min/max/close, look-alike system menu). macOS keeps its native frame and traffic lights. Set `CAIRN_NATIVE_CHROME=1` to force the OS frame. Resize/drag are untested on Linux. |

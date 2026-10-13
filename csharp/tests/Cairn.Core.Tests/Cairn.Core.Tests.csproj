@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <None Include="..\fixtures\golden.json" Link="golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\fixtures\cli-scenario.json" Link="cli-scenario.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\fixtures\mcp-tools.json" Link="mcp-tools.json" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="..\..\src\Cairn.Core\Cairn.Core.csproj" />
   </ItemGroup>
 

@@ -1,0 +1,1377 @@
+[
+  {
+    "args": [
+      "list_folders"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folders": []
+      }
+    }
+  },
+  {
+    "args": [
+      "add_folder",
+      "{{ROOT}}/work",
+      "--name",
+      "Work"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "alreadyExists": false,
+        "renamed": false,
+        "name": "Work",
+        "root": "<ROOT>/work",
+        "message": "Created notes folder \"Work\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "add_folder",
+      "{{ROOT}}/work"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "alreadyExists": true,
+        "name": "Work",
+        "root": "<ROOT>/work",
+        "message": "\"<ROOT>/work\" is already a notes folder, named \"Work\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "add_folder",
+      "{{ROOT}}/work2",
+      "--name",
+      "work"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "alreadyExists": false,
+        "renamed": true,
+        "name": "work 2",
+        "root": "<ROOT>/work2",
+        "message": "Created notes folder \"work 2\" (name \"work\" was already in use)."
+      }
+    }
+  },
+  {
+    "args": [
+      "list_folders"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folders": [
+          {
+            "name": "Work",
+            "root": "<ROOT>/work"
+          },
+          {
+            "name": "work 2",
+            "root": "<ROOT>/work2"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "Idea",
+      "--content",
+      "# Idea\n\nhello world #tag1\n"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "renamed": false,
+        "message": "Created note \"Idea\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "work",
+      "Idea",
+      "--content",
+      "second"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea 1.md",
+        "renamed": true,
+        "message": "Created note \"Idea 1\" (title \"Idea\" was already in use)."
+      }
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "Sub",
+      "--subfolder",
+      "Projects",
+      "--content",
+      "links to [[Idea]] and #tag2 #Tag1\n"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Projects/Sub.md",
+        "renamed": false,
+        "message": "Created note \"Sub\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "  ",
+      "--content",
+      "blank title"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "New Note.md",
+        "renamed": false,
+        "message": "Created note \"New Note\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "get_notes",
+      "--folder",
+      "Work"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "subfolders": false,
+        "notes": [
+          "Idea 1.md",
+          "Idea.md",
+          "New Note.md"
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "get_notes",
+      "--folder",
+      "Work",
+      "--subfolders"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "subfolders": true,
+        "notes": [
+          "Idea 1.md",
+          "Idea.md",
+          "New Note.md",
+          "Projects/Sub.md"
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Work",
+      "Idea.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "content": "# Idea\n\nhello world #tag1\n",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Work",
+      "nope.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "message": "Note \"nope.md\" does not exist in notes folder \"Work\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Work",
+      "/Idea.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "/Idea.md",
+        "content": "# Idea\n\nhello world #tag1\n",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Work",
+      "../outside.md"
+    ],
+    "expected": {
+      "error": "Path escapes the notes folder"
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Nope",
+      "Idea.md"
+    ],
+    "expected": {
+      "error": "No notes folder named \"Nope\". Known notes folders: Work, work 2"
+    }
+  },
+  {
+    "args": [
+      "set_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--content",
+      "## Preferences\n- a\n\n## Other\n- b\n"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "created": true,
+        "mtimeMs": "<MT>",
+        "message": "Created note \"Prefs.md\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "update_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--content",
+      "- c",
+      "--heading",
+      "preferences"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "content": "## Preferences\n- a\n- c\n\n## Other\n- b\n",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "update_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--content",
+      "- d",
+      "--heading",
+      "Other"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "content": "## Preferences\n- a\n- c\n\n## Other\n- b\n- d\n",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "update_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--content",
+      "x",
+      "--heading",
+      "Missing"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "message": "Heading \"Missing\" was not found in note \"Prefs.md\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "update_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--content",
+      "tail"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "content": "## Preferences\n- a\n- c\n\n## Other\n- b\n- d\ntail",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "update_note",
+      "--folder",
+      "Work",
+      "gone.md",
+      "--content",
+      "tail"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "message": "Note \"gone.md\" does not exist in notes folder \"Work\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Work",
+      "Prefs.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "content": "## Preferences\n- a\n- c\n\n## Other\n- b\n- d\ntail",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "update_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--content",
+      "fresh",
+      "--if-unmodified-since",
+      "{{mtime}}"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "content": "## Preferences\n- a\n- c\n\n## Other\n- b\n- d\ntail\nfresh",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "update_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--content",
+      "stale",
+      "--if-unmodified-since",
+      "1"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "conflict": true,
+        "message": "Note has changed since it was last read (expected mtime 1, found <MT>). Re-fetch and retry.",
+        "currentMtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "set_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--content",
+      "stale",
+      "--if-unmodified-since",
+      "1"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "conflict": true,
+        "message": "Note has changed since it was last read (expected mtime 1, found <MT>). Re-fetch and retry.",
+        "currentMtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "set_note",
+      "--folder",
+      "Work",
+      "deep/er/New.md",
+      "--content",
+      "new"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "deep/er/New.md",
+        "created": true,
+        "mtimeMs": "<MT>",
+        "message": "Created note \"deep/er/New.md\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "set_note",
+      "--folder",
+      "Work",
+      "FromStdin.md",
+      "--content-file",
+      "-"
+    ],
+    "stdin": "from stdin\n",
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "FromStdin.md",
+        "created": true,
+        "mtimeMs": "<MT>",
+        "message": "Created note \"FromStdin.md\"."
+      }
+    }
+  },
+  {
+    "write": {
+      "path": "content.txt",
+      "content": "from a file\n"
+    }
+  },
+  {
+    "args": [
+      "set_note",
+      "--folder",
+      "Work",
+      "FromFile.md",
+      "--content-file",
+      "{{ROOT}}/content.txt"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "FromFile.md",
+        "created": true,
+        "mtimeMs": "<MT>",
+        "message": "Created note \"FromFile.md\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "set_note",
+      "--folder",
+      "Work",
+      "Bad.md",
+      "--content-file",
+      "{{ROOT}}/missing.txt"
+    ],
+    "expected": {
+      "error": "Content file \"<ROOT>/missing.txt\" does not exist."
+    }
+  },
+  {
+    "args": [
+      "get_note_history",
+      "--folder",
+      "Work",
+      "Prefs.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "versions": [
+          {
+            "timestamp": "<TS>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "set_properties",
+      "--folder",
+      "Work",
+      "Idea.md",
+      "--json",
+      "{\"status\":\"active\",\"priority\":2,\"tags\":[\"x\",\"y\"]}"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "properties": {
+          "status": "active",
+          "priority": 2,
+          "tags": [
+            "x",
+            "y"
+          ]
+        },
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "get_properties",
+      "--folder",
+      "Work",
+      "Idea.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "properties": {
+          "status": "active",
+          "priority": 2,
+          "tags": [
+            "x",
+            "y"
+          ]
+        },
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "set_properties",
+      "--folder",
+      "Work",
+      "Idea.md",
+      "--json",
+      "{\"status\":null,\"extra\":{\"a\":1}}"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "properties": {
+          "priority": 2,
+          "tags": [
+            "x",
+            "y"
+          ],
+          "extra": {
+            "a": 1
+          }
+        },
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Work",
+      "Idea.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "content": "---\npriority: 2\ntags:\n  - x\n  - 'y'\nextra:\n  a: 1\n---\n# Idea\n\nhello world #tag1\n",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "write": {
+      "path": "work/.cairn/properties.yaml",
+      "content": "properties:\n  - name: Priority\n    type: number\n    rules:\n      max: 10\n      integerOnly: true\n  - name: code\n    type: text\n    rules:\n      maxLength: 3\n      pattern: '^[a-z]+$'\n"
+    }
+  },
+  {
+    "args": [
+      "set_properties",
+      "--folder",
+      "Work",
+      "Idea.md",
+      "--json",
+      "{\"priority\":99.5,\"code\":\"ABCD\"}"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "properties": {
+          "priority": 99.5,
+          "tags": [
+            "x",
+            "y"
+          ],
+          "extra": {
+            "a": 1
+          },
+          "code": "ABCD"
+        },
+        "mtimeMs": "<MT>",
+        "warnings": {
+          "priority": "Must be a whole number",
+          "code": "Must be 3 characters or fewer"
+        }
+      }
+    }
+  },
+  {
+    "args": [
+      "set_properties",
+      "--folder",
+      "Work",
+      "Idea.md",
+      "--json",
+      "{\"priority\":3,\"code\":\"abc\"}"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "properties": {
+          "priority": 3,
+          "tags": [
+            "x",
+            "y"
+          ],
+          "extra": {
+            "a": 1
+          },
+          "code": "abc"
+        },
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "set_properties",
+      "--folder",
+      "Work",
+      "Idea.md",
+      "--json",
+      "[1]"
+    ],
+    "expected": {
+      "error": "--json must be a JSON object. Usage: set_properties --folder NAME <notePath> --json '{\"key\":\"value\",...}' [--if-unmodified-since MTIME_MS]"
+    }
+  },
+  {
+    "args": [
+      "set_properties",
+      "--folder",
+      "Work",
+      "Idea.md",
+      "--json",
+      "{nope"
+    ],
+    "expected": {
+      "error": "--json must be valid JSON. Usage: set_properties --folder NAME <notePath> --json '{\"key\":\"value\",...}' [--if-unmodified-since MTIME_MS]"
+    }
+  },
+  {
+    "args": [
+      "set_properties",
+      "--folder",
+      "Work",
+      "gone.md",
+      "--json",
+      "{}"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "message": "Note \"gone.md\" does not exist in notes folder \"Work\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "search_notes",
+      "--folder",
+      "Work",
+      "hello"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "query": "hello",
+        "results": [
+          {
+            "note": "Idea.md",
+            "matches": [
+              {
+                "line": 12,
+                "lineText": "hello world #tag1",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "search_notes",
+      "--folder",
+      "Work",
+      "HELLO",
+      "--case-sensitive"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "query": "HELLO",
+        "results": []
+      }
+    }
+  },
+  {
+    "args": [
+      "search_notes",
+      "--folder",
+      "Work",
+      "tag",
+      "--whole-word"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "query": "tag",
+        "results": []
+      }
+    }
+  },
+  {
+    "args": [
+      "search_notes",
+      "--folder",
+      "Work",
+      "t[a-z]+\\d",
+      "--regex"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "query": "t[a-z]+/d",
+        "results": [
+          {
+            "note": "Idea.md",
+            "matches": [
+              {
+                "line": 12,
+                "lineText": "hello world #tag1",
+                "start": 13,
+                "end": 17
+              }
+            ]
+          },
+          {
+            "note": "Projects/Sub.md",
+            "matches": [
+              {
+                "line": 1,
+                "lineText": "links to [[Idea]] and #tag2 #Tag1",
+                "start": 23,
+                "end": 27
+              },
+              {
+                "line": 1,
+                "lineText": "links to [[Idea]] and #tag2 #Tag1",
+                "start": 29,
+                "end": 33
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "search_notes",
+      "--folder",
+      "Work",
+      "zzz-no-match"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "query": "zzz-no-match",
+        "results": []
+      }
+    }
+  },
+  {
+    "args": [
+      "get_backlinks",
+      "--folder",
+      "Work",
+      "Idea.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Idea.md",
+        "backlinks": [
+          "Projects/Sub.md"
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "get_backlinks",
+      "--folder",
+      "Work",
+      "gone.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "message": "Note \"gone.md\" does not exist in notes folder \"Work\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "get_tags",
+      "--folder",
+      "Work"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "tags": [
+          {
+            "tag": "tag1",
+            "notes": [
+              "Idea.md"
+            ]
+          },
+          {
+            "tag": "Tag1",
+            "notes": [
+              "Projects/Sub.md"
+            ]
+          },
+          {
+            "tag": "tag2",
+            "notes": [
+              "Projects/Sub.md"
+            ]
+          },
+          {
+            "tag": "x",
+            "notes": [
+              "Idea.md"
+            ]
+          },
+          {
+            "tag": "y",
+            "notes": [
+              "Idea.md"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "delete_note",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--if-unmodified-since",
+      "1"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "conflict": true,
+        "message": "Note has changed since it was last read (expected mtime 1, found <MT>). Re-fetch and retry.",
+        "currentMtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "delete_note",
+      "--folder",
+      "Work",
+      "Prefs.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "message": "Deleted note \"Prefs.md\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "delete_note",
+      "--folder",
+      "Work",
+      "Prefs.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "message": "Note \"Prefs.md\" does not exist in notes folder \"Work\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note_history",
+      "--folder",
+      "Work",
+      "Prefs.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "versions": [
+          {
+            "timestamp": "<TS>"
+          },
+          {
+            "timestamp": "<TS>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "restore_note_version",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--timestamp",
+      "{{ts}}"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "restoredFrom": "<TS>",
+        "mtimeMs": "<MT>",
+        "message": "Restored \"Prefs.md\" to the version from <TS>."
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Work",
+      "Prefs.md"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Prefs.md",
+        "content": "## Preferences\n- a\n- c\n\n## Other\n- b\n- d\ntail\nfresh",
+        "mtimeMs": "<MT>"
+      }
+    }
+  },
+  {
+    "args": [
+      "restore_note_version",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--timestamp",
+      "2000-01-01T00:00:00.000Z"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "message": "No history snapshot of \"Prefs.md\" found at timestamp \"<TS>\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "restore_note_version",
+      "--folder",
+      "Work",
+      "Prefs.md",
+      "--timestamp",
+      "not a date"
+    ],
+    "expected": {
+      "result": {
+        "ok": false,
+        "message": "No history snapshot of \"Prefs.md\" found at timestamp \"not a date\"."
+      }
+    }
+  },
+  {
+    "write": {
+      "path": "work/attachments/used.png",
+      "content": "png"
+    }
+  },
+  {
+    "write": {
+      "path": "work/attachments/unused.png",
+      "content": "png"
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "Pic",
+      "--content",
+      "![](attachments/used.png)\n"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Pic.md",
+        "renamed": false,
+        "message": "Created note \"Pic\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "get_orphaned_attachments",
+      "--folder",
+      "Work"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "orphaned": [
+          "attachments/unused.png"
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "delete_orphaned_attachments",
+      "--folder",
+      "Work"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "deleted": [
+          "attachments/unused.png"
+        ]
+      }
+    }
+  },
+  {
+    "args": [
+      "get_orphaned_attachments",
+      "--folder",
+      "Work"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "orphaned": []
+      }
+    }
+  },
+  {
+    "write": {
+      "path": "work/.templates/Meeting.md",
+      "content": "# {{title}}\n\nWith {{who}}\n"
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "Standup",
+      "--template",
+      "meeting",
+      "--values",
+      "{\"who\":\"Pete\"}"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Standup.md",
+        "renamed": false,
+        "message": "Created note \"Standup\"."
+      }
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "Standup",
+      "--template",
+      "Meeting"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folder": "Work",
+        "note": "Standup 1.md",
+        "renamed": true,
+        "message": "Created note \"Standup 1\" (title \"Standup\" was already in use)."
+      }
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "X",
+      "--template",
+      "Nope"
+    ],
+    "expected": {
+      "error": "No template named \"Nope\". Known templates: Meeting"
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "X",
+      "--template",
+      "Meeting",
+      "--content",
+      "c"
+    ],
+    "expected": {
+      "error": "Specify either --content/--content-file or --template, not both. Usage: add_note --folder NAME <title> [--subfolder PATH] (--content TEXT | --content-file PATH|- | --template NAME [--values '{\"key\":\"value\"}'])"
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "X",
+      "--values",
+      "{}"
+    ],
+    "expected": {
+      "error": "--values requires --template. Usage: add_note --folder NAME <title> [--subfolder PATH] (--content TEXT | --content-file PATH|- | --template NAME [--values '{\"key\":\"value\"}'])"
+    }
+  },
+  {
+    "args": [
+      "add_note",
+      "--folder",
+      "Work",
+      "X",
+      "--template",
+      "Meeting",
+      "--values",
+      "[1]"
+    ],
+    "expected": {
+      "error": "--values must be a JSON object. Usage: add_note --folder NAME <title> [--subfolder PATH] (--content TEXT | --content-file PATH|- | --template NAME [--values '{\"key\":\"value\"}'])"
+    }
+  },
+  {
+    "write": {
+      "path": "userdata/cli-access.json",
+      "content": "{\"allowed\":[]}"
+    }
+  },
+  {
+    "args": [
+      "get_notes",
+      "--folder",
+      "Work"
+    ],
+    "expected": {
+      "error": "CLI/MCP access to notes folder \"Work\" has not been granted. Enable it from that folder's \"...\" menu in Cairn (\"Allow CLI/MCP access\")."
+    }
+  },
+  {
+    "args": [
+      "list_folders"
+    ],
+    "expected": {
+      "result": {
+        "ok": true,
+        "folders": []
+      }
+    }
+  },
+  {
+    "args": [
+      "get_note",
+      "--folder",
+      "Work"
+    ],
+    "expected": {
+      "error": "Usage: get_note --folder NAME <notePath>"
+    }
+  },
+  {
+    "args": [
+      "get_note"
+    ],
+    "expected": {
+      "error": "Usage: get_note --folder NAME <notePath>"
+    }
+  },
+  {
+    "args": [
+      "set_note",
+      "--folder",
+      "Work",
+      "A.md"
+    ],
+    "expected": {
+      "error": "Usage: set_note --folder NAME <notePath> (--content TEXT | --content-file PATH|-) [--if-unmodified-since MTIME_MS]"
+    }
+  },
+  {
+    "args": [
+      "set_note",
+      "--folder",
+      "Work",
+      "A.md",
+      "--content",
+      "x",
+      "--content-file",
+      "y"
+    ],
+    "expected": {
+      "error": "Specify either --content or --content-file, not both. Usage: set_note --folder NAME <notePath> (--content TEXT | --content-file PATH|-) [--if-unmodified-since MTIME_MS]"
+    }
+  },
+  {
+    "args": [
+      "add_folder"
+    ],
+    "expected": {
+      "error": "Usage: add_folder <path> [--name NAME]"
+    }
+  },
+  {
+    "args": [
+      "frobnicate"
+    ],
+    "expected": {
+      "error": "Unknown command \"frobnicate\""
+    }
+  }
+]
