@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { PropertyDef, PropertyRules, PropertyType } from "@shared/types";
+import { Select } from "./Select";
 
 interface Props {
   schema: PropertyDef[];
@@ -93,16 +94,11 @@ export function PropertySchemaModal({ schema, onSave, onClose }: Props) {
               value={editing.name}
               onChange={(e) => setEditing({ ...editing, name: e.target.value })}
             />
-            <select
+            <Select
               value={editing.type}
-              onChange={(e) => setEditing({ ...editing, type: e.target.value as PropertyType, rules: {} })}
-            >
-              {PROPERTY_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+              onChange={(type) => setEditing({ ...editing, type, rules: {} })}
+              options={PROPERTY_TYPES.map((t) => ({ value: t, label: t }))}
+            />
 
             {editing.type === "text" && (
               <>

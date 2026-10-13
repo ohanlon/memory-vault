@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { AppSettings, CustomTheme } from "@shared/types";
 import { THEME_COLOR_VARS, defaultColorsFor, isValidCssColor } from "@shared/themeColors";
 import { normalizeCustomTheme } from "@shared/appSettings";
+import { Select } from "./Select";
 
 interface Props {
   settings: AppSettings;
@@ -199,14 +200,15 @@ export function CustomThemesModal({ settings, onChange, onClose }: Props) {
               />
               <div className="settings-row">
                 <label htmlFor="theme-base-mode">Base</label>
-                <select
+                <Select
                   id="theme-base-mode"
                   value={editing.baseMode}
-                  onChange={(e) => setBaseMode(e.target.value as "dark" | "light")}
-                >
-                  <option value="dark">Dark</option>
-                  <option value="light">Light</option>
-                </select>
+                  onChange={setBaseMode}
+                  options={[
+                    { value: "dark", label: "Dark" },
+                    { value: "light", label: "Light" },
+                  ]}
+                />
               </div>
 
               {GROUPS.map((group) => (

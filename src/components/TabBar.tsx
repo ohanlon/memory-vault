@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ContextMenu } from "./ContextMenu";
 import { CloseAllIcon, CloseLeftIcon, CloseOthersIcon, CloseRightIcon, DeleteIcon, RenameIcon } from "./icons";
+import { longPressProps } from "../longPress";
 
 export interface TabItem {
   id: string;
@@ -102,10 +103,7 @@ export function TabBar({
             tabIndex={0}
             className={`tab${t.id === activeId ? " active" : ""}`}
             onClick={() => onSelect(t.id)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setContextMenu({ id: t.id, x: e.clientX, y: e.clientY });
-            }}
+            {...longPressProps((x, y) => setContextMenu({ id: t.id, x, y }))}
             onKeyDown={(e) => {
               if (e.key !== "Delete" || !isFileTab(t.id)) return;
               e.preventDefault();

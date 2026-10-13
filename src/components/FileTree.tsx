@@ -8,6 +8,8 @@ import { pushToPlugin } from "../plugins/pluginFrameRegistry";
 import { buildFileTree, type FileTreeNode } from "../notesFolder/fileTree";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 import { DeleteIcon, InsertIcon, NoteIcon, OpenInExplorerIcon, RenameIcon } from "./icons";
+import { longPressProps } from "../longPress";
+
 
 // Base left padding for a top-level row, plus how much further each nested
 // folder level indents - mirrors the fixed 26px .file-tree-item-indented
@@ -248,10 +250,7 @@ export function FileTree({
           }}
           onClick={() => onSelect(note)}
           onDoubleClick={() => onRename(note)}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setContextMenu({ note, x: e.clientX, y: e.clientY });
-          }}
+          {...longPressProps((x, y) => setContextMenu({ note, x, y }))}
           onKeyDown={(e: KeyboardEvent) => {
             if (e.key === "F2") {
               e.preventDefault();
@@ -344,10 +343,7 @@ export function FileTree({
         <button
           className="file-tree-item file-tree-item-indented"
           onClick={() => onSelectTemplate(template)}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setTemplateContextMenu({ template, x: e.clientX, y: e.clientY });
-          }}
+          {...longPressProps((x, y) => setTemplateContextMenu({ template, x, y }))}
         >
           <span className="file-tree-item-title">{template.name}</span>
         </button>

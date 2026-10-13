@@ -2566,3 +2566,224 @@ body {
     font-size: 15px;
   }
 }
+
+/* Bottom sheet: the compact-viewport rendering of ContextMenu (see ContextMenu.tsx SheetMenu). */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+}
+
+.sheet {
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-control);
+  border-radius: 16px 16px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  margin: 8px auto 4px;
+  border-radius: 2px;
+  background: var(--border-control);
+  flex-shrink: 0;
+}
+
+.sheet-body {
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+}
+
+.sheet-back,
+.sheet-item {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 0 14px;
+  color: var(--text-primary);
+  font-size: 16px;
+  text-align: left;
+}
+
+.sheet-back {
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-divider);
+  border-radius: 0;
+}
+
+.sheet-item:active:not(:disabled) {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+}
+
+.sheet-item:disabled {
+  opacity: 0.4;
+}
+
+.sheet-item-label {
+  flex: 1;
+}
+
+/* Select replacements at phone width (see Select.tsx). */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segmented-option {
+  min-height: 40px;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border-control);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.segmented-option:last-child {
+  border-right: none;
+}
+
+.segmented-option-active {
+  background: var(--accent, #4c8bf5);
+  color: #fff;
+}
+
+.select-sheet-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  text-align: left;
+}
+
+.select-sheet-btn::after {
+  content: " ›";
+}
+
+/* Command palette (see CommandPalette.tsx). */
+.palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.palette {
+  width: min(560px, 100%);
+  max-height: 70vh;
+  margin-top: 10vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-control);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.palette-header {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.palette-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 15px;
+}
+
+.palette-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 0 10px;
+}
+
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+}
+
+.palette-item {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.palette-item:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+}
+
+.palette-empty {
+  padding: 12px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .palette {
+    width: 100%;
+    max-height: none;
+    height: 100%;
+    margin-top: 0;
+    border-radius: 0;
+    border: none;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .palette-item {
+    min-height: 48px;
+    font-size: 16px;
+  }
+}
+
+/* Formatting toolbar under the editor at phone width (see EditorToolbar.tsx). */
+.editor-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  overflow-x: auto;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-divider);
+  scrollbar-width: none;
+}
+
+.editor-toolbar-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  min-height: 44px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.editor-toolbar-btn:active {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+}

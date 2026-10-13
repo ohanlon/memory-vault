@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { isCompactViewport } from "../useCompactViewport";
+import { entriesAtPath } from "./contextMenuNav";
 
 export interface ContextMenuItem {
   label: string;
@@ -29,7 +31,58 @@ interface Props {
   onClose: () => void;
 }
 
-export function ContextMenu({ x, y, items, onClose }: Props) {
+export function ContextMenu(props: Props) {
+  // Phone width: a popup anchored at the tap point with hover submenus is unfamiliar and hard to hit,
+  // so the same entries render as a bottom sheet with drill-in submenus.
+  return isCompactViewport() ? <SheetMenu items={props.items} onClose={props.onClose} /> : <PopupMenu {...props} />;
+}
+
+function SheetMenu({ items, onClose }: Pick<Props, "items" | "onClose">) {
+  const [path, setPath] = useState<string[]>([]);
+  // Drop the soft keyboard, which would otherwise cover the lower half of the sheet.
+  useEffect(() => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  }, []);
+  const { entries, path: shown } = entriesAtPath(items, path);
+
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" role="menu" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        {shown.length > 0 && (
+          <button className="sheet-back" onClick={() => setPath(shown.slice(0, -1))}>
+            ‹ {shown[shown.length - 1]}
+          </button>
+        )}
+        <div className="sheet-body">
+          {entries.map((entry, i) => {
+            if ("separator" in entry) return <div key={`separator-${i}`} className="context-menu-separator" />;
+            const disabled = !entry.children && entry.disabled;
+            return (
+              <button
+                key={entry.label}
+                className="sheet-item"
+                role="menuitem"
+                disabled={disabled}
+                onClick={() => {
+                  if (entry.children) return setPath([...shown, entry.label]);
+                  entry.onClick?.();
+                  onClose();
+                }}
+              >
+                <span className="context-menu-item-icon">{entry.icon}</span>
+                <span className="sheet-item-label">{entry.label}</span>
+                {entry.children && <span className="context-menu-item-caret">›</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PopupMenu({ x, y, items, onClose }: Props) {
   // Callers typically pass an inline arrow for onClose, which gets a new
   // identity on every render of theirs (even for unrelated state changes).
   // Reading it through a ref — instead of putting it in the effect's

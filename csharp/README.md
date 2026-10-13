@@ -77,6 +77,10 @@ How it differs from the desktop host:
 - **Layout:** below 768px the renderer switches to a compact layout (the sidebar and right panel become overlay
   drawers, a ☰ button opens the sidebar, controls are sized for touch). This is renderer CSS and applies to any
   narrow window, not only the app.
+  Menus are touch-native there too: every context menu renders as a bottom sheet with drill-in submenus, the
+  File/View menu bar becomes a searchable command palette (⌕ Commands), dropdowns become segmented controls or
+  sheet pickers, the editor gets a formatting toolbar (⋯ opens the full editor menu), and long-pressing a file,
+  tab or the + button opens its menu.
 - **Plugins:** `plugins/` is packaged as assets and extracted to `bundled-plugins/` at startup; the usual
   `BundledPlugins.Seed` installs from there (disabled until the user enables a plugin).
 

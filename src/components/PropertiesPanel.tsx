@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Note, PropertyDef, PropertyType } from "@shared/types";
 import { validatePropertyValue } from "@shared/validateProperty";
 import { PropertyValueInput } from "./PropertyValueInput";
+import { Select } from "./Select";
 
 interface Props {
   note: Note | null;
@@ -142,20 +143,12 @@ export function PropertiesPanel({
                       onChange={(e) => updateCustomRow(row.key, { name: e.target.value })}
                       disabled={readOnly}
                     />
-                    <select
+                    <Select
                       value={row.type}
-                      onChange={(e) => {
-                        const type = e.target.value as PropertyType;
-                        updateCustomRow(row.key, { type, value: defaultValueFor(type) });
-                      }}
+                      onChange={(type) => updateCustomRow(row.key, { type, value: defaultValueFor(type) })}
+                      options={PROPERTY_TYPES.map((t) => ({ value: t, label: t }))}
                       disabled={readOnly}
-                    >
-                      {PROPERTY_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     {!readOnly && (
                       <button
                         type="button"

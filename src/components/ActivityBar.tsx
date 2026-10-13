@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { RibbonItemContribution } from "../plugins/types";
 import { sanitizePluginIcon } from "../plugins/sanitizeIcon";
+import { longPressProps } from "../longPress";
 
 interface Props {
   onNewNote: (x: number, y: number) => void;
@@ -49,11 +50,8 @@ export function ActivityBar({
       <button
         className="activity-bar-btn"
         onClick={(e) => onNewNote(e.clientX, e.clientY)}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          onNewNoteContextMenu(e.clientX, e.clientY);
-        }}
-        title="New blank note (right-click for templates)"
+        {...longPressProps(onNewNoteContextMenu)}
+        title="New blank note (right-click or long-press for templates)"
       >
         +
       </button>

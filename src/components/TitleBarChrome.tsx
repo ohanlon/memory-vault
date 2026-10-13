@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 import { pluginRegistry } from "../plugins/registry";
 import { useCompactViewport } from "../useCompactViewport";
 import { canPickFolder } from "../hostCapabilities";
+import { CommandPalette } from "./CommandPalette";
+import { flattenMenus } from "./paletteCommands";
 
 interface Props {
   regionId?: string;
@@ -90,6 +92,18 @@ export function TitleBarChrome({
   const [openMenu, setOpenMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const menus = root == null ? homeMenus() : notesFolderMenus(!!hasActiveNote);
   const compact = useCompactViewport();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <div className="titlebar-drag" data-region-id={regionId}>
@@ -122,7 +136,17 @@ export function TitleBarChrome({
           </div>
         )}
         <div className="titlebar-app-menu">
-          {menus.map((menu) => (
+          {compact ? (
+            // Dropdown menu bars don't suit touch; one button opens a searchable list of every command.
+            <button
+              className="titlebar-app-menu-btn"
+              aria-label="Commands"
+              onClick={() => setPaletteOpen(true)}
+            >
+              ⌕ Commands
+            </button>
+          ) : (
+            menus.map((menu) => (
             <button
               key={menu.id}
               className="titlebar-app-menu-btn"
@@ -135,7 +159,8 @@ export function TitleBarChrome({
             >
               {menu.label}
             </button>
-          ))}
+            ))
+          )}
         </div>
       </div>
       {root != null && outstandingTaskCount > 0 && (
@@ -153,6 +178,7 @@ export function TitleBarChrome({
           </button>
         </div>
       )}
+      {paletteOpen && <CommandPalette commands={flattenMenus(menus)} onClose={() => setPaletteOpen(false)} />}
       {openMenu && (
         <ContextMenu
           x={openMenu.x}

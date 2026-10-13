@@ -5,6 +5,8 @@ import { isolateHistory } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { EditorView } from "@codemirror/view";
+import { useCompactViewport } from "../useCompactViewport";
+import { EditorToolbar } from "./EditorToolbar";
 import type { AppSettings, GraphModel, Note } from "@shared/types";
 import { stripMdExtension } from "@shared/displayName";
 import { EDITOR_FONT_STACKS } from "@shared/editorFonts";
@@ -102,6 +104,7 @@ export function EditorPane({
   const [linkPicker, setLinkPicker] = useState<EditorContextMenuRequest["insertLinkAction"] | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [voiceNoteOpen, setVoiceNoteOpen] = useState(false);
+  const compact = useCompactViewport();
   const viewRef = useRef<EditorView | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedPath = useRef<string | null>(null);
@@ -476,6 +479,7 @@ export function EditorPane({
           }}
         />
       ) : null}
+      {compact && viewMode === "edit" && editorReady && <EditorToolbar getView={() => viewRef.current} />}
       {contextMenuRequest && (
         <ContextMenu
           x={contextMenuRequest.x}

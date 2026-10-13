@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { TaskStatus } from "@shared/tasks";
+import { Select } from "./Select";
 
 interface Props {
   onSubmit: (text: string, deadline: string | null, status: TaskStatus) => void | Promise<void>;
@@ -58,13 +59,7 @@ export function NewTaskModal({ onSubmit, onCancel }: Props) {
         </label>
         <label className="template-placeholder-field">
           <span>Status</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)}>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <Select value={status} onChange={setStatus} options={STATUS_OPTIONS} />
         </label>
         {error && <p className="modal-error">{error}</p>}
         <div className="modal-actions">

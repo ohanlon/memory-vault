@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { Note } from "@shared/types";
 import { collectTasks, isOverdue, sortTasksForDisplay, todayIsoDate, type Task, type TaskStatus } from "@shared/tasks";
 import { pluginRegistry } from "../plugins/registry";
+import { Select } from "./Select";
 
 interface Props {
   notes: Note[];
@@ -29,17 +30,12 @@ function TaskRow({
   const overdue = isOverdue(task, today);
   return (
     <li className="task-row">
-      <select
+      <Select
         className="task-row-status"
         value={task.status}
-        onChange={(e) => onSetTaskStatus(task, e.target.value as TaskStatus)}
-      >
-        {STATUS_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        onChange={(status) => onSetTaskStatus(task, status)}
+        options={STATUS_OPTIONS}
+      />
       <button className="task-row-text" onClick={() => onOpenNote(task.notePath)} title="Open task">
         {task.text}
       </button>

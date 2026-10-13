@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type {
   AppSettings,
-  EditorFontFamily,
   PluginListEntry,
   PluginManifest,
   PluginPermissionsFile,
@@ -13,6 +12,7 @@ import { CODE_LANGUAGES } from "@shared/codeLanguages";
 import { formatDateWithPattern, isValidDateFormat } from "@shared/dateFormat";
 import { CustomThemesModal } from "./CustomThemesModal";
 import { loadThirdPartyPlugins } from "../plugins/loader";
+import { Select } from "./Select";
 
 interface Props {
   settings: AppSettings;
@@ -212,18 +212,15 @@ export function SettingsView({ settings, onChange, canManageProperties, onManage
         <h2>Appearance</h2>
         <div className="settings-row">
           <label htmlFor="setting-theme">Theme</label>
-          <select id="setting-theme" value={themeSelectValue} onChange={(e) => handleThemeSelect(e.target.value)}>
-            {THEME_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-            {settings.customThemes.map((t) => (
-              <option key={t.id} value={`custom:${t.id}`}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+          <Select
+            id="setting-theme"
+            value={themeSelectValue as string}
+            onChange={handleThemeSelect}
+            options={[
+              ...THEME_OPTIONS.map((opt) => ({ value: opt.value as string, label: opt.label })),
+              ...settings.customThemes.map((t) => ({ value: `custom:${t.id}`, label: t.name })),
+            ]}
+          />
         </div>
         {managingThemes && (
           <CustomThemesModal settings={settings} onChange={onChange} onClose={() => setManagingThemes(false)} />
@@ -234,17 +231,12 @@ export function SettingsView({ settings, onChange, canManageProperties, onManage
         <h2>Editor</h2>
         <div className="settings-row">
           <label htmlFor="setting-tab-folder-display">Child folders in tab headers</label>
-          <select
+          <Select
             id="setting-tab-folder-display"
             value={settings.tabFolderDisplay}
-            onChange={(e) => onChange({ ...settings, tabFolderDisplay: e.target.value as TabFolderDisplay })}
-          >
-            {TAB_FOLDER_DISPLAY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => onChange({ ...settings, tabFolderDisplay: v })}
+            options={TAB_FOLDER_DISPLAY_OPTIONS}
+          />
         </div>
         <div className="settings-row">
           <label htmlFor="setting-show-line-numbers">Show line numbers</label>
@@ -257,17 +249,12 @@ export function SettingsView({ settings, onChange, canManageProperties, onManage
         </div>
         <div className="settings-row">
           <label htmlFor="setting-editor-font-family">Font</label>
-          <select
+          <Select
             id="setting-editor-font-family"
             value={settings.editorFontFamily}
-            onChange={(e) => onChange({ ...settings, editorFontFamily: e.target.value as EditorFontFamily })}
-          >
-            {EDITOR_FONT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => onChange({ ...settings, editorFontFamily: v })}
+            options={EDITOR_FONT_OPTIONS}
+          />
         </div>
         <div className="settings-row">
           <label htmlFor="setting-editor-font-size">Font size</label>
