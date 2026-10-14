@@ -423,7 +423,8 @@ export default function App() {
   }, [activeNotesFolder, sessionKey, openPaths, activePath, notes]);
 
   const openTab = useCallback((path: string) => {
-    setOpenPaths((paths) => addTabPath(paths, path));
+    // Compact (mobile) layouts have no tab bar: opening a file or view replaces the current one.
+    setOpenPaths((paths) => (isCompactViewport() ? [path] : addTabPath(paths, path)));
     setActivePath(path);
   }, []);
 
@@ -1140,6 +1141,7 @@ export default function App() {
 
         {isRegionPresent("editor") && (
           <main className="editor-area" data-region-id={regionId("editor")}>
+            {!compact && (
             <TabBar
               tabs={openTabItems}
               activeId={activePath}
@@ -1159,6 +1161,7 @@ export default function App() {
                 if (note) pluginRegistry.runCommand("stack.deleteNote", note);
               }}
             />
+            )}
             <TabKindSlot
               tabId={activePath}
               slotProps={{
