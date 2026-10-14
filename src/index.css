@@ -2374,6 +2374,8 @@ body {
 }
 
 .context-menu {
+  /* Rendered inside .titlebar-drag; without this a click on an item starts a window drag instead. */
+  -webkit-app-region: no-drag;
   position: fixed;
   z-index: 200;
   background: var(--bg-surface);
@@ -2569,6 +2571,7 @@ body {
 
 /* Bottom sheet: the compact-viewport rendering of ContextMenu (see ContextMenu.tsx SheetMenu). */
 .sheet-backdrop {
+  -webkit-app-region: no-drag;
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -2675,6 +2678,7 @@ body {
 
 /* Command palette (see CommandPalette.tsx). */
 .palette-backdrop {
+  -webkit-app-region: no-drag;
   position: fixed;
   inset: 0;
   z-index: 300;
