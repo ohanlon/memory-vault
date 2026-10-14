@@ -102,14 +102,18 @@ internal static class Program
             var channel = (string)request["channel"]!;
             var args = request["args"] as JsonArray ?? new JsonArray();
 
+            if (channel == "plugin:invoke") _log.Info($"request {id} {channel} {args[1]} started");
             var result = await Task.Run(() => _router!.InvokeAsync(channel, args));
+            if (channel == "plugin:invoke") _log.Info($"request {id} {channel} {args[1]} finished");
             Send($"{{\"id\":{id},\"ok\":true,\"result\":{Serialize(result)}}}");
         }
         catch (Exception e)
         {
             var inner = e is AggregateException { InnerException: { } i } ? i : e;
             _log.Error($"request {id} failed: {inner}");
-            var error = JsonValue.Create(inner.Message)!.ToJsonString(CairnJson.NodeOptions);
+            // Some exceptions carry no message; naming the type beats showing the user a blank error.
+            var text = string.IsNullOrWhiteSpace(inner.Message) ? inner.GetType().Name : inner.Message;
+            var error = JsonValue.Create(text)!.ToJsonString(CairnJson.NodeOptions);
             Send($"{{\"id\":{id},\"ok\":false,\"error\":{error}}}");
         }
     }

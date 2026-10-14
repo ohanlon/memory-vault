@@ -15,11 +15,13 @@
       else if (v === true) el.setAttribute(k, "");
       else if (v !== false && v != null) el.setAttribute(k, v);
     });
-    for (var i = 2; i < arguments.length; i++) {
-      var c = arguments[i];
-      if (c == null || c === false) continue;
-      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
-    }
+    (function add(children) {
+      children.forEach(function (c) {
+        if (c == null || c === false) return;
+        if (Array.isArray(c)) return add(c);
+        el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+      });
+    })(Array.prototype.slice.call(arguments, 2));
     return el;
   }
 
@@ -320,6 +322,7 @@
     var scroll = list ? list.scrollTop : 0;
 
     var content;
+    try {
     switch (state.view) {
       case "permission": content = renderPermission(); break;
       case "signin": content = renderSignIn(); break;
@@ -328,6 +331,10 @@
       case "main": content = renderMain(); break;
       case "error": content = h("div", { class: "callout" }, h("h2", {}, "Something went wrong"), h("div", { class: "status error" }, state.error), h("button", { onclick: refresh }, "Try again")); break;
       default: content = h("div", { class: "empty" }, "Loading...");
+    }
+    } catch (err) {
+      // A view that throws would otherwise leave the panel blank with no clue why.
+      content = h("div", { class: "callout" }, h("h2", {}, "Something went wrong"), h("div", { class: "status error" }, errText(err)));
     }
     app.replaceChildren(content);
 
