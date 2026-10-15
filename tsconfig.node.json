@@ -12,5 +12,6 @@
       "@shared/*": ["shared/*"]
     }
   },
-  "include": ["electron", "shared", "vite.config.ts"]
+  "include": ["electron", "shared", "vite.config.ts", "vite.node.config.ts"],
+  "exclude": ["electron/main.ts", "electron/preload.ts", "electron/exportFiles.ts", "electron/attachmentProtocol.ts", "electron/pluginProtocol.ts", "electron/attachmentProtocol.test.ts", "electron/pluginProtocol.test.ts"]
 }

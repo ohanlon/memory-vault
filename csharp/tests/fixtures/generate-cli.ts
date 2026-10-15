@@ -1,7 +1,7 @@
 // Generates the CLI/MCP golden fixtures for the C# port by running the *original* TypeScript (electron/cli.ts and the
 // built MCP server) over a fixed scenario.
 //
-//   npx vite build                                                        # builds dist-electron/mcpServer.js
+//   npm run build:cli                                                     # builds dist-electron/mcpServer.js
 //   npx vite-node -c vitest.config.ts csharp/tests/fixtures/generate-cli.ts
 //
 // cli-scenario.json holds each step's arguments and the TypeScript output; CliParityTests replays the steps against
@@ -191,7 +191,7 @@ async function generateScenario(): Promise<void> {
 // Asks the built TypeScript MCP server for its tool list.
 function generateMcpTools(): Promise<void> {
   const server = path.join(repoRoot, "dist-electron", "mcpServer.js");
-  if (!fs.existsSync(server)) throw new Error("dist-electron/mcpServer.js not found - run `npx vite build` first.");
+  if (!fs.existsSync(server)) throw new Error("dist-electron/mcpServer.js not found - run `npm run build:cli` first.");
 
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [server], { stdio: ["pipe", "pipe", "inherit"] });

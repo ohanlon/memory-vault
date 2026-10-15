@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Cairn: an Electron + React + TypeScript desktop app for browsing and
+Cairn: a React + TypeScript desktop app (native shell: the C# Photino host in `csharp/`; the legacy Electron shell in `electron/` is no longer built — the `electron` package is not a dependency) for browsing and
 editing a folder of markdown notes as a linked graph — a local-first,
 Obsidian-style alternative aimed at managing Claude memory files, but usable
 for any `[[wikilink]]`-based markdown notes folder. Notes are always plain `.md`
@@ -15,13 +15,14 @@ app just reflects whatever's on disk.
 ## Commands
 
 ```bash
-npm run dev              # Vite + Electron, hot reload
+npm run dev              # Vite dev server for the renderer only (no host bridge)
+# run the real app: npx vite build, then `dotnet run --project csharp/src/Cairn.Host`
 npm run typecheck        # tsc --noEmit for both renderer and main/electron configs
 npm test                 # vitest run (all tests)
 npx vitest run path/to/file.test.ts   # run a single test file
 npx vitest run -t "test name"         # run tests matching a name
-npm run build             # typecheck, build, package with electron-builder
-npm run build:unpack      # same but --dir (skip installer, faster local build)
+npm run build             # typecheck, build renderer into dist/, build the CLI
+npm run build:cli         # dist-electron/{mcpServer.js,cliMain.cjs} + release/cairn-cli.exe
 ```
 
 There is no lint script configured.

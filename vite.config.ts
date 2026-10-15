@@ -1,69 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import electron from "vite-plugin-electron/simple";
-import electronEntry from "vite-plugin-electron";
 import path from "node:path";
 
+// Renderer only. The native shell is the C# host (csharp/src/Cairn.Host), which
+// serves dist/ and injects window.memoryStack. The Node CLI/MCP bundles are built
+// by vite.node.config.ts.
 export default defineConfig({
-  plugins: [
-    react(),
-    electron({
-      main: {
-        entry: "electron/main.ts",
-        vite: {
-          build: {
-            outDir: "dist-electron",
-          },
-        },
-      },
-      preload: {
-        input: {
-          preload: path.join(__dirname, "electron/preload.ts"),
-        },
-        vite: {
-          build: {
-            outDir: "dist-electron",
-            rollupOptions: {
-              output: {
-                entryFileNames: "[name].mjs",
-                inlineDynamicImports: false,
-              },
-            },
-          },
-        },
-      },
-      renderer: {},
-    }),
-    // Standalone MCP server entry point - a plain Node/stdio process, not
-    // part of the Electron app itself, so it's a separate build target
-    // (vite-plugin-electron/simple only supports the fixed main/preload/
-    // renderer shape) bundled the same way and to the same output dir.
-    electronEntry({
-      entry: "electron/mcpServer.ts",
-      vite: {
-        build: {
-          outDir: "dist-electron",
-        },
-      },
-    }),
-    // Standalone CLI entry point, bundled to CommonJS - Node's Single
-    // Executable Applications feature (see sea-config.json / the build:cli
-    // script) needs a CJS entry, regardless of this package's "type":
-    // "module", hence the explicit .cjs output extension.
-    electronEntry({
-      entry: "electron/cliMain.ts",
-      vite: {
-        build: {
-          outDir: "dist-electron",
-          lib: {
-            entry: "electron/cliMain.ts",
-            formats: ["cjs"],
-            fileName: () => "cliMain.cjs",
-          },
-        },
-      },
-    }),
-  ],
+  base: "./",
+  plugins: [react()],
   resolve: {
     alias: {
       "@shared": path.resolve(__dirname, "shared"),

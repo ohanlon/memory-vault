@@ -16,10 +16,11 @@ directly, and Cairn just reflects whatever's there.
 
 ```bash
 npm install
-npm run dev
+npx vite build
+cd csharp && dotnet run --project src/Cairn.Host
 ```
 
-This starts Vite and launches the Electron app pointed at the dev server.
+This builds the renderer and launches the native C# host (see `csharp/README.md`).
 The first time it opens, point it at a folder of markdown notes (or an
 empty one to start fresh) — that becomes a notes folder.
 
@@ -84,16 +85,13 @@ enabled) and set its client ID in `shared/githubConfig.ts`.
 
 ## Scripts
 
-- `npm run dev` — run in development with hot reload
-- `npm run typecheck` — type-check the renderer and main processes
+- `npm run dev` — serve the renderer with Vite (needs a host that provides `window.memoryStack`; use the C# host to run the app)
+- `npm run typecheck` — type-check the renderer and Node code
 - `npm test` — run unit tests
-- `npm run build` — type-check, build, and package a distributable with
-  `electron-builder`
-- `npm run build:unpack` — same, but skips the installer step for a faster
-  local build
-- `npm run build:cli` — packages `dist-electron/cliMain.cjs` (already built
-  by the two commands above) into the standalone `release/cairn-cli.exe`;
-  also runs automatically as the last step of `build`/`build:unpack`
+- `npm run build` — type-check, build the renderer into `dist/`, and build the CLI
+- `npm run build:cli` — builds `dist-electron/mcpServer.js` and `dist-electron/cliMain.cjs`,
+  then packages the latter into the standalone `release/cairn-cli.exe`;
+  also runs as the last step of `build`
 
 ## Command line
 
@@ -103,8 +101,7 @@ require Node.js to be installed (it's built with Node's Single Executable
 Applications feature, so it embeds its own Node runtime). It reads/writes
 the same `notesFolders.json` registry and notes as the GUI. Each command
 prints a JSON result to stdout. In development, skip the packaging step
-and run `node dist-electron/cliMain.cjs <command> ...` after `npx vite
-build` instead.
+and run `node dist-electron/cliMain.cjs <command> ...` after `npm run build:cli` instead.
 
 **Access is deny-by-default, per notes folder.** Being registered in the
 GUI doesn't make a folder reachable via the CLI/MCP — it must be explicitly
@@ -248,8 +245,7 @@ cairn-cli.exe delete_orphaned_attachments --folder Work
 The same operations are also exposed as an MCP server, for agents (Claude
 Desktop, Claude Code, etc.) to read and write a notes folder directly
 instead of shelling out to the CLI. It's a standalone Node/stdio process —
-`dist-electron/mcpServer.js`, built alongside the app by `npm run build` /
-`npm run build:unpack` — and reads/writes the same `notesFolders.json`
+`dist-electron/mcpServer.js`, built by `npm run build:cli` — and reads/writes the same `notesFolders.json`
 registry and notes as the GUI and CLI.
 
 Tools: `add_folder`, `list_folders`, `get_notes`, `get_note`, `add_note`,

@@ -4,12 +4,10 @@
   "version": "0.1.0",
   "description": "Open-source, local-first markdown stack + graph viewer for managing Claude memory files.",
   "type": "module",
-  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "npm run typecheck && vite build && electron-builder && node scripts/build-cli.mjs",
-    "build:unpack": "npm run typecheck && vite build && electron-builder --dir && node scripts/build-cli.mjs",
-    "build:cli": "node scripts/build-cli.mjs",
+    "build": "npm run typecheck && vite build && npm run build:cli",
+    "build:cli": "vite build -c vite.node.config.ts --mode mcp && vite build -c vite.node.config.ts --mode cli && node scripts/build-cli.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
@@ -55,44 +53,12 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8",
     "happy-dom": "^20.14.3",
     "husky": "^9.1.7",
     "playwright": "^1.63.0",
     "postject": "^1.0.0-alpha.6",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
-    "vite-plugin-electron": "^0.28.8",
-    "vite-plugin-electron-renderer": "^0.14.6",
     "vitest": "^2.1.5"
-  },
-  "build": {
-    "appId": "com.internal.cairn",
-    "productName": "Cairn",
-    "executableName": "cairn",
-    "files": [
-      "dist",
-      "dist-electron"
-    ],
-    "extraResources": [
-      {
-        "from": "plugins",
-        "to": "plugins"
-      }
-    ],
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "win": {
-      "icon": "build/icon.ico"
-    },
-    "mac": {
-      "icon": "build/icon.icns"
-    },
-    "linux": {
-      "icon": "build/icon.png"
-    }
   }
 }

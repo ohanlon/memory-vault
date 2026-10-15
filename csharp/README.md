@@ -185,7 +185,7 @@ of inputs and writes `golden.json`; the C# tests assert identical output. After 
 ```bash
 npx vite-node -c vitest.config.ts csharp/tests/fixtures/generate.ts
 npx vite-node -c vitest.config.ts csharp/scripts/generate-shared-data.ts
-npx vite build                                                            # builds dist-electron/mcpServer.js
+npm run build:cli                                                         # builds dist-electron/mcpServer.js
 npx vite-node -c vitest.config.ts csharp/tests/fixtures/generate-cli.ts   # cli-scenario.json and mcp-tools.json
 ```
 
